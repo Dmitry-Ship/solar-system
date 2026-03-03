@@ -19,7 +19,6 @@
     DIRECTIONAL_CONE_TIP_RADIUS_AU,
     DIRECTIONAL_SOURCE_CONE_COLOR,
     DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
-    DIRECTIONAL_GUIDE_PARALLEL_SECTION_END_AU,
     DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU,
     MATRYOSHKA_CONE_LAYER_DEFINITIONS,
     STAR_DISTANCE_MIN_AU,
@@ -237,10 +236,8 @@
     const focalDistanceAu =
       constants.SOLAR_GRAVITATIONAL_LENS_AU +
       Math.max(0, layerDefinition.focalOffsetAu || 0);
-    const incomingTransitionPoint = math.pointOnRadiusAlongDirection(
-      sourceMarker,
-      DIRECTIONAL_GUIDE_PARALLEL_SECTION_END_AU
-    );
+    // Keep the cylinder-to-cone junction anchored at the Sun.
+    const incomingTransitionPoint = { x: 0, y: 0, z: 0 };
     const focalPoint = math.pointOnRadiusAlongDirection(
       sourceMarker,
       -focalDistanceAu
@@ -254,8 +251,12 @@
     const focalRadiusAu =
       DIRECTIONAL_CONE_TIP_RADIUS_AU *
       Math.max(0.05, layerDefinition.tipRadiusScale || 0);
-    const convergenceSpanAu =
-      DIRECTIONAL_GUIDE_PARALLEL_SECTION_END_AU + focalDistanceAu;
+    const incomingTransitionDistanceAu = Math.hypot(
+      incomingTransitionPoint.x,
+      incomingTransitionPoint.y,
+      incomingTransitionPoint.z
+    );
+    const convergenceSpanAu = incomingTransitionDistanceAu + focalDistanceAu;
     const divergenceSpanAu = endDistanceAu - focalDistanceAu;
     const prePinchRadiusDeltaAu = Math.max(0, incomingRadiusAu - focalRadiusAu);
     const divergenceSlope =

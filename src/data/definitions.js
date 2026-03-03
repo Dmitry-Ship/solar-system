@@ -501,38 +501,78 @@
   const DIRECTIONAL_SOURCE_CONE_DASH_PATTERN = [12, 8];
   const DIRECTIONAL_GUIDE_PARALLEL_SECTION_END_AU =
     constants.HELIOPAUSE_AU * 1.2;
-  const DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU = 260;
+  const DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU = 550;
+  const MATRYOSHKA_INNER_LAYER_MAX_WIDTH_SCALE = 1.5;
+  const MATRYOSHKA_INNER_LAYER_TIP_RADIUS_SCALE = 0.2;
+
+  function incomingRadiusForWidthScale(maxWidthScale) {
+    return DIRECTIONAL_CONE_MAX_WIDTH_AU * Math.max(0.05, maxWidthScale || 0) * 0.5;
+  }
+
+  function focalRadiusForTipScale(tipRadiusScale) {
+    return DIRECTIONAL_CONE_TIP_RADIUS_AU * Math.max(0.05, tipRadiusScale || 0);
+  }
+
+  const MATRYOSHKA_SHARED_CONE_SLOPE =
+    (incomingRadiusForWidthScale(MATRYOSHKA_INNER_LAYER_MAX_WIDTH_SCALE) -
+      focalRadiusForTipScale(MATRYOSHKA_INNER_LAYER_TIP_RADIUS_SCALE)) /
+    Math.max(constants.SOLAR_GRAVITATIONAL_LENS_AU, 1e-6);
+
+  function focalOffsetForMaxWidthScale(maxWidthScale, tipRadiusScale) {
+    const incomingRadiusAu = incomingRadiusForWidthScale(maxWidthScale);
+    const focalRadiusAu = focalRadiusForTipScale(tipRadiusScale);
+    const focalDistanceAu =
+      (incomingRadiusAu - focalRadiusAu) / Math.max(MATRYOSHKA_SHARED_CONE_SLOPE, 1e-6);
+    return Math.max(0, focalDistanceAu - constants.SOLAR_GRAVITATIONAL_LENS_AU);
+  }
+
+  function createMatryoshkaConeLayerDefinition({
+    lengthExtensionAu,
+    maxWidthScale,
+    tipRadiusScale,
+    pinchesAtLensSphereEdge = false,
+    alpha
+  }) {
+    return {
+      lengthExtensionAu,
+      maxWidthScale: Math.max(0.05, maxWidthScale || 0),
+      tipRadiusScale,
+      // Keep all layers on one cone half-angle; optionally pin pinch to lens edge.
+      focalOffsetAu: pinchesAtLensSphereEdge
+        ? 0
+        : focalOffsetForMaxWidthScale(maxWidthScale, tipRadiusScale),
+      alpha
+    };
+  }
+
   const MATRYOSHKA_CONE_LAYER_DEFINITIONS = [
-    {
+    createMatryoshkaConeLayerDefinition({
       // Outermost: longest and widest.
-      lengthExtensionAu: 400,
-      maxWidthScale: 3.2,
+      lengthExtensionAu: 350,
+      maxWidthScale: 8,
       tipRadiusScale: 1.05,
-      focalOffsetAu: 240,
       alpha: 0.05
-    },
-    {
-      lengthExtensionAu: 200,
-      maxWidthScale: 1.6,
+    }),
+    createMatryoshkaConeLayerDefinition({
+      lengthExtensionAu: 250,
+      maxWidthScale: 6,
       tipRadiusScale: 0.72,
-      focalOffsetAu: 150,
       alpha: 0.1
-    },
-    {
-      lengthExtensionAu: 100,
-      maxWidthScale: 0.8,
+    }),
+    createMatryoshkaConeLayerDefinition({
+      lengthExtensionAu: 150,
+      maxWidthScale: 4,
       tipRadiusScale: 0.42,
-      focalOffsetAu: 70,
       alpha: 0.2
-    },
-    {
+    }),
+    createMatryoshkaConeLayerDefinition({
       // Innermost always terminates at the lens-sphere edge.
       lengthExtensionAu: 0,
-      maxWidthScale: 0.2,
-      tipRadiusScale: 0.2,
-      focalOffsetAu: 0,
+      maxWidthScale: MATRYOSHKA_INNER_LAYER_MAX_WIDTH_SCALE,
+      tipRadiusScale: MATRYOSHKA_INNER_LAYER_TIP_RADIUS_SCALE,
+      pinchesAtLensSphereEdge: true,
       alpha: 0.4
-    }
+    })
   ];
   const STAR_DISTANCE_MIN_AU = constants.SCENE_OUTER_AU * 3.8;
   const STAR_DISTANCE_MAX_AU = constants.SCENE_OUTER_AU * (3.8 + 4.5);
