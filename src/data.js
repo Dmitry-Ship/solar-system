@@ -173,13 +173,15 @@
     return items;
   }
 
-  function directionalGuideLineFromMarker(marker, color, options = {}) {
-    if (!marker) return null;
+  function clonePoint(point) {
+    return {
+      x: point.x,
+      y: point.y,
+      z: point.z
+    };
+  }
 
-    const cylinderRadiusAu = options.cylinderRadiusAu ?? 0;
-    const fallbackStartRadiusAu =
-      options.cylinderStartRadiusAu ?? cylinderRadiusAu;
-    const fallbackEndRadiusAu = options.cylinderEndRadiusAu ?? cylinderRadiusAu;
+  function resolveGuideLinePoints(marker, options) {
     const fallbackStartPoint =
       options.startPoint ||
       math.pointOnRadiusAlongDirection(
@@ -191,19 +193,26 @@
       y: marker.y,
       z: marker.z
     };
-    const points =
-      Array.isArray(options.points) && options.points.length >= 2
-        ? options.points.map((point) => ({
-            x: point.x,
-            y: point.y,
-            z: point.z
-          }))
-        : [fallbackStartPoint, fallbackEndPoint];
+
+    if (Array.isArray(options.points) && options.points.length >= 2) {
+      return options.points.map((point) => clonePoint(point));
+    }
+
+    return [fallbackStartPoint, fallbackEndPoint];
+  }
+
+  function buildCylinderRadiusProfile(
+    points,
+    options,
+    fallbackStartRadiusAu,
+    fallbackEndRadiusAu
+  ) {
     const rawRadiusProfile =
       Array.isArray(options.cylinderRadiusProfileAu) &&
       options.cylinderRadiusProfileAu.length === points.length
         ? options.cylinderRadiusProfileAu
         : null;
+
     const cylinderRadiusProfileAu = points.map((_, index) => {
       const t = points.length <= 1 ? 0 : index / (points.length - 1);
       const fallbackRadius =
@@ -211,9 +220,33 @@
       const radius = rawRadiusProfile?.[index] ?? fallbackRadius;
       return Math.max(0, Number.isFinite(radius) ? radius : 0);
     });
-    const cylinderStartRadiusAu = cylinderRadiusProfileAu[0] || 0;
-    const cylinderEndRadiusAu =
-      cylinderRadiusProfileAu[cylinderRadiusProfileAu.length - 1] || 0;
+
+    return {
+      cylinderRadiusProfileAu,
+      cylinderStartRadiusAu: cylinderRadiusProfileAu[0] || 0,
+      cylinderEndRadiusAu:
+        cylinderRadiusProfileAu[cylinderRadiusProfileAu.length - 1] || 0
+    };
+  }
+
+  function directionalGuideLineFromMarker(marker, color, options = {}) {
+    if (!marker) return null;
+
+    const cylinderRadiusAu = options.cylinderRadiusAu ?? 0;
+    const fallbackStartRadiusAu =
+      options.cylinderStartRadiusAu ?? cylinderRadiusAu;
+    const fallbackEndRadiusAu = options.cylinderEndRadiusAu ?? cylinderRadiusAu;
+    const points = resolveGuideLinePoints(marker, options);
+    const {
+      cylinderRadiusProfileAu,
+      cylinderStartRadiusAu,
+      cylinderEndRadiusAu
+    } = buildCylinderRadiusProfile(
+      points,
+      options,
+      fallbackStartRadiusAu,
+      fallbackEndRadiusAu
+    );
 
     return {
       points,

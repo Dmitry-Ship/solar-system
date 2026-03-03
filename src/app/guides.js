@@ -1,6 +1,142 @@
 (() => {
   const namespace = (window.SolarSystem = window.SolarSystem || {});
   const app = (namespace.app = namespace.app || {});
+  const CYLINDER_MIN_AXIS_LENGTH = 1e-6;
+  const CYLINDER_MIN_VISIBLE_RADIUS = 1e-8;
+  const EDGE_FALLBACK_EPSILON = 1e-12;
+  const CYLINDER_RIM_SEGMENTS = 120;
+
+  function hasDashPattern(pattern) {
+    return Array.isArray(pattern) && pattern.length >= 2;
+  }
+
+  function createGuideMaterial(
+    THREE,
+    guideLine,
+    {
+      dashPattern = [],
+      dashScale = 1,
+      minDashSize = 4,
+      solidOpacityFallback = 0.8,
+      dashedOpacityFallback = 0.7,
+      depthWrite
+    } = {}
+  ) {
+    const isDashed = hasDashPattern(dashPattern);
+    const opacityFallback = isDashed
+      ? dashedOpacityFallback
+      : solidOpacityFallback;
+    const opacity = Math.max(
+      guideLine.startAlpha ?? opacityFallback,
+      guideLine.endAlpha ?? opacityFallback
+    );
+    const materialOptions = {
+      color: guideLine.color,
+      transparent: true,
+      opacity
+    };
+    if (depthWrite !== undefined) {
+      materialOptions.depthWrite = depthWrite;
+    }
+
+    if (isDashed) {
+      materialOptions.dashSize = Math.max(minDashSize, dashPattern[0] * dashScale);
+      materialOptions.gapSize = Math.max(minDashSize, dashPattern[1] * dashScale);
+      return {
+        isDashed,
+        material: new THREE.LineDashedMaterial(materialOptions)
+      };
+    }
+
+    return {
+      isDashed,
+      material: new THREE.LineBasicMaterial(materialOptions)
+    };
+  }
+
+  function buildCylinderRadiusProfile(guideLine, pointCount) {
+    const baseRadius = Math.max(guideLine.cylinderRadiusAu || 0, 0);
+    const startRadius = Math.max(guideLine.cylinderStartRadiusAu ?? baseRadius, 0);
+    const endRadius = Math.max(guideLine.cylinderEndRadiusAu ?? baseRadius, 0);
+    const rawRadiusProfile = Array.isArray(guideLine.cylinderRadiusProfileAu)
+      ? guideLine.cylinderRadiusProfileAu
+      : null;
+    const radiusProfile = new Array(pointCount);
+    let maxRadius = 0;
+
+    for (let index = 0; index < pointCount; index += 1) {
+      const t = pointCount <= 1 ? 0 : index / (pointCount - 1);
+      const fallbackRadius = startRadius + (endRadius - startRadius) * t;
+      const candidateRadius =
+        rawRadiusProfile && Number.isFinite(rawRadiusProfile[index])
+          ? rawRadiusProfile[index]
+          : fallbackRadius;
+      const safeRadius = Math.max(0, candidateRadius);
+      radiusProfile[index] = safeRadius;
+      maxRadius = Math.max(maxRadius, safeRadius);
+    }
+
+    return { radiusProfile, maxRadius };
+  }
+
+  function createCylinderBasis(THREE, axisDirection) {
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    const worldRight = new THREE.Vector3(1, 0, 0);
+    const basisSeed = Math.abs(axisDirection.dot(worldUp)) > 0.98 ? worldRight : worldUp;
+    const basisA = new THREE.Vector3()
+      .crossVectors(axisDirection, basisSeed)
+      .normalize();
+    const basisB = new THREE.Vector3()
+      .crossVectors(axisDirection, basisA)
+      .normalize();
+
+    return { basisA, basisB };
+  }
+
+  function createCylinderRim(
+    THREE,
+    center,
+    radius,
+    basisA,
+    basisB,
+    material,
+    isDashed
+  ) {
+    const rimPoints = [];
+    const fullTurn = Math.PI * 2;
+
+    for (let index = 0; index <= CYLINDER_RIM_SEGMENTS; index += 1) {
+      const angle = (index / CYLINDER_RIM_SEGMENTS) * fullTurn;
+      rimPoints.push(
+        center
+          .clone()
+          .addScaledVector(basisA, Math.cos(angle) * radius)
+          .addScaledVector(basisB, Math.sin(angle) * radius)
+      );
+    }
+
+    const rim = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(rimPoints),
+      material
+    );
+    if (isDashed) {
+      rim.computeLineDistances();
+    }
+    rim.frustumCulled = false;
+    return rim;
+  }
+
+  function createDynamicLine(THREE, pointCount, material) {
+    const positions = new Float32Array(pointCount * 3);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.attributes.position.setUsage(THREE.DynamicDrawUsage);
+
+    const line = new THREE.Line(geometry, material);
+    line.frustumCulled = false;
+
+    return { positions, geometry, line };
+  }
 
   app.createGuideCylinder = function createGuideCylinder(guideLine, points) {
     const THREE = window.THREE;
@@ -15,120 +151,58 @@
     const end = points[pointCount - 1].clone();
     const axis = new THREE.Vector3().subVectors(end, start);
     const axisLength = axis.length();
-    const baseRadius = Math.max(guideLine.cylinderRadiusAu || 0, 0);
-    const startRadius = Math.max(guideLine.cylinderStartRadiusAu ?? baseRadius, 0);
-    const endRadius = Math.max(guideLine.cylinderEndRadiusAu ?? baseRadius, 0);
-    const rawRadiusProfile = Array.isArray(guideLine.cylinderRadiusProfileAu)
-      ? guideLine.cylinderRadiusProfileAu
-      : null;
-    const radiusProfile = [];
-    for (let i = 0; i < pointCount; i += 1) {
-      const t = pointCount <= 1 ? 0 : i / (pointCount - 1);
-      const fallbackRadius = startRadius + (endRadius - startRadius) * t;
-      const radiusValue =
-        rawRadiusProfile && Number.isFinite(rawRadiusProfile[i])
-          ? rawRadiusProfile[i]
-          : fallbackRadius;
-      radiusProfile.push(Math.max(0, radiusValue));
-    }
-    const maxProfileRadius = radiusProfile.reduce(
-      (maxRadius, radius) => Math.max(maxRadius, radius),
-      0
+    const { radiusProfile, maxRadius } = buildCylinderRadiusProfile(
+      guideLine,
+      pointCount
     );
-
-    if (axisLength <= 1e-6 || maxProfileRadius <= 1e-6) return null;
+    if (axisLength <= CYLINDER_MIN_AXIS_LENGTH || maxRadius <= CYLINDER_MIN_AXIS_LENGTH) {
+      return null;
+    }
 
     const axisDirection = axis.clone().multiplyScalar(1 / axisLength);
-    const worldUp = new THREE.Vector3(0, 1, 0);
-    const worldRight = new THREE.Vector3(1, 0, 0);
-    const basisSeed =
-      Math.abs(axisDirection.dot(worldUp)) > 0.98 ? worldRight : worldUp;
-    const basisA = new THREE.Vector3()
-      .crossVectors(axisDirection, basisSeed)
-      .normalize();
-    const basisB = new THREE.Vector3()
-      .crossVectors(axisDirection, basisA)
-      .normalize();
-
-    const isDashed =
-      Array.isArray(guideLine.cylinderDashPattern) &&
-      guideLine.cylinderDashPattern.length >= 2;
-    const material = isDashed
-      ? new THREE.LineDashedMaterial({
-          color: guideLine.color,
-          transparent: true,
-          opacity: Math.max(guideLine.startAlpha ?? 0.7, guideLine.endAlpha ?? 0.7),
-          dashSize: Math.max(4, guideLine.cylinderDashPattern[0]),
-          gapSize: Math.max(4, guideLine.cylinderDashPattern[1]),
-          depthWrite: false
-        })
-      : new THREE.LineBasicMaterial({
-          color: guideLine.color,
-          transparent: true,
-          opacity: Math.max(guideLine.startAlpha ?? 0.7, guideLine.endAlpha ?? 0.7),
-          depthWrite: false
-        });
+    const { basisA, basisB } = createCylinderBasis(THREE, axisDirection);
+    const { material, isDashed } = createGuideMaterial(THREE, guideLine, {
+      dashPattern: guideLine.cylinderDashPattern,
+      solidOpacityFallback: 0.7,
+      dashedOpacityFallback: 0.7,
+      depthWrite: false
+    });
 
     const cylinderGroup = new THREE.Group();
-    const radialSegments = 120;
-    const fullTurn = Math.PI * 2;
-
-    function createCylinderRim(center, rimRadius) {
-      const rimPoints = [];
-      for (let i = 0; i <= radialSegments; i += 1) {
-        const angle = (i / radialSegments) * fullTurn;
-        const point = center
-          .clone()
-          .addScaledVector(basisA, Math.cos(angle) * rimRadius)
-          .addScaledVector(basisB, Math.sin(angle) * rimRadius);
-        rimPoints.push(point);
-      }
-
-      const rim = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints(rimPoints),
-        material
-      );
-      if (isDashed) {
-        rim.computeLineDistances();
-      }
-      rim.frustumCulled = false;
-      return rim;
-    }
 
     const showStartRim = guideLine.showStartRim !== false;
     const showEndRim = guideLine.showEndRim !== false;
     const profileStartRadius = radiusProfile[0] || 0;
     const profileEndRadius = radiusProfile[pointCount - 1] || 0;
-    if (showStartRim && profileStartRadius > 1e-8) {
-      const startRim = createCylinderRim(start, profileStartRadius);
+    if (showStartRim && profileStartRadius > CYLINDER_MIN_VISIBLE_RADIUS) {
+      const startRim = createCylinderRim(
+        THREE,
+        start,
+        profileStartRadius,
+        basisA,
+        basisB,
+        material,
+        isDashed
+      );
       cylinderGroup.add(startRim);
     }
-    if (showEndRim && profileEndRadius > 1e-8) {
-      const endRim = createCylinderRim(end, profileEndRadius);
+    if (showEndRim && profileEndRadius > CYLINDER_MIN_VISIBLE_RADIUS) {
+      const endRim = createCylinderRim(
+        THREE,
+        end,
+        profileEndRadius,
+        basisA,
+        basisB,
+        material,
+        isDashed
+      );
       cylinderGroup.add(endRim);
     }
 
-    const sideLinePositionsA = new Float32Array(pointCount * 3);
-    const sideLinePositionsB = new Float32Array(pointCount * 3);
-    const sideGeometryA = new THREE.BufferGeometry();
-    const sideGeometryB = new THREE.BufferGeometry();
-    sideGeometryA.setAttribute(
-      "position",
-      new THREE.BufferAttribute(sideLinePositionsA, 3)
-    );
-    sideGeometryB.setAttribute(
-      "position",
-      new THREE.BufferAttribute(sideLinePositionsB, 3)
-    );
-    sideGeometryA.attributes.position.setUsage(THREE.DynamicDrawUsage);
-    sideGeometryB.attributes.position.setUsage(THREE.DynamicDrawUsage);
-
-    const sideLineA = new THREE.Line(sideGeometryA, material);
-    const sideLineB = new THREE.Line(sideGeometryB, material);
-    sideLineA.frustumCulled = false;
-    sideLineB.frustumCulled = false;
-    cylinderGroup.add(sideLineA);
-    cylinderGroup.add(sideLineB);
+    const sideRuntimeA = createDynamicLine(THREE, pointCount, material);
+    const sideRuntimeB = createDynamicLine(THREE, pointCount, material);
+    cylinderGroup.add(sideRuntimeA.line);
+    cylinderGroup.add(sideRuntimeB.line);
 
     const center = new THREE.Vector3();
     for (const point of points) {
@@ -148,12 +222,12 @@
       viewDirectionPerpendicular.copy(axisDirection).multiplyScalar(viewAxisDot);
       viewDirectionPerpendicular.subVectors(viewDirection, viewDirectionPerpendicular);
 
-      if (viewDirectionPerpendicular.lengthSq() <= 1e-12) {
+      if (viewDirectionPerpendicular.lengthSq() <= EDGE_FALLBACK_EPSILON) {
         edgeDirection.copy(basisA);
       } else {
         viewDirectionPerpendicular.normalize();
         edgeDirection.crossVectors(axisDirection, viewDirectionPerpendicular);
-        if (edgeDirection.lengthSq() <= 1e-12) {
+        if (edgeDirection.lengthSq() <= EDGE_FALLBACK_EPSILON) {
           edgeDirection.copy(basisA);
         } else {
           edgeDirection.normalize();
@@ -167,22 +241,22 @@
 
         edgeOffset.copy(edgeDirection).multiplyScalar(radius);
         sidePoint.copy(point).add(edgeOffset);
-        sideLinePositionsA[baseIndex] = sidePoint.x;
-        sideLinePositionsA[baseIndex + 1] = sidePoint.y;
-        sideLinePositionsA[baseIndex + 2] = sidePoint.z;
+        sideRuntimeA.positions[baseIndex] = sidePoint.x;
+        sideRuntimeA.positions[baseIndex + 1] = sidePoint.y;
+        sideRuntimeA.positions[baseIndex + 2] = sidePoint.z;
 
         sidePoint.copy(point).sub(edgeOffset);
-        sideLinePositionsB[baseIndex] = sidePoint.x;
-        sideLinePositionsB[baseIndex + 1] = sidePoint.y;
-        sideLinePositionsB[baseIndex + 2] = sidePoint.z;
+        sideRuntimeB.positions[baseIndex] = sidePoint.x;
+        sideRuntimeB.positions[baseIndex + 1] = sidePoint.y;
+        sideRuntimeB.positions[baseIndex + 2] = sidePoint.z;
       }
 
-      sideGeometryA.attributes.position.needsUpdate = true;
-      sideGeometryB.attributes.position.needsUpdate = true;
+      sideRuntimeA.geometry.attributes.position.needsUpdate = true;
+      sideRuntimeB.geometry.attributes.position.needsUpdate = true;
 
       if (isDashed) {
-        sideLineA.computeLineDistances();
-        sideLineB.computeLineDistances();
+        sideRuntimeA.line.computeLineDistances();
+        sideRuntimeB.line.computeLineDistances();
       }
     }
 
@@ -232,21 +306,12 @@
       }
 
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      const isDashed =
-        Array.isArray(guideLine.dashPattern) && guideLine.dashPattern.length >= 2;
-      const material = isDashed
-        ? new THREE.LineDashedMaterial({
-            color: guideLine.color,
-            transparent: true,
-            opacity: Math.max(guideLine.startAlpha ?? 0.7, guideLine.endAlpha ?? 0.7),
-            dashSize: Math.max(4, guideLine.dashPattern[0] * 6),
-            gapSize: Math.max(4, guideLine.dashPattern[1] * 6)
-          })
-        : new THREE.LineBasicMaterial({
-            color: guideLine.color,
-            transparent: true,
-            opacity: Math.max(guideLine.startAlpha ?? 0.8, guideLine.endAlpha ?? 0.8)
-          });
+      const { material, isDashed } = createGuideMaterial(THREE, guideLine, {
+        dashPattern: guideLine.dashPattern,
+        dashScale: 6,
+        solidOpacityFallback: 0.8,
+        dashedOpacityFallback: 0.7
+      });
 
       const line = new THREE.Line(geometry, material);
       if (isDashed) {
