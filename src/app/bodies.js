@@ -197,26 +197,6 @@
       bodyRuntimes.push(runtime);
     }
 
-    const lensMarker = app.createBodyRuntime(
-      {
-        name: "Solar Gravitational Lens",
-        color: "#88d3ff",
-        renderRadius: 0,
-        minPixelRadius: 1,
-        labelAnchorPosition: { x: 0, y: 0, z: 0 },
-        labelAnchorRadius: constants.SOLAR_GRAVITATIONAL_LENS_AU,
-        fixedPosition: {
-          x: constants.SOLAR_GRAVITATIONAL_LENS_AU,
-          y: 0,
-          z: 0
-        }
-      },
-      bodyGroup,
-      bodyGeometry,
-      labelsLayer
-    );
-    bodyRuntimes.push(lensMarker);
-
     const heliopauseMarkerDirection = new THREE.Vector3(
       constants.HELIOPAUSE_FLOW_DIRECTION.x,
       constants.HELIOPAUSE_FLOW_DIRECTION.y,

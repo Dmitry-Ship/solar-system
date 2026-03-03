@@ -32,14 +32,6 @@
           rippleSpeed: 0.75,
           ripplePhase: 2.2
         }
-      },
-      {
-        radius: constants.SOLAR_GRAVITATIONAL_LENS_AU,
-        color: "#93d7ff",
-        opacity: 0.52,
-        dashSize: 12,
-        gapSize: 8,
-        segments: 180
       }
     ];
 
