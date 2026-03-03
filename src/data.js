@@ -1,0 +1,914 @@
+(() => {
+  const namespace = (window.SolarSystem = window.SolarSystem || {});
+  const { constants, math } = namespace;
+
+  const PLANET_DEFINITIONS = [
+    {
+      name: "Mercury",
+      au: 0.387098,
+      radiusKm: 2439.7,
+      color: "#c5c7cc",
+      inclinationDeg: 7.005014,
+      nodeDeg: 48.330539,
+      periapsisArgDeg: 29.124279,
+      eccentricity: 0.20563
+    },
+    {
+      name: "Venus",
+      au: 0.723327,
+      radiusKm: 6051.8,
+      color: "#e9c784",
+      inclinationDeg: 3.39459,
+      nodeDeg: 76.678375,
+      periapsisArgDeg: 55.185415,
+      eccentricity: 0.006756
+    },
+    {
+      name: "Earth 🌎",
+      au: 1.000372,
+      radiusKm: 6371,
+      color: "#5ea7ff",
+      inclinationDeg: 0.000267,
+      nodeDeg: 163.974871,
+      periapsisArgDeg: 297.76718,
+      eccentricity: 0.017042
+    },
+    {
+      name: "Mars",
+      au: 1.523678,
+      radiusKm: 3389.5,
+      color: "#d8845f",
+      inclinationDeg: 1.849877,
+      nodeDeg: 49.561999,
+      periapsisArgDeg: 286.537358,
+      eccentricity: 0.093315
+    },
+    {
+      name: "Jupiter",
+      au: 5.205109,
+      radiusKm: 69911,
+      color: "#dcb68f",
+      inclinationDeg: 1.304656,
+      nodeDeg: 100.488862,
+      periapsisArgDeg: 275.119706,
+      eccentricity: 0.048923
+    },
+    {
+      name: "Saturn",
+      au: 9.581452,
+      radiusKm: 58232,
+      color: "#e6cf96",
+      inclinationDeg: 2.484369,
+      nodeDeg: 113.693013,
+      periapsisArgDeg: 335.900649,
+      eccentricity: 0.055599
+    },
+    {
+      name: "Uranus",
+      au: 19.229938,
+      radiusKm: 25362,
+      color: "#98ebef",
+      inclinationDeg: 0.772381,
+      nodeDeg: 73.962918,
+      periapsisArgDeg: 96.607973,
+      eccentricity: 0.044394
+    },
+    {
+      name: "Neptune",
+      au: 30.097004,
+      radiusKm: 24622,
+      color: "#5f84ff",
+      inclinationDeg: 1.773472,
+      nodeDeg: 131.769343,
+      periapsisArgDeg: 266.822132,
+      eccentricity: 0.011148
+    },
+    {
+      name: "Planet Nine (Hypothetical)",
+      // Median of remaining Brown et al. (2024) reference-population objects
+      // after ZTF + DES + PS1 detectability cuts.
+      au: 499.24,
+      radiusKm: 13634,
+      color: "#9fb2d9",
+      inclinationDeg: 17.2,
+      nodeDeg: 93.13,
+      periapsisArgDeg: 151.95,
+      eccentricity: 0.286
+    }
+  ];
+
+  const DWARF_PLANET_DEFINITIONS = [
+    {
+      name: "Ceres",
+      au: 2.765616,
+      radiusKm: 469.7,
+      color: "#b9b6b0",
+      inclinationDeg: 10.587887,
+      nodeDeg: 80.249631,
+      periapsisArgDeg: 73.299755,
+      eccentricity: 0.079576
+    },
+    {
+      name: "Pluto",
+      au: 39.588629,
+      radiusKm: 1188.3,
+      color: "#d5c5b2",
+      inclinationDeg: 17.147711,
+      nodeDeg: 110.292384,
+      periapsisArgDeg: 113.709002,
+      eccentricity: 0.251838
+    },
+    {
+      name: "Orcus",
+      au: 39.335776,
+      radiusKm: 458,
+      color: "#c4bcae",
+      inclinationDeg: 20.555526,
+      nodeDeg: 268.385942,
+      periapsisArgDeg: 73.722492,
+      eccentricity: 0.22173
+    },
+    {
+      name: "Ixion",
+      au: 39.350537,
+      radiusKm: 310,
+      color: "#b4aba4",
+      inclinationDeg: 19.670412,
+      nodeDeg: 71.092958,
+      periapsisArgDeg: 300.658572,
+      eccentricity: 0.244233
+    },
+    {
+      name: "2002 MS4",
+      au: 41.595308,
+      radiusKm: 467,
+      color: "#afb8cf",
+      inclinationDeg: 17.703949,
+      nodeDeg: 216.186223,
+      periapsisArgDeg: 215.216085,
+      eccentricity: 0.148694
+    },
+    {
+      name: "Salacia",
+      au: 42.11465,
+      radiusKm: 423,
+      color: "#a8bfd9",
+      inclinationDeg: 23.927126,
+      nodeDeg: 280.26263,
+      periapsisArgDeg: 309.477696,
+      eccentricity: 0.103379
+    },
+    {
+      name: "Varuna",
+      au: 43.178234,
+      radiusKm: 334,
+      color: "#c6b29f",
+      inclinationDeg: 17.138124,
+      nodeDeg: 97.210302,
+      periapsisArgDeg: 273.220622,
+      eccentricity: 0.052545
+    },
+    {
+      name: "Haumea",
+      au: 43.005499,
+      radiusKm: 816,
+      color: "#b9d1ef",
+      inclinationDeg: 28.208406,
+      nodeDeg: 121.79729,
+      periapsisArgDeg: 240.888336,
+      eccentricity: 0.195775
+    },
+    {
+      name: "Quaoar",
+      au: 43.14768,
+      radiusKm: 555,
+      color: "#dcc7ab",
+      inclinationDeg: 7.991371,
+      nodeDeg: 188.96328,
+      periapsisArgDeg: 163.923138,
+      eccentricity: 0.035839
+    },
+    {
+      name: "Makemake",
+      au: 45.510682,
+      radiusKm: 715,
+      color: "#e8d2b2",
+      inclinationDeg: 29.032306,
+      nodeDeg: 79.268921,
+      periapsisArgDeg: 297.075422,
+      eccentricity: 0.160425
+    },
+    {
+      name: "Varda",
+      au: 45.538062,
+      radiusKm: 361,
+      color: "#a8b4cf",
+      inclinationDeg: 21.514033,
+      nodeDeg: 184.121478,
+      periapsisArgDeg: 184.974333,
+      eccentricity: 0.143008
+    },
+    {
+      name: "FarFarOut",
+      au: 80.167485,
+      radiusKm: 200,
+      color: "#cbbfd7",
+      inclinationDeg: 18.675119,
+      nodeDeg: 68.357449,
+      periapsisArgDeg: 231.855396,
+      eccentricity: 0.655404
+    },
+    {
+      name: "2012 VP113",
+      au: 269.733437,
+      radiusKm: 225,
+      color: "#c8b6ab",
+      inclinationDeg: 23.996571,
+      nodeDeg: 90.902198,
+      periapsisArgDeg: 294.289749,
+      eccentricity: 0.701051
+    },
+    {
+      name: "2004 VN112",
+      au: 346.77519,
+      radiusKm: 120,
+      color: "#aab9c9",
+      inclinationDeg: 25.49988,
+      nodeDeg: 66.039618,
+      periapsisArgDeg: 327.268055,
+      eccentricity: 0.863405
+    },
+    {
+      name: "Gonggong",
+      au: 66.893669,
+      radiusKm: 615,
+      color: "#e2cdc0",
+      inclinationDeg: 30.866261,
+      nodeDeg: 336.840096,
+      periapsisArgDeg: 206.641607,
+      eccentricity: 0.503167
+    },
+    {
+      name: "Eris",
+      au: 67.996365,
+      radiusKm: 1163,
+      color: "#dfe4f8",
+      inclinationDeg: 43.868932,
+      nodeDeg: 36.027173,
+      periapsisArgDeg: 150.732461,
+      eccentricity: 0.436965
+    },
+    {
+      name: "Sedna",
+      au: 549.540528,
+      radiusKm: 500,
+      color: "#c6b8ad",
+      inclinationDeg: 11.925917,
+      nodeDeg: 144.478727,
+      periapsisArgDeg: 311.009771,
+      eccentricity: 0.861297
+    },
+    {
+      name: "2013 SY99",
+      au: 839.931669,
+      radiusKm: 100,
+      color: "#b8c6a7",
+      inclinationDeg: 4.222627,
+      nodeDeg: 29.518772,
+      periapsisArgDeg: 32.206234,
+      eccentricity: 0.940569
+    },
+    {
+      name: "2015 TG387",
+      au: 1389.351654,
+      radiusKm: 180,
+      color: "#c4b0a2",
+      inclinationDeg: 11.67911,
+      nodeDeg: 301.134472,
+      periapsisArgDeg: 118.1304,
+      eccentricity: 0.953417
+    }
+  ];
+
+  const COMET_DEFINITIONS = [
+    {
+      name: "1P/Halley",
+      au: 17.834,
+      radiusKm: 11,
+      minPixelRadius: 1.35,
+      color: "#d9e6ff",
+      orbitColor: "#bfd9ff",
+      inclinationDeg: 162.26,
+      nodeDeg: 58.42,
+      periapsisArgDeg: 111.33,
+      eccentricity: 0.96714
+    },
+    {
+      name: "2P/Encke",
+      au: 2.216,
+      radiusKm: 2.4,
+      minPixelRadius: 1.2,
+      color: "#ffe6c6",
+      orbitColor: "#f7d7b3",
+      inclinationDeg: 11.78,
+      nodeDeg: 334.57,
+      periapsisArgDeg: 186.54,
+      eccentricity: 0.8483
+    },
+    {
+      name: "67P/Churyumov-Gerasimenko",
+      au: 3.463,
+      radiusKm: 2,
+      minPixelRadius: 1.2,
+      color: "#f0e9dc",
+      orbitColor: "#d9ccbb",
+      inclinationDeg: 7.04,
+      nodeDeg: 50.15,
+      periapsisArgDeg: 12.74,
+      eccentricity: 0.6406
+    },
+    {
+      name: "109P/Swift-Tuttle",
+      au: 26.092,
+      radiusKm: 13,
+      minPixelRadius: 1.35,
+      color: "#d7f2ff",
+      orbitColor: "#9bd7f2",
+      inclinationDeg: 113.45,
+      nodeDeg: 139.44,
+      periapsisArgDeg: 152.98,
+      eccentricity: 0.9632
+    },
+    {
+      name: "C/1995 O1 (Hale-Bopp)",
+      au: 186,
+      radiusKm: 30,
+      minPixelRadius: 1.45,
+      color: "#e2f1ff",
+      orbitColor: "#9fc7ff",
+      inclinationDeg: 89.4,
+      nodeDeg: 282.47,
+      periapsisArgDeg: 130.59,
+      eccentricity: 0.995
+    },
+    {
+      name: "9P/Tempel 1",
+      au: 3.153,
+      radiusKm: 3,
+      minPixelRadius: 1.2,
+      color: "#efe7d8",
+      orbitColor: "#d8c7ab",
+      inclinationDeg: 10.47,
+      nodeDeg: 68.93,
+      periapsisArgDeg: 178.93,
+      eccentricity: 0.517
+    },
+    {
+      name: "19P/Borrelly",
+      au: 3.614,
+      radiusKm: 2.5,
+      minPixelRadius: 1.2,
+      color: "#e8e2d6",
+      orbitColor: "#c9bda8",
+      inclinationDeg: 30.31,
+      nodeDeg: 75.37,
+      periapsisArgDeg: 353.29,
+      eccentricity: 0.624
+    },
+    {
+      name: "21P/Giacobini-Zinner",
+      au: 3.53,
+      radiusKm: 2,
+      minPixelRadius: 1.2,
+      color: "#f3dec7",
+      orbitColor: "#d9b998",
+      inclinationDeg: 31.8,
+      nodeDeg: 195.4,
+      periapsisArgDeg: 172.8,
+      eccentricity: 0.706
+    },
+    {
+      name: "46P/Wirtanen",
+      au: 3.09,
+      radiusKm: 0.6,
+      minPixelRadius: 1.2,
+      color: "#f6ebd9",
+      orbitColor: "#dbc8aa",
+      inclinationDeg: 11.75,
+      nodeDeg: 82.2,
+      periapsisArgDeg: 356.3,
+      eccentricity: 0.659
+    },
+    {
+      name: "55P/Tempel-Tuttle",
+      au: 10.33,
+      radiusKm: 1.8,
+      minPixelRadius: 1.2,
+      color: "#e5eef9",
+      orbitColor: "#b7cde6",
+      inclinationDeg: 162.5,
+      nodeDeg: 235.27,
+      periapsisArgDeg: 172.5,
+      eccentricity: 0.905
+    },
+    {
+      name: "81P/Wild 2",
+      au: 3.45,
+      radiusKm: 2.5,
+      minPixelRadius: 1.2,
+      color: "#efe2ce",
+      orbitColor: "#d1ba99",
+      inclinationDeg: 3.24,
+      nodeDeg: 136.4,
+      periapsisArgDeg: 41.1,
+      eccentricity: 0.538
+    },
+    {
+      name: "103P/Hartley",
+      au: 3.47,
+      radiusKm: 0.7,
+      minPixelRadius: 1.2,
+      color: "#f1e4d1",
+      orbitColor: "#d7b996",
+      inclinationDeg: 13.6,
+      nodeDeg: 219.8,
+      periapsisArgDeg: 181.3,
+      eccentricity: 0.695
+    },
+    {
+      name: "153P/Ikeya-Zhang",
+      au: 51.2,
+      radiusKm: 3,
+      minPixelRadius: 1.3,
+      color: "#e0efff",
+      orbitColor: "#a7cbf3",
+      inclinationDeg: 28.1,
+      nodeDeg: 93.4,
+      periapsisArgDeg: 34.7,
+      eccentricity: 0.99
+    }
+  ];
+
+  const VOYAGERS = [
+    {
+      name: "Voyager 1",
+      color: "#ffb36a",
+      position: { x: -31.907038, y: -135.14229, z: 97.779917 },
+      minPixelRadius: 2.15,
+      radiusKm: 8
+    },
+    {
+      name: "Voyager 2",
+      color: "#7ed7ff",
+      position: { x: 39.370762, y: -104.309856, z: -88.304409 },
+      minPixelRadius: 2.15,
+      radiusKm: 8
+    }
+  ];
+
+  const DRIFTING_BODIES = [
+    {
+      name: "Oumuamua",
+      position: { x: 54, y: -12, z: 21 },
+      radiusKm: 0.12,
+      minPixelRadius: 1.6,
+      color: "#d9dee8"
+    }
+  ];
+
+  const DIRECTIONAL_MARKER_DEFINITIONS = [
+    {
+      name: "61 Cygni",
+      label: "61 Cygni (orange K-dwarf)",
+      spectralClass: "K-dwarf",
+      color: "#ffb878",
+      raHours: 21 + 6 / 60 + 53.94 / 3600,
+      decDeg: 38 + 44 / 60 + 57.9 / 3600,
+      minPixelRadius: 2.5
+    },
+    {
+      name: "Gliese 300",
+      label: "Gliese 300 (red M-dwarf)",
+      spectralClass: "M-dwarf",
+      color: "#ff6f63",
+      raHours: 8 + 12 / 60 + 40.8889728169 / 3600,
+      decDeg: -(21 + 33 / 60 + 6.982558553 / 3600),
+      minPixelRadius: 2.5
+    }
+  ];
+  const DIRECTIONAL_CONE_MAX_WIDTH_AU = 100;
+  const DIRECTIONAL_CONE_TIP_RADIUS_AU =
+    (constants.SUN_RADIUS_KM / constants.KM_PER_AU) * 2;
+  const DIRECTIONAL_SOURCE_CONE_COLOR = "#93d7ff";
+  const DIRECTIONAL_SOURCE_CONE_DASH_PATTERN = [12, 8];
+  const MATRYOSHKA_CONE_LAYER_DEFINITIONS = [
+    {
+      // Outermost: longest and widest.
+      lengthExtensionAu: 400,
+      maxWidthScale: 3.2,
+      tipRadiusScale: 1.05,
+      alpha: 0.05
+    },
+    {
+      lengthExtensionAu: 200,
+      maxWidthScale: 1.6,
+      tipRadiusScale: 0.72,
+      alpha: 0.1
+    },
+    {
+      lengthExtensionAu: 100,
+      maxWidthScale: 0.8,
+      tipRadiusScale: 0.42,
+      alpha: 0.2
+    },
+    {
+      // Innermost always terminates at the lens-sphere edge.
+      lengthExtensionAu: 0,
+      maxWidthScale: 0.2,
+      tipRadiusScale: 0.2,
+      alpha: 0.4
+    }
+  ];
+  const STAR_DISTANCE_MIN_AU = constants.SCENE_OUTER_AU * 3.8;
+  const STAR_DISTANCE_MAX_AU = constants.SCENE_OUTER_AU * (3.8 + 4.5);
+  const DIRECTIONAL_MARKER_DISTANCE_AU =
+    (STAR_DISTANCE_MIN_AU + STAR_DISTANCE_MAX_AU) * 0.5;
+
+  const ASTEROID_BELT_CONFIGS = [
+    {
+      name: "Main Belt",
+      innerAu: 2.06,
+      outerAu: 3.27,
+      maxInclinationDeg: 34,
+      eccentricityMin: 0.01,
+      eccentricityMax: 0.35,
+      count: 7000,
+      color: "#a9a28f",
+      pointSize: 0.01,
+      alpha: 0.15,
+      timeScale: 1.1
+    },
+    {
+      name: "Kuiper Belt",
+      innerAu: 30,
+      outerAu: 55,
+      maxInclinationDeg: 35,
+      eccentricityMin: 0.02,
+      eccentricityMax: 0.45,
+      count: 7000,
+      color: "#a9a28f",
+      pointSize: 0.08,
+      alpha: 0.14,
+      timeScale: 1
+    }
+  ];
+
+  const OORT_CLOUD_CONFIG = {
+    innerAu: 2000,
+    outerAu: constants.SCENE_OUTER_AU,
+    count: 70000,
+    color: constants.OORT_CLOUD_COLOR,
+    pointSize: 20.12,
+    alpha: 0.1
+  };
+
+  const ORBIT_RENDER_GROUPS = [
+    {
+      key: "planets",
+      segments: 220,
+      orbitLineWidthPx: 1.05
+    },
+    {
+      key: "dwarfPlanets",
+      segments: 260,
+      orbitLineWidthPx: 0.95
+    },
+    {
+      key: "comets",
+      segments: 320,
+      orbitLineWidthPx: 0.85
+    }
+  ];
+
+  function seedBodies(definitions, defaultOrbitColor) {
+    return definitions.map((item) => ({
+      ...item,
+      theta: Math.random() * Math.PI * 2,
+      // Approximate Kepler's third law: period ~ a^(3/2), so mean motion ~ a^(-3/2).
+      meanMotion:
+        item.speed ||
+        constants.EARTH_MEAN_MOTION / Math.pow(Math.max(item.au || 1, 1e-6), 1.5),
+      inclination: math.degToRad(item.inclinationDeg || 0),
+      node: math.degToRad(item.nodeDeg || 0),
+      periapsisArg: math.degToRad(item.periapsisArgDeg || 0),
+      eccentricity: math.clamp(item.eccentricity || 0, 0, 0.999),
+      orbitColor: item.orbitColor || defaultOrbitColor
+    }));
+  }
+
+  function markerOnSphereFromRaDec(
+    name,
+    sphereRadiusAu,
+    raHours,
+    decDeg,
+    color,
+    minPixelRadius = 2.3,
+    metadata = {}
+  ) {
+    // Convert catalog coordinates (RA/Dec) to ecliptic space, then place on a fixed sphere.
+    const equatorial = math.unitVectorFromEquatorialRaDec(raHours, decDeg);
+    const eclipticDirection = math.normalizeVector(
+      math.equatorialToEcliptic(equatorial)
+    );
+    return {
+      name,
+      label: metadata.label || name,
+      spectralClass: metadata.spectralClass || null,
+      color,
+      radius: 0,
+      minPixelRadius,
+      x: eclipticDirection.x * sphereRadiusAu,
+      y: eclipticDirection.y * sphereRadiusAu,
+      z: eclipticDirection.z * sphereRadiusAu
+    };
+  }
+
+  function createDriftingBodies(definitions) {
+    return definitions.map((item) => {
+      if (item.position) {
+        return {
+          ...item,
+          x: item.position.x,
+          y: item.position.y,
+          z: item.position.z
+        };
+      }
+
+      const direction = math.randomUnitVector3D();
+      return {
+        ...item,
+        x: direction.x * item.startAu,
+        y: direction.y * item.startAu,
+        z: direction.z * item.startAu
+      };
+    });
+  }
+
+  function createAsteroidBelt(config) {
+    const particles = [];
+    const maxInclinationRad = math.degToRad(config.maxInclinationDeg);
+
+    for (let i = 0; i < config.count; i += 1) {
+      const au = config.innerAu + Math.random() * (config.outerAu - config.innerAu);
+      const eccentricity =
+        config.eccentricityMin +
+        Math.random() * (config.eccentricityMax - config.eccentricityMin);
+      const inclination = maxInclinationRad * Math.pow(Math.random(), 1.8);
+
+      particles.push({
+        au,
+        eccentricity,
+        theta: Math.random() * Math.PI * 2,
+        inclination,
+        node: Math.random() * Math.PI * 2,
+        periapsisArg: Math.random() * Math.PI * 2,
+        meanMotion:
+          (constants.EARTH_MEAN_MOTION / Math.pow(Math.max(au, 0.2), 1.5)) *
+          (config.timeScale || 1)
+      });
+    }
+
+    return {
+      ...config,
+      particles
+    };
+  }
+
+  function createOortCloud(config) {
+    const particles = [];
+    const innerCubed = Math.pow(config.innerAu, 3);
+    const outerCubed = Math.pow(config.outerAu, 3);
+
+    for (let i = 0; i < config.count; i += 1) {
+      // Sample radius in cubic space so particle density is roughly uniform by volume.
+      const radius = Math.cbrt(innerCubed + Math.random() * (outerCubed - innerCubed));
+      const theta = Math.random() * Math.PI * 2;
+      const yUnit = Math.random() * 2 - 1;
+      const radial = Math.sqrt(Math.max(0, 1 - yUnit * yUnit));
+
+      particles.push({
+        x: radius * radial * Math.cos(theta),
+        y: radius * yUnit,
+        z: radius * radial * Math.sin(theta),
+        sizeJitter: 0.7 + Math.random() * 0.95,
+        alphaJitter: 0.72 + Math.random() * 0.72
+      });
+    }
+
+    return {
+      ...config,
+      particles
+    };
+  }
+
+  function createStars(count) {
+    const items = [];
+    for (let i = 0; i < count; i += 1) {
+      const distance =
+        STAR_DISTANCE_MIN_AU +
+        Math.random() * (STAR_DISTANCE_MAX_AU - STAR_DISTANCE_MIN_AU);
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      items.push({
+        x: distance * Math.sin(phi) * Math.cos(theta),
+        y: distance * Math.cos(phi),
+        z: distance * Math.sin(phi) * Math.sin(theta),
+        size: 0.4 + Math.random() * 1.2,
+        alpha: 0.25 + Math.random() * 0.6
+      });
+    }
+    return items;
+  }
+
+  function directionalGuideLineFromMarker(marker, color, options = {}) {
+    if (!marker) return null;
+
+    const cylinderRadiusAu = options.cylinderRadiusAu ?? 0;
+    const cylinderStartRadiusAu =
+      options.cylinderStartRadiusAu ?? cylinderRadiusAu;
+    const cylinderEndRadiusAu = options.cylinderEndRadiusAu ?? cylinderRadiusAu;
+    const startPoint =
+      options.startPoint ||
+      math.pointOnRadiusAlongDirection(
+        marker,
+        -constants.SOLAR_GRAVITATIONAL_LENS_AU
+      );
+    const endPoint = options.endPoint || {
+      x: marker.x,
+      y: marker.y,
+      z: marker.z
+    };
+
+    return {
+      points: [startPoint, endPoint],
+      color,
+      tag: options.tag || null,
+      renderStyle: options.renderStyle || "line",
+      showStartRim: options.showStartRim ?? true,
+      showEndRim: options.showEndRim ?? true,
+      cylinderRadiusAu,
+      cylinderStartRadiusAu,
+      cylinderEndRadiusAu,
+      cylinderDashPattern: options.cylinderDashPattern || [],
+      startWidthPx: options.startWidthPx ?? 2,
+      endWidthPx: options.endWidthPx ?? 0.55,
+      startAlpha: options.startAlpha ?? 0.96,
+      endAlpha: options.endAlpha ?? 0.1,
+      dashPattern: options.dashPattern || [],
+      segments: 96
+    };
+  }
+
+  function guideTagFromSource(sourceMarker) {
+    const baseName = String(sourceMarker.name || "source")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return `source-guide-${baseName || "source"}`;
+  }
+
+  function createMatryoshkaConeLayer(sourceMarker, layerDefinition, tag) {
+    const pivotPoint = { x: 0, y: 0, z: 0 };
+    const endRadiusAu =
+      constants.SOLAR_GRAVITATIONAL_LENS_AU +
+      Math.max(0, layerDefinition.lengthExtensionAu || 0);
+    // Continue past the pivot to the opposite side of the source direction.
+    const endPoint = math.pointOnRadiusAlongDirection(sourceMarker, -endRadiusAu);
+    const coneMaxWidthAu =
+      DIRECTIONAL_CONE_MAX_WIDTH_AU *
+      Math.max(0.05, layerDefinition.maxWidthScale || 0);
+    const coneTipRadiusAu =
+      DIRECTIONAL_CONE_TIP_RADIUS_AU *
+      Math.max(0.05, layerDefinition.tipRadiusScale || 0);
+    const alpha = Math.max(0.08, Math.min(0.95, layerDefinition.alpha ?? 0.55));
+
+    return [
+      directionalGuideLineFromMarker(sourceMarker, DIRECTIONAL_SOURCE_CONE_COLOR, {
+        startPoint: sourceMarker,
+        endPoint: pivotPoint,
+        renderStyle: "cylinder",
+        showEndRim: false,
+        cylinderStartRadiusAu: coneTipRadiusAu,
+        cylinderEndRadiusAu: coneMaxWidthAu * 0.5,
+        cylinderDashPattern: DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
+        startAlpha: alpha,
+        endAlpha: alpha,
+        tag
+      }),
+      directionalGuideLineFromMarker(sourceMarker, DIRECTIONAL_SOURCE_CONE_COLOR, {
+        startPoint: pivotPoint,
+        endPoint,
+        renderStyle: "cylinder",
+        showStartRim: false,
+        cylinderStartRadiusAu: coneMaxWidthAu * 0.5,
+        cylinderEndRadiusAu: 0,
+        cylinderDashPattern: DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
+        startAlpha: alpha,
+        endAlpha: alpha,
+        tag
+      })
+    ].filter(Boolean);
+  }
+
+  function createMatryoshkaSourceGuideShape(sourceMarker) {
+    if (!sourceMarker) return [];
+
+    const tag = guideTagFromSource(sourceMarker);
+    const guideLines = [];
+
+    for (const layerDefinition of MATRYOSHKA_CONE_LAYER_DEFINITIONS) {
+      guideLines.push(...createMatryoshkaConeLayer(sourceMarker, layerDefinition, tag));
+    }
+
+    return guideLines;
+  }
+
+  function createOrbitOpacityCalculator(orbitingBodies) {
+    let minOrbitBodyRadiusKm = Infinity;
+    let maxOrbitBodyRadiusKm = 0;
+    for (const body of orbitingBodies) {
+      const safeRadius = Math.max(1, body.radiusKm || 1);
+      minOrbitBodyRadiusKm = Math.min(minOrbitBodyRadiusKm, safeRadius);
+      maxOrbitBodyRadiusKm = Math.max(maxOrbitBodyRadiusKm, safeRadius);
+    }
+
+    const minLog = Math.log(minOrbitBodyRadiusKm);
+    const maxLog = Math.log(maxOrbitBodyRadiusKm);
+    const logSpan = maxLog - minLog;
+
+    return function orbitOpacityForBodyRadius(radiusKm) {
+      const minOpacity = 0.0001;
+      const maxOpacity = 0.2;
+      const safeRadius = Math.max(1, radiusKm || 1);
+      if (logSpan < 1e-9) return maxOpacity;
+
+      const t = math.clamp((Math.log(safeRadius) - minLog) / logSpan, 0, 1);
+      return minOpacity + (maxOpacity - minOpacity) * t;
+    };
+  }
+
+  function createSceneData() {
+    const planets = seedBodies(PLANET_DEFINITIONS, constants.ORBIT_COLOR);
+    const dwarfPlanets = seedBodies(
+      DWARF_PLANET_DEFINITIONS,
+      constants.ORBIT_COLOR
+    );
+    const comets = seedBodies(COMET_DEFINITIONS, constants.ORBIT_COLOR);
+    const orbitingBodies = [...planets, ...dwarfPlanets];
+
+    const directionalMarkers = DIRECTIONAL_MARKER_DEFINITIONS.map((definition) =>
+      markerOnSphereFromRaDec(
+        definition.name,
+        DIRECTIONAL_MARKER_DISTANCE_AU,
+        definition.raHours,
+        definition.decDeg,
+        definition.color,
+        definition.minPixelRadius,
+        {
+          label: definition.label,
+          spectralClass: definition.spectralClass
+        }
+      )
+    );
+    const directionalMarkerByName = Object.fromEntries(
+      directionalMarkers.map((marker) => [marker.name, marker])
+    );
+
+    const gliese300Marker = directionalMarkerByName["Gliese 300"] || null;
+
+    const directionalGuideLines = createMatryoshkaSourceGuideShape(gliese300Marker);
+
+    return {
+      planets,
+      dwarfPlanets,
+      comets,
+      orbitRenderGroups: ORBIT_RENDER_GROUPS,
+      orbitOpacityForBodyRadius: createOrbitOpacityCalculator(orbitingBodies),
+      voyagers: VOYAGERS.map((voyager) => ({
+        ...voyager,
+        position: { ...voyager.position }
+      })),
+      driftingBodies: createDriftingBodies(DRIFTING_BODIES),
+      directionalMarkers,
+      directionalGuideLines,
+      asteroidBelts: ASTEROID_BELT_CONFIGS.map((belt) => createAsteroidBelt(belt)),
+      oortCloud: createOortCloud(OORT_CLOUD_CONFIG),
+      stars: createStars(1700),
+      voyagerEpochLabel: constants.VOYAGER_EPOCH_LABEL
+    };
+  }
+
+  namespace.data = {
+    createSceneData
+  };
+})();
