@@ -1,10 +1,10 @@
 (() => {
   const namespace = (window.SolarSystem = window.SolarSystem || {});
   const app = (namespace.app = namespace.app || {});
-  const CYLINDER_MIN_AXIS_LENGTH = 1e-6;
-  const CYLINDER_MIN_VISIBLE_RADIUS = 1e-8;
+  const LIGHT_RAY_MIN_AXIS_LENGTH = 1e-6;
+  const LIGHT_RAY_MIN_VISIBLE_RADIUS = 1e-8;
   const EDGE_FALLBACK_EPSILON = 1e-12;
-  const CYLINDER_RIM_SEGMENTS = 120;
+  const LIGHT_RAY_RIM_SEGMENTS = 120;
 
   function hasDashPattern(pattern) {
     return Array.isArray(pattern) && pattern.length >= 2;
@@ -57,12 +57,12 @@
     };
   }
 
-  function buildCylinderRadiusProfile(guideLine, pointCount) {
-    const baseRadius = Math.max(guideLine.cylinderRadiusAu || 0, 0);
-    const startRadius = Math.max(guideLine.cylinderStartRadiusAu ?? baseRadius, 0);
-    const endRadius = Math.max(guideLine.cylinderEndRadiusAu ?? baseRadius, 0);
-    const rawRadiusProfile = Array.isArray(guideLine.cylinderRadiusProfileAu)
-      ? guideLine.cylinderRadiusProfileAu
+  function buildLightRayRadiusProfile(guideLine, pointCount) {
+    const baseRadius = Math.max(guideLine.lightRayRadiusAu || 0, 0);
+    const startRadius = Math.max(guideLine.lightRayStartRadiusAu ?? baseRadius, 0);
+    const endRadius = Math.max(guideLine.lightRayEndRadiusAu ?? baseRadius, 0);
+    const rawRadiusProfile = Array.isArray(guideLine.lightRayRadiusProfileAu)
+      ? guideLine.lightRayRadiusProfileAu
       : null;
     const radiusProfile = new Array(pointCount);
     let maxRadius = 0;
@@ -82,7 +82,7 @@
     return { radiusProfile, maxRadius };
   }
 
-  function createCylinderBasis(THREE, axisDirection) {
+  function createLightRayBasis(THREE, axisDirection) {
     const worldUp = new THREE.Vector3(0, 1, 0);
     const worldRight = new THREE.Vector3(1, 0, 0);
     const basisSeed = Math.abs(axisDirection.dot(worldUp)) > 0.98 ? worldRight : worldUp;
@@ -96,7 +96,7 @@
     return { basisA, basisB };
   }
 
-  function createCylinderRim(
+  function createLightRayRim(
     THREE,
     center,
     radius,
@@ -108,8 +108,8 @@
     const rimPoints = [];
     const fullTurn = Math.PI * 2;
 
-    for (let index = 0; index <= CYLINDER_RIM_SEGMENTS; index += 1) {
-      const angle = (index / CYLINDER_RIM_SEGMENTS) * fullTurn;
+    for (let index = 0; index <= LIGHT_RAY_RIM_SEGMENTS; index += 1) {
+      const angle = (index / LIGHT_RAY_RIM_SEGMENTS) * fullTurn;
       rimPoints.push(
         center
           .clone()
@@ -188,10 +188,10 @@
     };
   }
 
-  app.createGuideCylinder = function createGuideCylinder(guideLine, points) {
+  app.createLightRay = function createLightRay(guideLine, points) {
     const THREE = window.THREE;
     if (!THREE) {
-      throw new Error("createGuideCylinder: missing THREE.");
+      throw new Error("createLightRay: missing THREE.");
     }
 
     const pointCount = points.length;
@@ -201,31 +201,34 @@
     const end = points[pointCount - 1].clone();
     const axis = new THREE.Vector3().subVectors(end, start);
     const axisLength = axis.length();
-    const { radiusProfile, maxRadius } = buildCylinderRadiusProfile(
+    const { radiusProfile, maxRadius } = buildLightRayRadiusProfile(
       guideLine,
       pointCount
     );
-    if (axisLength <= CYLINDER_MIN_AXIS_LENGTH || maxRadius <= CYLINDER_MIN_AXIS_LENGTH) {
+    if (
+      axisLength <= LIGHT_RAY_MIN_AXIS_LENGTH ||
+      maxRadius <= LIGHT_RAY_MIN_AXIS_LENGTH
+    ) {
       return null;
     }
 
     const axisDirection = axis.clone().multiplyScalar(1 / axisLength);
-    const { basisA, basisB } = createCylinderBasis(THREE, axisDirection);
+    const { basisA, basisB } = createLightRayBasis(THREE, axisDirection);
     const { material, isDashed } = createGuideMaterial(THREE, guideLine, {
-      dashPattern: guideLine.cylinderDashPattern,
+      dashPattern: guideLine.lightRayDashPattern,
       solidOpacityFallback: 0.7,
       dashedOpacityFallback: 0.7,
       depthWrite: false
     });
 
-    const cylinderGroup = new THREE.Group();
+    const lightRayGroup = new THREE.Group();
 
     const showStartRim = guideLine.showStartRim !== false;
     const showEndRim = guideLine.showEndRim !== false;
     const profileStartRadius = radiusProfile[0] || 0;
     const profileEndRadius = radiusProfile[pointCount - 1] || 0;
-    if (showStartRim && profileStartRadius > CYLINDER_MIN_VISIBLE_RADIUS) {
-      const startRim = createCylinderRim(
+    if (showStartRim && profileStartRadius > LIGHT_RAY_MIN_VISIBLE_RADIUS) {
+      const startRim = createLightRayRim(
         THREE,
         start,
         profileStartRadius,
@@ -234,10 +237,10 @@
         material,
         isDashed
       );
-      cylinderGroup.add(startRim);
+      lightRayGroup.add(startRim);
     }
-    if (showEndRim && profileEndRadius > CYLINDER_MIN_VISIBLE_RADIUS) {
-      const endRim = createCylinderRim(
+    if (showEndRim && profileEndRadius > LIGHT_RAY_MIN_VISIBLE_RADIUS) {
+      const endRim = createLightRayRim(
         THREE,
         end,
         profileEndRadius,
@@ -246,13 +249,13 @@
         material,
         isDashed
       );
-      cylinderGroup.add(endRim);
+      lightRayGroup.add(endRim);
     }
 
     const sideRuntimeA = createDynamicLine(THREE, pointCount, material);
     const sideRuntimeB = createDynamicLine(THREE, pointCount, material);
-    cylinderGroup.add(sideRuntimeA.line);
-    cylinderGroup.add(sideRuntimeB.line);
+    lightRayGroup.add(sideRuntimeA.line);
+    lightRayGroup.add(sideRuntimeB.line);
 
     const center = new THREE.Vector3();
     for (const point of points) {
@@ -310,9 +313,9 @@
       }
     }
 
-    cylinderGroup.frustumCulled = false;
+    lightRayGroup.frustumCulled = false;
     return {
-      object: cylinderGroup,
+      object: lightRayGroup,
       update
     };
   };
@@ -344,15 +347,15 @@
       const points = guideLine.points.map(
         (point) => new THREE.Vector3(point.x, point.y, point.z)
       );
-      const isCylinder = guideLine.renderStyle === "cylinder";
+      const isLightRay = guideLine.renderStyle === "lightRay";
 
-      if (isCylinder) {
-        const cylinderRuntime = app.createGuideCylinder(guideLine, points);
-        if (!cylinderRuntime) continue;
-        guideLineGroup.add(cylinderRuntime.object);
+      if (isLightRay) {
+        const lightRayRuntime = app.createLightRay(guideLine, points);
+        if (!lightRayRuntime) continue;
+        guideLineGroup.add(lightRayRuntime.object);
         guideLineRuntimes.push({
-          object: cylinderRuntime.object,
-          update: cylinderRuntime.update
+          object: lightRayRuntime.object,
+          update: lightRayRuntime.update
         });
         if (Array.isArray(bodyRuntimes)) {
           const labelRuntime = createGuideLineLabelRuntime(

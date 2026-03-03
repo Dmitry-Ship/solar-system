@@ -17,7 +17,7 @@ Interactive Three.js visualization of the Solar System, dwarf planets, comets, b
   - `bodies.js`: body runtime creation + orbit/fixed-body builders.
   - `particles.js`: stars/oort/belt builders + belt updater.
   - `shells.js`: heliosphere shell construction + animation update.
-  - `guides.js`: directional guide lines/cylinders.
+  - `guides.js`: directional guide lines/light rays.
   - `hud.js`: UI control wiring.
   - `camera.js`: initial camera placement.
 

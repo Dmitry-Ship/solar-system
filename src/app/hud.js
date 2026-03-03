@@ -12,7 +12,7 @@
   ) {
     const zoomToggleButton = document.getElementById("zoom-toggle");
     const namesToggleButton = document.getElementById("names-toggle");
-    const guideLineToggleButton = document.getElementById("guide-line-toggle");
+    const lightRayToggleButton = document.getElementById("light-ray-toggle");
 
     function updateBooleanToggleLabel(button, isEnabled, enabledLabel, disabledLabel) {
       if (!button) return;
@@ -70,23 +70,23 @@
       );
     }
 
-    if (guideLineToggleButton) {
-      guideLineToggleButton.addEventListener("click", () => {
+    if (lightRayToggleButton) {
+      lightRayToggleButton.addEventListener("click", () => {
         state.showDirectionalGuides = !state.showDirectionalGuides;
         app.applyGuideLineVisibility(state, guideLineRuntimes);
         updateBooleanToggleLabel(
-          guideLineToggleButton,
+          lightRayToggleButton,
           state.showDirectionalGuides,
-          "Hide Lines",
-          "Show Lines"
+          "Hide Light Rays",
+          "Show Light Rays"
         );
       });
 
       updateBooleanToggleLabel(
-        guideLineToggleButton,
+        lightRayToggleButton,
         state.showDirectionalGuides,
-        "Hide Lines",
-        "Show Lines"
+        "Hide Light Rays",
+        "Show Light Rays"
       );
     }
 

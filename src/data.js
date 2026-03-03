@@ -201,19 +201,19 @@
     return [fallbackStartPoint, fallbackEndPoint];
   }
 
-  function buildCylinderRadiusProfile(
+  function buildLightRayRadiusProfile(
     points,
     options,
     fallbackStartRadiusAu,
     fallbackEndRadiusAu
   ) {
     const rawRadiusProfile =
-      Array.isArray(options.cylinderRadiusProfileAu) &&
-      options.cylinderRadiusProfileAu.length === points.length
-        ? options.cylinderRadiusProfileAu
+      Array.isArray(options.lightRayRadiusProfileAu) &&
+      options.lightRayRadiusProfileAu.length === points.length
+        ? options.lightRayRadiusProfileAu
         : null;
 
-    const cylinderRadiusProfileAu = points.map((_, index) => {
+    const lightRayRadiusProfileAu = points.map((_, index) => {
       const t = points.length <= 1 ? 0 : index / (points.length - 1);
       const fallbackRadius =
         fallbackStartRadiusAu + (fallbackEndRadiusAu - fallbackStartRadiusAu) * t;
@@ -222,26 +222,26 @@
     });
 
     return {
-      cylinderRadiusProfileAu,
-      cylinderStartRadiusAu: cylinderRadiusProfileAu[0] || 0,
-      cylinderEndRadiusAu:
-        cylinderRadiusProfileAu[cylinderRadiusProfileAu.length - 1] || 0
+      lightRayRadiusProfileAu,
+      lightRayStartRadiusAu: lightRayRadiusProfileAu[0] || 0,
+      lightRayEndRadiusAu:
+        lightRayRadiusProfileAu[lightRayRadiusProfileAu.length - 1] || 0
     };
   }
 
   function directionalGuideLineFromMarker(marker, color, options = {}) {
     if (!marker) return null;
 
-    const cylinderRadiusAu = options.cylinderRadiusAu ?? 0;
+    const lightRayRadiusAu = options.lightRayRadiusAu ?? 0;
     const fallbackStartRadiusAu =
-      options.cylinderStartRadiusAu ?? cylinderRadiusAu;
-    const fallbackEndRadiusAu = options.cylinderEndRadiusAu ?? cylinderRadiusAu;
+      options.lightRayStartRadiusAu ?? lightRayRadiusAu;
+    const fallbackEndRadiusAu = options.lightRayEndRadiusAu ?? lightRayRadiusAu;
     const points = resolveGuideLinePoints(marker, options);
     const {
-      cylinderRadiusProfileAu,
-      cylinderStartRadiusAu,
-      cylinderEndRadiusAu
-    } = buildCylinderRadiusProfile(
+      lightRayRadiusProfileAu,
+      lightRayStartRadiusAu,
+      lightRayEndRadiusAu
+    } = buildLightRayRadiusProfile(
       points,
       options,
       fallbackStartRadiusAu,
@@ -254,11 +254,11 @@
       renderStyle: options.renderStyle || "line",
       showStartRim: options.showStartRim ?? true,
       showEndRim: options.showEndRim ?? true,
-      cylinderRadiusAu,
-      cylinderStartRadiusAu,
-      cylinderEndRadiusAu,
-      cylinderRadiusProfileAu,
-      cylinderDashPattern: options.cylinderDashPattern || [],
+      lightRayRadiusAu,
+      lightRayStartRadiusAu,
+      lightRayEndRadiusAu,
+      lightRayRadiusProfileAu,
+      lightRayDashPattern: options.lightRayDashPattern || [],
       startAlpha: options.startAlpha ?? 0.96,
       endAlpha: options.endAlpha ?? 0.1,
       dashPattern: options.dashPattern || [],
@@ -275,7 +275,7 @@
     const focalDistanceAu =
       constants.SOLAR_GRAVITATIONAL_LENS_AU +
       Math.max(0, layerDefinition.focalOffsetAu || 0);
-    // Keep the cylinder-to-cone junction anchored at the Sun.
+    // Keep the light-ray-to-cone junction anchored at the Sun.
     const incomingTransitionPoint = { x: 0, y: 0, z: 0 };
     const focalPoint = math.pointOnRadiusAlongDirection(
       sourceMarker,
@@ -306,14 +306,14 @@
     return [
       directionalGuideLineFromMarker(sourceMarker, DIRECTIONAL_SOURCE_CONE_COLOR, {
         points: [sourceMarker, incomingTransitionPoint, focalPoint, endPoint],
-        renderStyle: "cylinder",
-        cylinderRadiusProfileAu: [
+        renderStyle: "lightRay",
+        lightRayRadiusProfileAu: [
           incomingRadiusAu,
           incomingRadiusAu,
           focalRadiusAu,
           outgoingRadiusAu
         ],
-        cylinderDashPattern: DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
+        lightRayDashPattern: DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
         startAlpha: alpha,
         endAlpha: alpha
       })
@@ -356,9 +356,9 @@
 
     return directionalGuideLineFromMarker(sourceMarker, "#ffe7a2", {
       points: [firstPinchPoint, lastPinchPoint],
-      renderStyle: "cylinder",
-      cylinderStartRadiusAu: highlightRadiusAu,
-      cylinderEndRadiusAu: highlightRadiusAu,
+      renderStyle: "lightRay",
+      lightRayStartRadiusAu: highlightRadiusAu,
+      lightRayEndRadiusAu: highlightRadiusAu,
       showStartRim: false,
       showEndRim: false,
       startAlpha: 0.92,
