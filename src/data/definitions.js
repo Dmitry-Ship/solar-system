@@ -499,24 +499,30 @@
     (constants.SUN_RADIUS_KM / constants.KM_PER_AU) * 2;
   const DIRECTIONAL_SOURCE_CONE_COLOR = "#93d7ff";
   const DIRECTIONAL_SOURCE_CONE_DASH_PATTERN = [12, 8];
+  const DIRECTIONAL_GUIDE_PARALLEL_SECTION_END_AU =
+    constants.HELIOPAUSE_AU * 1.2;
+  const DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU = 260;
   const MATRYOSHKA_CONE_LAYER_DEFINITIONS = [
     {
       // Outermost: longest and widest.
       lengthExtensionAu: 400,
       maxWidthScale: 3.2,
       tipRadiusScale: 1.05,
+      focalOffsetAu: 240,
       alpha: 0.05
     },
     {
       lengthExtensionAu: 200,
       maxWidthScale: 1.6,
       tipRadiusScale: 0.72,
+      focalOffsetAu: 150,
       alpha: 0.1
     },
     {
       lengthExtensionAu: 100,
       maxWidthScale: 0.8,
       tipRadiusScale: 0.42,
+      focalOffsetAu: 70,
       alpha: 0.2
     },
     {
@@ -524,6 +530,7 @@
       lengthExtensionAu: 0,
       maxWidthScale: 0.2,
       tipRadiusScale: 0.2,
+      focalOffsetAu: 0,
       alpha: 0.4
     }
   ];
@@ -593,6 +600,8 @@
     DIRECTIONAL_CONE_TIP_RADIUS_AU,
     DIRECTIONAL_SOURCE_CONE_COLOR,
     DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
+    DIRECTIONAL_GUIDE_PARALLEL_SECTION_END_AU,
+    DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU,
     MATRYOSHKA_CONE_LAYER_DEFINITIONS,
     STAR_DISTANCE_MIN_AU,
     STAR_DISTANCE_MAX_AU,

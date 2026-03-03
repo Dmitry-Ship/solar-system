@@ -19,6 +19,8 @@
     DIRECTIONAL_CONE_TIP_RADIUS_AU,
     DIRECTIONAL_SOURCE_CONE_COLOR,
     DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
+    DIRECTIONAL_GUIDE_PARALLEL_SECTION_END_AU,
+    DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU,
     MATRYOSHKA_CONE_LAYER_DEFINITIONS,
     STAR_DISTANCE_MIN_AU,
     STAR_DISTANCE_MAX_AU,
@@ -27,6 +29,16 @@
     OORT_CLOUD_CONFIG,
     ORBIT_RENDER_GROUPS
   } = dataDefinitions;
+  const MAX_MATRYOSHKA_FOCAL_OFFSET_AU =
+    MATRYOSHKA_CONE_LAYER_DEFINITIONS.reduce(
+      (maxOffsetAu, layerDefinition) =>
+        Math.max(maxOffsetAu, Math.max(0, layerDefinition.focalOffsetAu || 0)),
+      0
+    );
+  const DIRECTIONAL_GUIDE_POST_FOCAL_END_DISTANCE_AU =
+    constants.SOLAR_GRAVITATIONAL_LENS_AU +
+    MAX_MATRYOSHKA_FOCAL_OFFSET_AU +
+    DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU;
 
   function seedBodies(definitions, defaultOrbitColor) {
     return definitions.map((item) => ({
@@ -166,23 +178,46 @@
     if (!marker) return null;
 
     const cylinderRadiusAu = options.cylinderRadiusAu ?? 0;
-    const cylinderStartRadiusAu =
+    const fallbackStartRadiusAu =
       options.cylinderStartRadiusAu ?? cylinderRadiusAu;
-    const cylinderEndRadiusAu = options.cylinderEndRadiusAu ?? cylinderRadiusAu;
-    const startPoint =
+    const fallbackEndRadiusAu = options.cylinderEndRadiusAu ?? cylinderRadiusAu;
+    const fallbackStartPoint =
       options.startPoint ||
       math.pointOnRadiusAlongDirection(
         marker,
         -constants.SOLAR_GRAVITATIONAL_LENS_AU
       );
-    const endPoint = options.endPoint || {
+    const fallbackEndPoint = options.endPoint || {
       x: marker.x,
       y: marker.y,
       z: marker.z
     };
+    const points =
+      Array.isArray(options.points) && options.points.length >= 2
+        ? options.points.map((point) => ({
+            x: point.x,
+            y: point.y,
+            z: point.z
+          }))
+        : [fallbackStartPoint, fallbackEndPoint];
+    const rawRadiusProfile =
+      Array.isArray(options.cylinderRadiusProfileAu) &&
+      options.cylinderRadiusProfileAu.length === points.length
+        ? options.cylinderRadiusProfileAu
+        : null;
+    const cylinderRadiusProfileAu = points.map((_, index) => {
+      const t = points.length <= 1 ? 0 : index / (points.length - 1);
+      const fallbackRadius =
+        fallbackStartRadiusAu + (fallbackEndRadiusAu - fallbackStartRadiusAu) * t;
+      const radius = rawRadiusProfile?.[index] ?? fallbackRadius;
+      return Math.max(0, Number.isFinite(radius) ? radius : 0);
+    });
+    const cylinderStartRadiusAu = cylinderRadiusProfileAu[0] || 0;
+    const cylinderEndRadiusAu =
+      cylinderRadiusProfileAu[cylinderRadiusProfileAu.length - 1] || 0;
 
     return {
-      points: [startPoint, endPoint],
+      points,
       color,
       renderStyle: options.renderStyle || "line",
       showStartRim: options.showStartRim ?? true,
@@ -190,6 +225,7 @@
       cylinderRadiusAu,
       cylinderStartRadiusAu,
       cylinderEndRadiusAu,
+      cylinderRadiusProfileAu,
       cylinderDashPattern: options.cylinderDashPattern || [],
       startAlpha: options.startAlpha ?? 0.96,
       endAlpha: options.endAlpha ?? 0.1,
@@ -198,39 +234,45 @@
   }
 
   function createMatryoshkaConeLayer(sourceMarker, layerDefinition) {
-    const pivotPoint = { x: 0, y: 0, z: 0 };
-    const endRadiusAu =
+    const focalDistanceAu =
       constants.SOLAR_GRAVITATIONAL_LENS_AU +
-      Math.max(0, layerDefinition.lengthExtensionAu || 0);
-    // Continue past the pivot to the opposite side of the source direction.
-    const endPoint = math.pointOnRadiusAlongDirection(sourceMarker, -endRadiusAu);
+      Math.max(0, layerDefinition.focalOffsetAu || 0);
+    const incomingTransitionPoint = math.pointOnRadiusAlongDirection(
+      sourceMarker,
+      DIRECTIONAL_GUIDE_PARALLEL_SECTION_END_AU
+    );
+    const focalPoint = math.pointOnRadiusAlongDirection(
+      sourceMarker,
+      -focalDistanceAu
+    );
+    const endDistanceAu = DIRECTIONAL_GUIDE_POST_FOCAL_END_DISTANCE_AU;
+    const endPoint = math.pointOnRadiusAlongDirection(sourceMarker, -endDistanceAu);
     const coneMaxWidthAu =
       DIRECTIONAL_CONE_MAX_WIDTH_AU *
       Math.max(0.05, layerDefinition.maxWidthScale || 0);
-    const coneTipRadiusAu =
+    const incomingRadiusAu = coneMaxWidthAu * 0.5;
+    const focalRadiusAu =
       DIRECTIONAL_CONE_TIP_RADIUS_AU *
       Math.max(0.05, layerDefinition.tipRadiusScale || 0);
+    const convergenceSpanAu =
+      DIRECTIONAL_GUIDE_PARALLEL_SECTION_END_AU + focalDistanceAu;
+    const divergenceSpanAu = endDistanceAu - focalDistanceAu;
+    const prePinchRadiusDeltaAu = Math.max(0, incomingRadiusAu - focalRadiusAu);
+    const divergenceSlope =
+      prePinchRadiusDeltaAu / Math.max(convergenceSpanAu, 1e-6);
+    const outgoingRadiusAu = focalRadiusAu + divergenceSpanAu * divergenceSlope;
     const alpha = Math.max(0.08, Math.min(0.95, layerDefinition.alpha ?? 0.55));
 
     return [
       directionalGuideLineFromMarker(sourceMarker, DIRECTIONAL_SOURCE_CONE_COLOR, {
-        startPoint: sourceMarker,
-        endPoint: pivotPoint,
+        points: [sourceMarker, incomingTransitionPoint, focalPoint, endPoint],
         renderStyle: "cylinder",
-        showEndRim: false,
-        cylinderStartRadiusAu: coneTipRadiusAu,
-        cylinderEndRadiusAu: coneMaxWidthAu * 0.5,
-        cylinderDashPattern: DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
-        startAlpha: alpha,
-        endAlpha: alpha
-      }),
-      directionalGuideLineFromMarker(sourceMarker, DIRECTIONAL_SOURCE_CONE_COLOR, {
-        startPoint: pivotPoint,
-        endPoint,
-        renderStyle: "cylinder",
-        showStartRim: false,
-        cylinderStartRadiusAu: coneMaxWidthAu * 0.5,
-        cylinderEndRadiusAu: 0,
+        cylinderRadiusProfileAu: [
+          incomingRadiusAu,
+          incomingRadiusAu,
+          focalRadiusAu,
+          outgoingRadiusAu
+        ],
         cylinderDashPattern: DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
         startAlpha: alpha,
         endAlpha: alpha

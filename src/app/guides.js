@@ -8,17 +8,35 @@
       throw new Error("createGuideCylinder: missing THREE.");
     }
 
-    if (points.length < 2) return null;
+    const pointCount = points.length;
+    if (pointCount < 2) return null;
 
     const start = points[0].clone();
-    const end = points[points.length - 1].clone();
+    const end = points[pointCount - 1].clone();
     const axis = new THREE.Vector3().subVectors(end, start);
     const axisLength = axis.length();
     const baseRadius = Math.max(guideLine.cylinderRadiusAu || 0, 0);
     const startRadius = Math.max(guideLine.cylinderStartRadiusAu ?? baseRadius, 0);
     const endRadius = Math.max(guideLine.cylinderEndRadiusAu ?? baseRadius, 0);
+    const rawRadiusProfile = Array.isArray(guideLine.cylinderRadiusProfileAu)
+      ? guideLine.cylinderRadiusProfileAu
+      : null;
+    const radiusProfile = [];
+    for (let i = 0; i < pointCount; i += 1) {
+      const t = pointCount <= 1 ? 0 : i / (pointCount - 1);
+      const fallbackRadius = startRadius + (endRadius - startRadius) * t;
+      const radiusValue =
+        rawRadiusProfile && Number.isFinite(rawRadiusProfile[i])
+          ? rawRadiusProfile[i]
+          : fallbackRadius;
+      radiusProfile.push(Math.max(0, radiusValue));
+    }
+    const maxProfileRadius = radiusProfile.reduce(
+      (maxRadius, radius) => Math.max(maxRadius, radius),
+      0
+    );
 
-    if (axisLength <= 1e-6 || Math.max(startRadius, endRadius) <= 1e-6) return null;
+    if (axisLength <= 1e-6 || maxProfileRadius <= 1e-6) return null;
 
     const axisDirection = axis.clone().multiplyScalar(1 / axisLength);
     const worldUp = new THREE.Vector3(0, 1, 0);
@@ -79,17 +97,19 @@
 
     const showStartRim = guideLine.showStartRim !== false;
     const showEndRim = guideLine.showEndRim !== false;
-    if (showStartRim && startRadius > 1e-8) {
-      const startRim = createCylinderRim(start, startRadius);
+    const profileStartRadius = radiusProfile[0] || 0;
+    const profileEndRadius = radiusProfile[pointCount - 1] || 0;
+    if (showStartRim && profileStartRadius > 1e-8) {
+      const startRim = createCylinderRim(start, profileStartRadius);
       cylinderGroup.add(startRim);
     }
-    if (showEndRim && endRadius > 1e-8) {
-      const endRim = createCylinderRim(end, endRadius);
+    if (showEndRim && profileEndRadius > 1e-8) {
+      const endRim = createCylinderRim(end, profileEndRadius);
       cylinderGroup.add(endRim);
     }
 
-    const sideLinePositionsA = new Float32Array(6);
-    const sideLinePositionsB = new Float32Array(6);
+    const sideLinePositionsA = new Float32Array(pointCount * 3);
+    const sideLinePositionsB = new Float32Array(pointCount * 3);
     const sideGeometryA = new THREE.BufferGeometry();
     const sideGeometryB = new THREE.BufferGeometry();
     sideGeometryA.setAttribute(
@@ -110,14 +130,17 @@
     cylinderGroup.add(sideLineA);
     cylinderGroup.add(sideLineB);
 
-    const center = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+    const center = new THREE.Vector3();
+    for (const point of points) {
+      center.add(point);
+    }
+    center.multiplyScalar(1 / pointCount);
+
     const viewDirection = new THREE.Vector3();
     const viewDirectionPerpendicular = new THREE.Vector3();
     const edgeDirection = new THREE.Vector3();
-    const startEdgeOffset = new THREE.Vector3();
-    const endEdgeOffset = new THREE.Vector3();
-    const startPoint = new THREE.Vector3();
-    const endPoint = new THREE.Vector3();
+    const edgeOffset = new THREE.Vector3();
+    const sidePoint = new THREE.Vector3();
 
     function update(camera) {
       viewDirection.subVectors(camera.position, center);
@@ -137,26 +160,22 @@
         }
       }
 
-      startEdgeOffset.copy(edgeDirection).multiplyScalar(startRadius);
-      endEdgeOffset.copy(edgeDirection).multiplyScalar(endRadius);
+      for (let i = 0; i < pointCount; i += 1) {
+        const radius = radiusProfile[i];
+        const baseIndex = i * 3;
+        const point = points[i];
 
-      startPoint.copy(start).add(startEdgeOffset);
-      endPoint.copy(end).add(endEdgeOffset);
-      sideLinePositionsA[0] = startPoint.x;
-      sideLinePositionsA[1] = startPoint.y;
-      sideLinePositionsA[2] = startPoint.z;
-      sideLinePositionsA[3] = endPoint.x;
-      sideLinePositionsA[4] = endPoint.y;
-      sideLinePositionsA[5] = endPoint.z;
+        edgeOffset.copy(edgeDirection).multiplyScalar(radius);
+        sidePoint.copy(point).add(edgeOffset);
+        sideLinePositionsA[baseIndex] = sidePoint.x;
+        sideLinePositionsA[baseIndex + 1] = sidePoint.y;
+        sideLinePositionsA[baseIndex + 2] = sidePoint.z;
 
-      startPoint.copy(start).sub(startEdgeOffset);
-      endPoint.copy(end).sub(endEdgeOffset);
-      sideLinePositionsB[0] = startPoint.x;
-      sideLinePositionsB[1] = startPoint.y;
-      sideLinePositionsB[2] = startPoint.z;
-      sideLinePositionsB[3] = endPoint.x;
-      sideLinePositionsB[4] = endPoint.y;
-      sideLinePositionsB[5] = endPoint.z;
+        sidePoint.copy(point).sub(edgeOffset);
+        sideLinePositionsB[baseIndex] = sidePoint.x;
+        sideLinePositionsB[baseIndex + 1] = sidePoint.y;
+        sideLinePositionsB[baseIndex + 2] = sidePoint.z;
+      }
 
       sideGeometryA.attributes.position.needsUpdate = true;
       sideGeometryB.attributes.position.needsUpdate = true;
