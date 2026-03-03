@@ -53,7 +53,10 @@
 
         if (!runtime.labelElement) continue;
 
-        if (!state.showBodyNames) {
+        if (
+          !state.showBodyNames ||
+          (runtime.requiresDirectionalGuides && !state.showDirectionalGuides)
+        ) {
           runtime.labelElement.style.display = "none";
           continue;
         }

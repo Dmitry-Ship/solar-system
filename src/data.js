@@ -261,7 +261,13 @@
       cylinderDashPattern: options.cylinderDashPattern || [],
       startAlpha: options.startAlpha ?? 0.96,
       endAlpha: options.endAlpha ?? 0.1,
-      dashPattern: options.dashPattern || []
+      dashPattern: options.dashPattern || [],
+      depthTest: options.depthTest,
+      label: options.label || "",
+      labelAnchorPoint: options.labelAnchorPoint
+        ? clonePoint(options.labelAnchorPoint)
+        : null,
+      labelMarginPixels: options.labelMarginPixels
     };
   }
 
@@ -314,6 +320,56 @@
     ].filter(Boolean);
   }
 
+  function createMatryoshkaFocalLineHighlight(sourceMarker) {
+    if (!sourceMarker) return null;
+
+    const focalDistancesAu = MATRYOSHKA_CONE_LAYER_DEFINITIONS.map(
+      (layerDefinition) =>
+        constants.SOLAR_GRAVITATIONAL_LENS_AU +
+        Math.max(0, layerDefinition.focalOffsetAu || 0)
+    )
+      .filter((distanceAu) => Number.isFinite(distanceAu))
+      .sort((a, b) => a - b);
+    if (focalDistancesAu.length < 2) return null;
+
+    const firstPinchDistanceAu = focalDistancesAu[0];
+    const lastPinchDistanceAu = focalDistancesAu[focalDistancesAu.length - 1];
+    if (lastPinchDistanceAu <= firstPinchDistanceAu + 1e-6) return null;
+
+    const firstPinchPoint = math.pointOnRadiusAlongDirection(
+      sourceMarker,
+      -firstPinchDistanceAu
+    );
+    const lastPinchPoint = math.pointOnRadiusAlongDirection(
+      sourceMarker,
+      -lastPinchDistanceAu
+    );
+    const highlightRadiusAu = Math.max(
+      DIRECTIONAL_CONE_TIP_RADIUS_AU * 320,
+      DIRECTIONAL_CONE_MAX_WIDTH_AU * 0.012
+    );
+    const midPinchDistanceAu = (firstPinchDistanceAu + lastPinchDistanceAu) * 0.5;
+    const labelAnchorPoint = math.pointOnRadiusAlongDirection(
+      sourceMarker,
+      -midPinchDistanceAu
+    );
+
+    return directionalGuideLineFromMarker(sourceMarker, "#ffe7a2", {
+      points: [firstPinchPoint, lastPinchPoint],
+      renderStyle: "cylinder",
+      cylinderStartRadiusAu: highlightRadiusAu,
+      cylinderEndRadiusAu: highlightRadiusAu,
+      showStartRim: false,
+      showEndRim: false,
+      startAlpha: 0.92,
+      endAlpha: 0.92,
+      depthTest: false,
+      label: "focal line",
+      labelAnchorPoint,
+      labelMarginPixels: 12
+    });
+  }
+
   function createMatryoshkaSourceGuideShape(sourceMarker) {
     if (!sourceMarker) return [];
 
@@ -321,6 +377,11 @@
 
     for (const layerDefinition of MATRYOSHKA_CONE_LAYER_DEFINITIONS) {
       guideLines.push(...createMatryoshkaConeLayer(sourceMarker, layerDefinition));
+    }
+
+    const focalLineHighlight = createMatryoshkaFocalLineHighlight(sourceMarker);
+    if (focalLineHighlight) {
+      guideLines.push(focalLineHighlight);
     }
 
     return guideLines;

@@ -35,6 +35,9 @@
       transparent: true,
       opacity
     };
+    if (guideLine.depthTest === false) {
+      materialOptions.depthTest = false;
+    }
     if (depthWrite !== undefined) {
       materialOptions.depthWrite = depthWrite;
     }
@@ -136,6 +139,53 @@
     line.frustumCulled = false;
 
     return { positions, geometry, line };
+  }
+
+  function resolveGuideLineLabelAnchorPoint(guideLine) {
+    if (
+      guideLine.labelAnchorPoint &&
+      Number.isFinite(guideLine.labelAnchorPoint.x) &&
+      Number.isFinite(guideLine.labelAnchorPoint.y) &&
+      Number.isFinite(guideLine.labelAnchorPoint.z)
+    ) {
+      return guideLine.labelAnchorPoint;
+    }
+
+    if (!Array.isArray(guideLine.points) || guideLine.points.length < 2) {
+      return null;
+    }
+
+    const start = guideLine.points[0];
+    const end = guideLine.points[guideLine.points.length - 1];
+    return {
+      x: (start.x + end.x) * 0.5,
+      y: (start.y + end.y) * 0.5,
+      z: (start.z + end.z) * 0.5
+    };
+  }
+
+  function createGuideLineLabelRuntime(THREE, guideLine, labelsLayer) {
+    const rawLabel = typeof guideLine.label === "string" ? guideLine.label.trim() : "";
+    if (!rawLabel || !labelsLayer || typeof app.createLabelElement !== "function") {
+      return null;
+    }
+
+    const anchorPoint = resolveGuideLineLabelAnchorPoint(guideLine);
+    if (!anchorPoint) return null;
+
+    const anchorObject = new THREE.Object3D();
+    anchorObject.position.set(anchorPoint.x, anchorPoint.y, anchorPoint.z);
+
+    return {
+      mesh: anchorObject,
+      labelElement: app.createLabelElement(labelsLayer, rawLabel),
+      renderRadius: 0,
+      minPixelRadius: 0,
+      requiresDirectionalGuides: true,
+      labelAnchorPosition: anchorObject.position,
+      labelAnchorRadius: 0,
+      labelMarginPixels: Math.max(1, guideLine.labelMarginPixels || 8)
+    };
   }
 
   app.createGuideCylinder = function createGuideCylinder(guideLine, points) {
@@ -281,7 +331,9 @@
   app.buildGuideLines = function buildGuideLines(
     sceneData,
     guideLineGroup,
-    guideLineRuntimes
+    guideLineRuntimes,
+    labelsLayer,
+    bodyRuntimes
   ) {
     const THREE = window.THREE;
     if (!THREE) {
@@ -302,6 +354,16 @@
           object: cylinderRuntime.object,
           update: cylinderRuntime.update
         });
+        if (Array.isArray(bodyRuntimes)) {
+          const labelRuntime = createGuideLineLabelRuntime(
+            THREE,
+            guideLine,
+            labelsLayer
+          );
+          if (labelRuntime) {
+            bodyRuntimes.push(labelRuntime);
+          }
+        }
         continue;
       }
 
@@ -321,6 +383,12 @@
 
       guideLineGroup.add(line);
       guideLineRuntimes.push({ object: line });
+      if (Array.isArray(bodyRuntimes)) {
+        const labelRuntime = createGuideLineLabelRuntime(THREE, guideLine, labelsLayer);
+        if (labelRuntime) {
+          bodyRuntimes.push(labelRuntime);
+        }
+      }
     }
   };
 

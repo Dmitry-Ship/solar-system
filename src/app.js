@@ -143,7 +143,13 @@
     app.buildStarField(sceneData, particleGroup);
     app.buildOortCloud(sceneData, particleGroup);
     const heliosphereShellRuntimes = app.buildHeliosphereShells(constants, shellGroup);
-    app.buildGuideLines(sceneData, guideLineGroup, guideLineRuntimes);
+    app.buildGuideLines(
+      sceneData,
+      guideLineGroup,
+      guideLineRuntimes,
+      labelsLayer,
+      bodyRuntimes
+    );
     app.buildAsteroidBelts(
       sceneData,
       particleGroup,
