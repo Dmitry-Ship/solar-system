@@ -480,7 +480,6 @@
     {
       name: "61 Cygni",
       label: "61 Cygni (orange K-dwarf)",
-      spectralClass: "K-dwarf",
       color: "#ffb878",
       raHours: 21 + 6 / 60 + 53.94 / 3600,
       decDeg: 38 + 44 / 60 + 57.9 / 3600,
@@ -489,7 +488,6 @@
     {
       name: "Gliese 300",
       label: "Gliese 300 (red M-dwarf)",
-      spectralClass: "M-dwarf",
       color: "#ff6f63",
       raHours: 8 + 12 / 60 + 40.8889728169 / 3600,
       decDeg: -(21 + 33 / 60 + 6.982558553 / 3600),
@@ -544,7 +542,6 @@
       eccentricityMax: 0.35,
       count: 7000,
       color: "#a9a28f",
-      pointSize: 0.01,
       alpha: 0.15,
       timeScale: 1.1
     },
@@ -557,7 +554,6 @@
       eccentricityMax: 0.45,
       count: 7000,
       color: "#a9a28f",
-      pointSize: 0.08,
       alpha: 0.14,
       timeScale: 1
     }
@@ -568,25 +564,21 @@
     outerAu: constants.SCENE_OUTER_AU,
     count: 70000,
     color: constants.OORT_CLOUD_COLOR,
-    pointSize: 20.12,
     alpha: 0.1
   };
 
   const ORBIT_RENDER_GROUPS = [
     {
       key: "planets",
-      segments: 220,
-      orbitLineWidthPx: 1.05
+      segments: 220
     },
     {
       key: "dwarfPlanets",
-      segments: 260,
-      orbitLineWidthPx: 0.95
+      segments: 260
     },
     {
       key: "comets",
-      segments: 320,
-      orbitLineWidthPx: 0.85
+      segments: 320
     }
   ];
 
@@ -613,7 +605,7 @@
     decDeg,
     color,
     minPixelRadius = 2.3,
-    metadata = {}
+    label = name
   ) {
     // Convert catalog coordinates (RA/Dec) to ecliptic space, then place on a fixed sphere.
     const equatorial = math.unitVectorFromEquatorialRaDec(raHours, decDeg);
@@ -622,10 +614,8 @@
     );
     return {
       name,
-      label: metadata.label || name,
-      spectralClass: metadata.spectralClass || null,
+      label,
       color,
-      radius: 0,
       minPixelRadius,
       x: eclipticDirection.x * sphereRadiusAu,
       y: eclipticDirection.y * sphereRadiusAu,
@@ -699,9 +689,7 @@
       particles.push({
         x: radius * radial * Math.cos(theta),
         y: radius * yUnit,
-        z: radius * radial * Math.sin(theta),
-        sizeJitter: 0.7 + Math.random() * 0.95,
-        alphaJitter: 0.72 + Math.random() * 0.72
+        z: radius * radial * Math.sin(theta)
       });
     }
 
@@ -722,9 +710,7 @@
       items.push({
         x: distance * Math.sin(phi) * Math.cos(theta),
         y: distance * Math.cos(phi),
-        z: distance * Math.sin(phi) * Math.sin(theta),
-        size: 0.4 + Math.random() * 1.2,
-        alpha: 0.25 + Math.random() * 0.6
+        z: distance * Math.sin(phi) * Math.sin(theta)
       });
     }
     return items;
@@ -752,7 +738,6 @@
     return {
       points: [startPoint, endPoint],
       color,
-      tag: options.tag || null,
       renderStyle: options.renderStyle || "line",
       showStartRim: options.showStartRim ?? true,
       showEndRim: options.showEndRim ?? true,
@@ -760,24 +745,13 @@
       cylinderStartRadiusAu,
       cylinderEndRadiusAu,
       cylinderDashPattern: options.cylinderDashPattern || [],
-      startWidthPx: options.startWidthPx ?? 2,
-      endWidthPx: options.endWidthPx ?? 0.55,
       startAlpha: options.startAlpha ?? 0.96,
       endAlpha: options.endAlpha ?? 0.1,
-      dashPattern: options.dashPattern || [],
-      segments: 96
+      dashPattern: options.dashPattern || []
     };
   }
 
-  function guideTagFromSource(sourceMarker) {
-    const baseName = String(sourceMarker.name || "source")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    return `source-guide-${baseName || "source"}`;
-  }
-
-  function createMatryoshkaConeLayer(sourceMarker, layerDefinition, tag) {
+  function createMatryoshkaConeLayer(sourceMarker, layerDefinition) {
     const pivotPoint = { x: 0, y: 0, z: 0 };
     const endRadiusAu =
       constants.SOLAR_GRAVITATIONAL_LENS_AU +
@@ -802,8 +776,7 @@
         cylinderEndRadiusAu: coneMaxWidthAu * 0.5,
         cylinderDashPattern: DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
         startAlpha: alpha,
-        endAlpha: alpha,
-        tag
+        endAlpha: alpha
       }),
       directionalGuideLineFromMarker(sourceMarker, DIRECTIONAL_SOURCE_CONE_COLOR, {
         startPoint: pivotPoint,
@@ -814,8 +787,7 @@
         cylinderEndRadiusAu: 0,
         cylinderDashPattern: DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
         startAlpha: alpha,
-        endAlpha: alpha,
-        tag
+        endAlpha: alpha
       })
     ].filter(Boolean);
   }
@@ -823,11 +795,10 @@
   function createMatryoshkaSourceGuideShape(sourceMarker) {
     if (!sourceMarker) return [];
 
-    const tag = guideTagFromSource(sourceMarker);
     const guideLines = [];
 
     for (const layerDefinition of MATRYOSHKA_CONE_LAYER_DEFINITIONS) {
-      guideLines.push(...createMatryoshkaConeLayer(sourceMarker, layerDefinition, tag));
+      guideLines.push(...createMatryoshkaConeLayer(sourceMarker, layerDefinition));
     }
 
     return guideLines;
@@ -874,10 +845,7 @@
         definition.decDeg,
         definition.color,
         definition.minPixelRadius,
-        {
-          label: definition.label,
-          spectralClass: definition.spectralClass
-        }
+        definition.label
       )
     );
     const directionalMarkerByName = Object.fromEntries(
@@ -903,8 +871,7 @@
       directionalGuideLines,
       asteroidBelts: ASTEROID_BELT_CONFIGS.map((belt) => createAsteroidBelt(belt)),
       oortCloud: createOortCloud(OORT_CLOUD_CONFIG),
-      stars: createStars(1700),
-      voyagerEpochLabel: constants.VOYAGER_EPOCH_LABEL
+      stars: createStars(1700)
     };
   }
 

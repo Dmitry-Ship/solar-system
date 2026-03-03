@@ -102,8 +102,7 @@
     const labelsLayer = createLabelsLayer();
 
     scene.add(new THREE.AmbientLight("#ffffff", 0.5));
-    const sunLight = new THREE.PointLight("#ffd794", 1.2, 0, 0);
-    scene.add(sunLight);
+    scene.add(new THREE.PointLight("#ffd794", 1.2, 0, 0));
 
     const orbitGroup = new THREE.Group();
     const shellGroup = new THREE.Group();
@@ -246,7 +245,6 @@
         const worldRadius = Math.max(1e-6, pixelRadius / pixelsPerWorldUnit);
 
         runtime.mesh.scale.setScalar(worldRadius);
-        runtime.pixelRadius = pixelRadius;
 
         if (!runtime.labelElement) continue;
 
@@ -347,7 +345,6 @@
   }
 
   function prepareSceneCaches(sceneData, constants, math) {
-    const auToUnits = (au) => au;
     const renderRadiusFromKm = (radiusKm) => radiusKm / constants.KM_PER_AU;
 
     for (const group of sceneData.orbitRenderGroups) {
@@ -355,7 +352,7 @@
       const shouldUseRadiusOrbitOpacity = group.key !== "comets";
 
       for (const body of sourceBodies) {
-        body.orbitRadius = auToUnits(body.au);
+        body.orbitRadius = body.au;
         body.renderRadius = renderRadiusFromKm(body.radiusKm);
         body.orbitOpacity = shouldUseRadiusOrbitOpacity
           ? sceneData.orbitOpacityForBodyRadius(body.radiusKm)
@@ -381,7 +378,7 @@
 
     for (const belt of sceneData.asteroidBelts) {
       for (const particle of belt.particles) {
-        particle.orbitRadius = auToUnits(particle.au);
+        particle.orbitRadius = particle.au;
       }
     }
   }
@@ -428,12 +425,10 @@
 
     return {
       mesh,
-      name: config.name,
       labelElement: createLabelElement(labelsLayer, config.label || config.name),
       renderRadius: config.renderRadius || 0,
       minPixelRadius: config.minPixelRadius || 1,
       orbitalSource: config.orbitalSource || null,
-      pixelRadius: config.minPixelRadius || 1,
       labelAnchorPosition: config.labelAnchorPosition
         ? new THREE.Vector3(
             config.labelAnchorPosition.x || 0,
@@ -715,7 +710,7 @@
       );
 
       particleGroup.add(points);
-      beltRuntimes.push({ belt, points, geometry, positions });
+      beltRuntimes.push({ belt, geometry, positions });
 
       let offset = 0;
       for (const particle of belt.particles) {
@@ -1112,7 +1107,6 @@
         if (!cylinderRuntime) continue;
         guideLineGroup.add(cylinderRuntime.object);
         guideLineRuntimes.push({
-          tag: guideLine.tag || null,
           object: cylinderRuntime.object,
           update: cylinderRuntime.update
         });
@@ -1143,7 +1137,7 @@
       line.frustumCulled = false;
 
       guideLineGroup.add(line);
-      guideLineRuntimes.push({ tag: guideLine.tag || null, object: line });
+      guideLineRuntimes.push({ object: line });
     }
   }
 

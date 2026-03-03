@@ -200,13 +200,6 @@
     return points;
   }
 
-  function wheelDeltaToPixels(event, viewportHeight) {
-    // Normalize wheel units (pixels / lines / pages) into pixel-like deltas.
-    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 16;
-    if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return event.deltaY * viewportHeight;
-    return event.deltaY;
-  }
-
   namespace.math = {
     clamp,
     degToRad,
@@ -220,7 +213,6 @@
     rotateOrbitFrame,
     rotateOrbitFrameInto,
     solveEccentricAnomaly,
-    unitVectorFromEquatorialRaDec,
-    wheelDeltaToPixels
+    unitVectorFromEquatorialRaDec
   };
 })();
