@@ -196,6 +196,11 @@
     renderer.applyGuideLineVisibility(state, guideLineRuntimes);
   };
 
+  app.applyOrbitVisibility = function applyOrbitVisibility(state, orbitGroup) {
+    const renderer = new OrbitRenderer({ bodyRenderer: null });
+    renderer.applyOrbitVisibility(state, orbitGroup);
+  };
+
   app.buildHeliosphereShells = function buildHeliosphereShells(constants, shellGroup) {
     const renderer = new ShellRenderer({
       constants,
@@ -221,14 +226,17 @@
     controls,
     guideLineRuntimes,
     camera,
-    math
+    math,
+    orbitGroup
   ) {
     const controller = new HudController({
       state,
       controls,
+      orbitGroup,
       guideLineRuntimes,
       camera,
       math,
+      onOrbitVisibilityChanged: app.applyOrbitVisibility,
       onGuideVisibilityChanged: app.applyGuideLineVisibility
     });
     return controller.setup();

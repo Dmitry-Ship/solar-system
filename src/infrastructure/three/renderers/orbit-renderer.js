@@ -105,6 +105,11 @@
         }
       }
     }
+
+    applyOrbitVisibility(state, orbitGroup) {
+      if (!orbitGroup) return;
+      orbitGroup.visible = state.showOrbits;
+    }
   }
 
   namespace.infrastructure.three.renderers.OrbitRenderer = OrbitRenderer;

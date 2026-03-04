@@ -147,10 +147,14 @@
     );
 
     const namesToggleButton = document.getElementById("names-toggle");
+    const orbitsToggleButton = document.getElementById("orbits-toggle");
     const lightRayToggleButton = document.getElementById("light-ray-toggle");
     const zoomToggleButton = document.getElementById("zoom-toggle");
     const uiButtonsPresent =
-      !!namesToggleButton && !!lightRayToggleButton && !!zoomToggleButton;
+      !!namesToggleButton &&
+      !!orbitsToggleButton &&
+      !!lightRayToggleButton &&
+      !!zoomToggleButton;
     results.push(
       createResult(
         "UI Controls Presence",

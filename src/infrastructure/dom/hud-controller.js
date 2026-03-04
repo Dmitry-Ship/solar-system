@@ -8,15 +8,18 @@
     constructor(options) {
       this.state = options.state;
       this.controls = options.controls;
+      this.orbitGroup = options.orbitGroup;
       this.guideLineRuntimes = options.guideLineRuntimes;
       this.camera = options.camera;
       this.math = options.math;
+      this.onOrbitVisibilityChanged = options.onOrbitVisibilityChanged;
       this.onGuideVisibilityChanged = options.onGuideVisibilityChanged;
     }
 
     setup() {
       const zoomToggleButton = document.getElementById("zoom-toggle");
       const namesToggleButton = document.getElementById("names-toggle");
+      const orbitToggleButton = document.getElementById("orbits-toggle");
       const lightRayToggleButton = document.getElementById("light-ray-toggle");
 
       const updateBooleanToggleLabel = (
@@ -74,6 +77,28 @@
           this.state.showBodyNames,
           "Hide Names",
           "Show Names"
+        );
+      }
+
+      if (orbitToggleButton) {
+        orbitToggleButton.addEventListener("click", () => {
+          this.state.showOrbits = !this.state.showOrbits;
+          if (typeof this.onOrbitVisibilityChanged === "function") {
+            this.onOrbitVisibilityChanged(this.state, this.orbitGroup);
+          }
+          updateBooleanToggleLabel(
+            orbitToggleButton,
+            this.state.showOrbits,
+            "Hide Orbits",
+            "Show Orbits"
+          );
+        });
+
+        updateBooleanToggleLabel(
+          orbitToggleButton,
+          this.state.showOrbits,
+          "Hide Orbits",
+          "Show Orbits"
         );
       }
 

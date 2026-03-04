@@ -94,9 +94,9 @@
           geometry,
           new THREE.PointsMaterial({
             color: belt.color,
-            size: 0.02,
+            size: belt.particleSize ?? 0.02,
             transparent: true,
-            opacity: Math.min(0.22, belt.alpha * 0.2),
+            opacity: Math.min(belt.maxOpacity ?? 0.22, belt.alpha * (belt.opacityScale ?? 0.2)),
             sizeAttenuation: true,
             depthWrite: false
           })

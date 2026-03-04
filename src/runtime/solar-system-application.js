@@ -201,9 +201,13 @@
       this.hudController = new HudController({
         state: this.state,
         controls: this.controls,
+        orbitGroup: this.orbitGroup,
         guideLineRuntimes: this.guideLineRuntimes,
         camera: this.camera,
         math: this.math,
+        onOrbitVisibilityChanged: this.orbitRenderer.applyOrbitVisibility.bind(
+          this.orbitRenderer
+        ),
         onGuideVisibilityChanged: this.guideRenderer.applyGuideLineVisibility.bind(
           this.guideRenderer
         )
@@ -257,6 +261,7 @@
 
       window.addEventListener("resize", this.handleResize);
       this.resize();
+      this.orbitRenderer.applyOrbitVisibility(this.state, this.orbitGroup);
       this.guideRenderer.applyGuideLineVisibility(this.state, this.guideLineRuntimes);
 
       this.initialized = true;

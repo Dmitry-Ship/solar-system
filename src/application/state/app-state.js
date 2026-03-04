@@ -7,6 +7,7 @@
   class AppState {
     constructor(constants) {
       this.showBodyNames = true;
+      this.showOrbits = true;
       this.showDirectionalGuides = false;
       this.minCamera = constants.MIN_ZOOM_AU;
       this.maxCamera = constants.MAX_ZOOM_AU;
