@@ -24,6 +24,7 @@
       "prepareSceneCaches",
       "createLabelsLayer",
       "createBodyRuntime",
+      "createSelectiveBloomRenderer",
       "buildStarField",
       "buildOortCloud",
       "buildHeliosphereShells",
@@ -85,19 +86,16 @@
       constants.SCENE_OUTER_AU * 12
     );
 
-    const composer = new THREE.EffectComposer(renderer);
-    const renderPass = new THREE.RenderPass(scene, camera);
-    const bloomPass = new THREE.UnrealBloomPass(
-      new THREE.Vector2(
-        Math.max(1, window.innerWidth),
-        Math.max(1, window.innerHeight)
-      ),
-      constants.SUN_BLOOM_STRENGTH,
-      constants.SUN_BLOOM_RADIUS,
-      constants.SUN_BLOOM_THRESHOLD
-    );
-    composer.addPass(renderPass);
-    composer.addPass(bloomPass);
+    const selectiveBloomRenderer = app.createSelectiveBloomRenderer({
+      renderer,
+      scene,
+      camera,
+      width: Math.max(1, window.innerWidth),
+      height: Math.max(1, window.innerHeight),
+      bloomStrength: constants.SUN_BLOOM_STRENGTH,
+      bloomRadius: constants.SUN_BLOOM_RADIUS,
+      bloomThreshold: constants.SUN_BLOOM_THRESHOLD
+    });
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -190,6 +188,7 @@
       labelsLayer
     );
     bodyRuntimes.push(sunRuntime);
+    selectiveBloomRenderer.markBloomObject(sunRuntime.mesh);
 
     const hud = app.setupHudControls(
       state,
@@ -236,10 +235,8 @@
 
       renderer.setPixelRatio(pixelRatio);
       renderer.setSize(width, height, false);
-      if (typeof composer.setPixelRatio === "function") {
-        composer.setPixelRatio(pixelRatio);
-      }
-      composer.setSize(width, height);
+      selectiveBloomRenderer.setPixelRatio(pixelRatio);
+      selectiveBloomRenderer.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
 
@@ -259,7 +256,7 @@
       app.updateHeliosphereShells(heliosphereShellRuntimes, camera, clock.elapsedTime || 0);
       app.updateGuideLineVisuals(guideLineRuntimes, camera);
       updateBodyVisualScaleAndLabels();
-      composer.render();
+      selectiveBloomRenderer.render();
     }
 
     window.addEventListener("resize", resize);

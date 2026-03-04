@@ -13,11 +13,16 @@
       throw new Error("createBodyRuntime: missing THREE.");
     }
 
-    const material = new THREE.MeshBasicMaterial({
-      color: config.color,
-      toneMapped: false
-    });
-    if (config.emissive) {
+    const useLitMaterial = !config.emissive && config.lit !== false;
+    const material = useLitMaterial
+      ? new THREE.MeshLambertMaterial({
+          color: config.color
+        })
+      : new THREE.MeshBasicMaterial({
+          color: config.color,
+          toneMapped: false
+        });
+    if (!useLitMaterial && config.emissive) {
       material.transparent = true;
       material.opacity = 0.95;
     }
@@ -221,7 +226,8 @@
           color: marker.color,
           renderRadius: 0,
           minPixelRadius: marker.minPixelRadius || 2.3,
-          fixedPosition: marker
+          fixedPosition: marker,
+          lit: false
         },
         bodyGroup,
         bodyGeometry,
@@ -242,6 +248,7 @@
         color: "#8ccfff",
         renderRadius: 0,
         minPixelRadius: 1,
+        lit: false,
         labelAnchorPosition: { x: 0, y: 0, z: 0 },
         labelAnchorRadius: constants.HELIOPAUSE_AU,
         fixedPosition: {

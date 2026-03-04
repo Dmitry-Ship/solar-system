@@ -546,19 +546,19 @@
       lengthExtensionAu: 350,
       maxWidthScale: 3.5,
       tipRadiusScale: 1.05,
-      alpha: 0.01
+      alpha: 0.1
     }),
     createMatryoshkaConeLayerDefinition({
       lengthExtensionAu: 250,
       maxWidthScale: 2.5,
       tipRadiusScale: 0.72,
-      alpha: 0.075
+      alpha: 0.2
     }),
     createMatryoshkaConeLayerDefinition({
       lengthExtensionAu: 150,
       maxWidthScale: 1.5,
       tipRadiusScale: 0.42,
-      alpha: 0.15
+      alpha: 0.3
     }),
     createMatryoshkaConeLayerDefinition({
       // Innermost always terminates at the lens-sphere edge.
@@ -584,7 +584,7 @@
       eccentricityMax: 0.35,
       count: 7000,
       color: "#a9a28f",
-      alpha: 0.15,
+      alpha: 1.05,
       timeScale: 1.1
     },
     {
@@ -596,7 +596,7 @@
       eccentricityMax: 0.45,
       count: 7000,
       color: "#a9a28f",
-      alpha: 0.14,
+      alpha: 1.05,
       timeScale: 1
     }
   ];
@@ -606,7 +606,7 @@
     outerAu: constants.SCENE_OUTER_AU,
     count: 70000,
     color: constants.OORT_CLOUD_COLOR,
-    alpha: 0.1
+    alpha: 0.2
   };
 
   const ORBIT_RENDER_GROUPS = [

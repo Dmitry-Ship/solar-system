@@ -23,7 +23,7 @@
         body.orbitColor = groupOrbitColor;
         body.orbitOpacity = shouldUseRadiusOrbitOpacity
           ? sceneData.orbitOpacityForBodyRadius(body.radiusKm)
-          : 0.05;
+          : 0.1;
         body.orbitPath = math.orbitPoints(
           body.orbitRadius,
           body.inclination,

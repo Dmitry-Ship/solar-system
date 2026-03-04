@@ -59,9 +59,9 @@
       geometry,
       new THREE.PointsMaterial({
         color: sceneData.oortCloud.color,
-        size: 2.2,
+        size: 3,
         transparent: true,
-        opacity: Math.min(0.05, sceneData.oortCloud.alpha),
+        opacity: Math.min(0.1, sceneData.oortCloud.alpha * 0.75),
         sizeAttenuation: true,
         depthWrite: false
       })
@@ -92,11 +92,11 @@
         geometry,
         new THREE.PointsMaterial({
           color: belt.color,
-          size: 0.01,
+          size: 0.02,
           transparent: true,
-          opacity: Math.min(0.1, belt.alpha * 1.2),
+          opacity: Math.min(0.22, belt.alpha * 0.2),
           sizeAttenuation: true,
-          depthWrite: true
+          depthWrite: false
         })
       );
 

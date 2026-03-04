@@ -38,6 +38,7 @@
     constants.SOLAR_GRAVITATIONAL_LENS_AU +
     MAX_MATRYOSHKA_FOCAL_OFFSET_AU +
     DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU;
+  const SPACECRAFT_TRAJECTORY_STOP_DISTANCE_AU = 2500;
 
   function seedBodies(definitions, defaultOrbitColor) {
     return definitions.map((item) => ({
@@ -179,6 +180,55 @@
       y: point.y,
       z: point.z
     };
+  }
+
+  function offsetPointAlongDirection(point, direction, distance) {
+    return {
+      x: point.x + direction.x * distance,
+      y: point.y + direction.y * distance,
+      z: point.z + direction.z * distance
+    };
+  }
+
+  function cubicBezierPoint(pointA, controlA, controlB, pointB, t) {
+    const u = 1 - t;
+    const uu = u * u;
+    const tt = t * t;
+    const uuu = uu * u;
+    const ttt = tt * t;
+    return {
+      x:
+        pointA.x * uuu +
+        3 * controlA.x * uu * t +
+        3 * controlB.x * u * tt +
+        pointB.x * ttt,
+      y:
+        pointA.y * uuu +
+        3 * controlA.y * uu * t +
+        3 * controlB.y * u * tt +
+        pointB.y * ttt,
+      z:
+        pointA.z * uuu +
+        3 * controlA.z * uu * t +
+        3 * controlB.z * u * tt +
+        pointB.z * ttt
+    };
+  }
+
+  function createCubicBezierPolyline(
+    pointA,
+    controlA,
+    controlB,
+    pointB,
+    segmentCount
+  ) {
+    const safeSegments = Math.max(2, Math.floor(segmentCount || 0));
+    const points = [];
+    for (let index = 0; index <= safeSegments; index += 1) {
+      const t = index / safeSegments;
+      points.push(cubicBezierPoint(pointA, controlA, controlB, pointB, t));
+    }
+    return points;
   }
 
   function resolveGuideLinePoints(marker, options) {
@@ -382,6 +432,64 @@
     return guideLines;
   }
 
+  function createSpacecraftTrajectoryGuideLine(sourceMarker, oppositeSideReferenceMarker) {
+    if (!sourceMarker || !oppositeSideReferenceMarker) return null;
+
+    const stopPoint = math.pointOnRadiusAlongDirection(
+      oppositeSideReferenceMarker,
+      -SPACECRAFT_TRAJECTORY_STOP_DISTANCE_AU
+    );
+    const focalAxisDirection = math.normalizeVector({
+      x: -oppositeSideReferenceMarker.x,
+      y: -oppositeSideReferenceMarker.y,
+      z: -oppositeSideReferenceMarker.z
+    });
+    const directVector = {
+      x: stopPoint.x - sourceMarker.x,
+      y: stopPoint.y - sourceMarker.y,
+      z: stopPoint.z - sourceMarker.z
+    };
+    const directDistanceAu = Math.hypot(
+      directVector.x,
+      directVector.y,
+      directVector.z
+    );
+    if (directDistanceAu <= 1e-6) return null;
+
+    const straightLineDirection = math.normalizeVector(directVector);
+    const startHandleLengthAu = directDistanceAu * 0.78;
+    const endHandleLengthAu = directDistanceAu * 0.25;
+    const controlPointA = offsetPointAlongDirection(
+      sourceMarker,
+      straightLineDirection,
+      startHandleLengthAu
+    );
+    const controlPointB = offsetPointAlongDirection(
+      stopPoint,
+      focalAxisDirection,
+      endHandleLengthAu
+    );
+    const trajectoryPoints = createCubicBezierPolyline(
+      sourceMarker,
+      controlPointA,
+      controlPointB,
+      stopPoint,
+      72
+    );
+    const labelAnchorPoint =
+      trajectoryPoints[Math.floor(trajectoryPoints.length * 0.58)] || stopPoint;
+
+    return directionalGuideLineFromMarker(sourceMarker, "#ffe8a6", {
+      points: trajectoryPoints,
+      opacity: 0.96,
+      dashPattern: [10, 6],
+      depthTest: false,
+      label: "spacecraft trajectory",
+      labelAnchorPoint,
+      labelMarginPixels: 10
+    });
+  }
+
   function createOrbitOpacityCalculator(orbitingBodies) {
     let minOrbitBodyRadiusKm = Infinity;
     let maxOrbitBodyRadiusKm = 0;
@@ -396,8 +504,8 @@
     const logSpan = maxLog - minLog;
 
     return function orbitOpacityForBodyRadius(radiusKm) {
-      const minOpacity = 0.0001;
-      const maxOpacity = 0.2;
+      const minOpacity = 0.1;
+      const maxOpacity = 0.4;
       const safeRadius = Math.max(1, radiusKm || 1);
       if (logSpan < 1e-9) return maxOpacity;
 
@@ -430,9 +538,17 @@
       directionalMarkers.map((marker) => [marker.name, marker])
     );
 
+    const c61Marker = directionalMarkerByName["61 Cygni"] || null;
     const gliese300Marker = directionalMarkerByName["Gliese 300"] || null;
 
     const directionalGuideLines = createMatryoshkaSourceGuideShape(gliese300Marker);
+    const spacecraftTrajectoryGuideLine = createSpacecraftTrajectoryGuideLine(
+      c61Marker,
+      gliese300Marker
+    );
+    if (spacecraftTrajectoryGuideLine) {
+      directionalGuideLines.push(spacecraftTrajectoryGuideLine);
+    }
 
     return {
       planets,
