@@ -57,7 +57,7 @@
 
     const state = {
       showBodyNames: true,
-      showDirectionalGuides: true,
+      showDirectionalGuides: false,
       minCamera: constants.MIN_ZOOM_AU,
       maxCamera: constants.MAX_ZOOM_AU
     };
@@ -195,7 +195,6 @@
       state,
       controls,
       guideLineRuntimes,
-      labelsLayer,
       camera,
       math
     );

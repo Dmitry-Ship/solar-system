@@ -6,7 +6,6 @@
     state,
     controls,
     guideLineRuntimes,
-    labelsLayer,
     camera,
     math
   ) {
@@ -53,20 +52,19 @@
     if (namesToggleButton) {
       namesToggleButton.addEventListener("click", () => {
         state.showBodyNames = !state.showBodyNames;
-        labelsLayer.style.display = state.showBodyNames ? "block" : "none";
         updateBooleanToggleLabel(
           namesToggleButton,
           state.showBodyNames,
-          "Hide Body Names",
-          "Show Body Names"
+          "Hide Names",
+          "Show Names"
         );
       });
 
       updateBooleanToggleLabel(
         namesToggleButton,
         state.showBodyNames,
-        "Hide Body Names",
-        "Show Body Names"
+        "Hide Names",
+        "Show Names"
       );
     }
 

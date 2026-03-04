@@ -92,11 +92,11 @@
         geometry,
         new THREE.PointsMaterial({
           color: belt.color,
-          size: 1.15,
+          size: 0.01,
           transparent: true,
           opacity: Math.min(0.1, belt.alpha * 1.2),
-          sizeAttenuation: false,
-          depthWrite: false
+          sizeAttenuation: true,
+          depthWrite: true
         })
       );
 

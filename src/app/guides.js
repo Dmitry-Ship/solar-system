@@ -27,8 +27,8 @@
       ? dashedOpacityFallback
       : solidOpacityFallback;
     const opacity = Math.max(
-      guideLine.startAlpha ?? opacityFallback,
-      guideLine.endAlpha ?? opacityFallback
+      0,
+      Math.min(1, guideLine.opacity ?? opacityFallback)
     );
     const materialOptions = {
       color: guideLine.color,

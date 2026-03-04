@@ -15,10 +15,12 @@
     for (const group of sceneData.orbitRenderGroups) {
       const sourceBodies = sceneData[group.key] || [];
       const shouldUseRadiusOrbitOpacity = group.key !== "comets";
+      const groupOrbitColor = group.orbitColor || constants.ORBIT_COLOR;
 
       for (const body of sourceBodies) {
         body.orbitRadius = body.au;
         body.renderRadius = renderRadiusFromKm(body.radiusKm);
+        body.orbitColor = groupOrbitColor;
         body.orbitOpacity = shouldUseRadiusOrbitOpacity
           ? sceneData.orbitOpacityForBodyRadius(body.radiusKm)
           : 0.05;

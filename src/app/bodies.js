@@ -37,6 +37,37 @@
       renderRadius: config.renderRadius || 0,
       minPixelRadius: config.minPixelRadius || 1,
       orbitalSource: config.orbitalSource || null,
+      togglesWithNamesButton: Boolean(config.togglesWithNamesButton),
+      labelAnchorPosition: config.labelAnchorPosition
+        ? new THREE.Vector3(
+            config.labelAnchorPosition.x || 0,
+            config.labelAnchorPosition.y || 0,
+            config.labelAnchorPosition.z || 0
+          )
+        : null,
+      labelAnchorRadius: Math.max(0, config.labelAnchorRadius || 0),
+      labelMarginPixels: Math.max(1, config.labelMarginPixels || 5)
+    };
+  };
+
+  app.createLabelAnchorRuntime = function createLabelAnchorRuntime(config, labelsLayer) {
+    const THREE = window.THREE;
+    if (!THREE) {
+      throw new Error("createLabelAnchorRuntime: missing THREE.");
+    }
+
+    const mesh = new THREE.Object3D();
+    mesh.position.set(
+      config.fixedPosition?.x || 0,
+      config.fixedPosition?.y || 0,
+      config.fixedPosition?.z || 0
+    );
+
+    return {
+      mesh,
+      labelElement: app.createLabelElement(labelsLayer, config.label || config.name || ""),
+      renderRadius: 0,
+      minPixelRadius: 0,
       labelAnchorPosition: config.labelAnchorPosition
         ? new THREE.Vector3(
             config.labelAnchorPosition.x || 0,
@@ -87,6 +118,7 @@
     math
   ) {
     const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
+    const namesToggleTargetGroups = new Set(["planets", "dwarfPlanets", "comets"]);
 
     for (const group of sceneData.orbitRenderGroups) {
       const sourceBodies = sceneData[group.key] || [];
@@ -105,7 +137,8 @@
             color: sourceBody.color,
             renderRadius: sourceBody.renderRadius,
             minPixelRadius: sourceBody.minPixelRadius || fallbackMinPixelRadius,
-            orbitalSource: sourceBody
+            orbitalSource: sourceBody,
+            togglesWithNamesButton: namesToggleTargetGroups.has(group.key)
           },
           bodyGroup,
           bodyGeometry,
@@ -205,7 +238,7 @@
 
     const heliopauseMarker = app.createBodyRuntime(
       {
-        name: "Heliopause (Solar Wind / ISM Boundary)",
+        name: "Heliopause",
         color: "#8ccfff",
         renderRadius: 0,
         minPixelRadius: 1,
@@ -222,6 +255,25 @@
       labelsLayer
     );
     bodyRuntimes.push(heliopauseMarker);
+
+    const oortCloudOuterAu = Math.max(
+      constants.HELIOPAUSE_AU,
+      sceneData?.oortCloud?.outerAu || constants.SCENE_OUTER_AU
+    );
+    const oortCloudLabelAnchor = app.createLabelAnchorRuntime(
+      {
+        name: "Oort Cloud",
+        label: "Oort Cloud",
+        fixedPosition: {
+          x: heliopauseMarkerDirection.x * oortCloudOuterAu,
+          y: heliopauseMarkerDirection.y * oortCloudOuterAu,
+          z: heliopauseMarkerDirection.z * oortCloudOuterAu
+        },
+        labelMarginPixels: 10
+      },
+      labelsLayer
+    );
+    bodyRuntimes.push(oortCloudLabelAnchor);
   };
 
   app.createOrbitingBodiesUpdater = function createOrbitingBodiesUpdater(options) {

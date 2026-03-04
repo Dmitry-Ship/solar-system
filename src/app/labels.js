@@ -54,7 +54,7 @@
         if (!runtime.labelElement) continue;
 
         if (
-          !state.showBodyNames ||
+          (!state.showBodyNames && runtime.togglesWithNamesButton) ||
           (runtime.requiresDirectionalGuides && !state.showDirectionalGuides)
         ) {
           runtime.labelElement.style.display = "none";

@@ -466,15 +466,7 @@
     }
   ];
 
-  const DRIFTING_BODIES = [
-    {
-      name: "Oumuamua",
-      position: { x: 54, y: -12, z: 21 },
-      radiusKm: 0.12,
-      minPixelRadius: 1.6,
-      color: "#d9dee8"
-    }
-  ];
+  const DRIFTING_BODIES = [];
 
   const DIRECTIONAL_MARKER_DEFINITIONS = [
     {
@@ -502,27 +494,27 @@
   const DIRECTIONAL_GUIDE_PARALLEL_SECTION_END_AU =
     constants.HELIOPAUSE_AU * 1.2;
   const DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU = 550;
-  const MATRYOSHKA_INNER_LAYER_MAX_WIDTH_SCALE = 1.5;
+  const MATRYOSHKA_INNER_LAYER_MAX_WIDTH_SCALE = 0.5;
   const MATRYOSHKA_INNER_LAYER_TIP_RADIUS_SCALE = 0.2;
 
   function incomingRadiusForWidthScale(maxWidthScale) {
-    return DIRECTIONAL_CONE_MAX_WIDTH_AU * Math.max(0.05, maxWidthScale || 0) * 0.5;
+    return DIRECTIONAL_CONE_MAX_WIDTH_AU * maxWidthScale * 0.5;
   }
 
   function focalRadiusForTipScale(tipRadiusScale) {
-    return DIRECTIONAL_CONE_TIP_RADIUS_AU * Math.max(0.05, tipRadiusScale || 0);
+    return DIRECTIONAL_CONE_TIP_RADIUS_AU * tipRadiusScale;
   }
 
   const MATRYOSHKA_SHARED_CONE_SLOPE =
     (incomingRadiusForWidthScale(MATRYOSHKA_INNER_LAYER_MAX_WIDTH_SCALE) -
       focalRadiusForTipScale(MATRYOSHKA_INNER_LAYER_TIP_RADIUS_SCALE)) /
-    Math.max(constants.SOLAR_GRAVITATIONAL_LENS_AU, 1e-6);
+    constants.SOLAR_GRAVITATIONAL_LENS_AU;
 
   function focalOffsetForMaxWidthScale(maxWidthScale, tipRadiusScale) {
     const incomingRadiusAu = incomingRadiusForWidthScale(maxWidthScale);
     const focalRadiusAu = focalRadiusForTipScale(tipRadiusScale);
     const focalDistanceAu =
-      (incomingRadiusAu - focalRadiusAu) / Math.max(MATRYOSHKA_SHARED_CONE_SLOPE, 1e-6);
+      (incomingRadiusAu - focalRadiusAu) / MATRYOSHKA_SHARED_CONE_SLOPE;
     return Math.max(0, focalDistanceAu - constants.SOLAR_GRAVITATIONAL_LENS_AU);
   }
 
@@ -533,14 +525,17 @@
     pinchesAtLensSphereEdge = false,
     alpha
   }) {
+    const normalizedMaxWidthScale = Math.max(0.05, maxWidthScale || 0);
+    const normalizedTipRadiusScale = Math.max(0.05, tipRadiusScale || 0);
+
     return {
       lengthExtensionAu,
-      maxWidthScale: Math.max(0.05, maxWidthScale || 0),
-      tipRadiusScale,
+      maxWidthScale: normalizedMaxWidthScale,
+      tipRadiusScale: normalizedTipRadiusScale,
       // Keep all layers on one cone half-angle; optionally pin pinch to lens edge.
       focalOffsetAu: pinchesAtLensSphereEdge
         ? 0
-        : focalOffsetForMaxWidthScale(maxWidthScale, tipRadiusScale),
+        : focalOffsetForMaxWidthScale(normalizedMaxWidthScale, normalizedTipRadiusScale),
       alpha
     };
   }
@@ -549,21 +544,21 @@
     createMatryoshkaConeLayerDefinition({
       // Outermost: longest and widest.
       lengthExtensionAu: 350,
-      maxWidthScale: 8,
+      maxWidthScale: 3.5,
       tipRadiusScale: 1.05,
-      alpha: 0.05
+      alpha: 0.01
     }),
     createMatryoshkaConeLayerDefinition({
       lengthExtensionAu: 250,
-      maxWidthScale: 6,
+      maxWidthScale: 2.5,
       tipRadiusScale: 0.72,
-      alpha: 0.1
+      alpha: 0.075
     }),
     createMatryoshkaConeLayerDefinition({
       lengthExtensionAu: 150,
-      maxWidthScale: 4,
+      maxWidthScale: 1.5,
       tipRadiusScale: 0.42,
-      alpha: 0.2
+      alpha: 0.15
     }),
     createMatryoshkaConeLayerDefinition({
       // Innermost always terminates at the lens-sphere edge.
@@ -617,15 +612,18 @@
   const ORBIT_RENDER_GROUPS = [
     {
       key: "planets",
-      segments: 220
+      segments: 220,
+      orbitColor: "#74a9ff"
     },
     {
       key: "dwarfPlanets",
-      segments: 260
+      segments: 260,
+      orbitColor: "#8ccf9f"
     },
     {
       key: "comets",
-      segments: 320
+      segments: 320,
+      orbitColor: "#f2bf78"
     }
   ];
 

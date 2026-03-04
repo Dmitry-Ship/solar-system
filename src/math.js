@@ -11,6 +11,14 @@
     return Math.max(min, Math.min(max, value));
   }
 
+  function normalizeAngleSigned(value) {
+    const turn = Math.PI * 2;
+    let result = value % turn;
+    if (result <= -Math.PI) result += turn;
+    if (result > Math.PI) result -= turn;
+    return result;
+  }
+
   function normalizeVector(vector) {
     const length = Math.hypot(vector.x, vector.y, vector.z);
     if (length < 1e-9) return { x: 0, y: 0, z: 0 };
@@ -72,13 +80,22 @@
     const e = clamp(eccentricity, 0, 0.999);
     if (e < 1e-6) return meanAnomaly;
 
-    let eccentricAnomaly = meanAnomaly;
-    for (let i = 0; i < 7; i += 1) {
+    const normalizedMeanAnomaly = normalizeAngleSigned(meanAnomaly);
+    let eccentricAnomaly =
+      e < 0.8
+        ? normalizedMeanAnomaly
+        : normalizedMeanAnomaly +
+          0.85 * e * Math.sign(Math.sin(normalizedMeanAnomaly) || 1);
+
+    // Higher iteration cap keeps convergence stable for very eccentric comet orbits.
+    for (let i = 0; i < 15; i += 1) {
+      const sinE = Math.sin(eccentricAnomaly);
+      const cosE = Math.cos(eccentricAnomaly);
       const delta =
-        (eccentricAnomaly - e * Math.sin(eccentricAnomaly) - meanAnomaly) /
-        Math.max(1e-7, 1 - e * Math.cos(eccentricAnomaly));
+        (eccentricAnomaly - e * sinE - normalizedMeanAnomaly) /
+        Math.max(1e-7, 1 - e * cosE);
       eccentricAnomaly -= delta;
-      if (Math.abs(delta) < 1e-7) break;
+      if (Math.abs(delta) < 1e-10) break;
     }
     return eccentricAnomaly;
   }
