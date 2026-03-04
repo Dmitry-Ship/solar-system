@@ -38,7 +38,13 @@
 
     return {
       mesh,
-      labelElement: app.createLabelElement(labelsLayer, config.label || config.name),
+      labelElement: app.createLabelElement(
+        labelsLayer,
+        config.label || config.name,
+        {
+          objectType: config.objectType
+        }
+      ),
       renderRadius: config.renderRadius || 0,
       minPixelRadius: config.minPixelRadius || 1,
       orbitalSource: config.orbitalSource || null,
@@ -70,7 +76,13 @@
 
     return {
       mesh,
-      labelElement: app.createLabelElement(labelsLayer, config.label || config.name || ""),
+      labelElement: app.createLabelElement(
+        labelsLayer,
+        config.label || config.name || "",
+        {
+          objectType: config.objectType
+        }
+      ),
       renderRadius: 0,
       minPixelRadius: 0,
       labelAnchorPosition: config.labelAnchorPosition
@@ -124,6 +136,11 @@
   ) {
     const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
     const namesToggleTargetGroups = new Set(["planets", "dwarfPlanets", "comets"]);
+    const labelObjectTypeByGroupKey = {
+      planets: "planet",
+      dwarfPlanets: "dwarf-planet",
+      comets: "comet"
+    };
 
     for (const group of sceneData.orbitRenderGroups) {
       const sourceBodies = sceneData[group.key] || [];
@@ -143,6 +160,7 @@
             renderRadius: sourceBody.renderRadius,
             minPixelRadius: sourceBody.minPixelRadius || fallbackMinPixelRadius,
             orbitalSource: sourceBody,
+            objectType: labelObjectTypeByGroupKey[group.key] || "orbiting-body",
             togglesWithNamesButton: namesToggleTargetGroups.has(group.key)
           },
           bodyGroup,
@@ -193,6 +211,7 @@
           color: voyager.color,
           renderRadius: voyager.renderRadius,
           minPixelRadius: voyager.minPixelRadius || 2.1,
+          objectType: "spacecraft",
           fixedPosition: voyager.position
         },
         bodyGroup,
@@ -209,6 +228,7 @@
           color: body.color,
           renderRadius: body.renderRadius,
           minPixelRadius: body.minPixelRadius || 1.5,
+          objectType: "interstellar-object",
           fixedPosition: body
         },
         bodyGroup,
@@ -226,6 +246,7 @@
           color: marker.color,
           renderRadius: 0,
           minPixelRadius: marker.minPixelRadius || 2.3,
+          objectType: "directional-marker",
           fixedPosition: marker,
           lit: false
         },
@@ -248,6 +269,7 @@
         color: "#8ccfff",
         renderRadius: 0,
         minPixelRadius: 1,
+        objectType: "boundary",
         lit: false,
         labelAnchorPosition: { x: 0, y: 0, z: 0 },
         labelAnchorRadius: constants.HELIOPAUSE_AU,
@@ -276,6 +298,7 @@
           y: heliopauseMarkerDirection.y * oortCloudOuterAu,
           z: heliopauseMarkerDirection.z * oortCloudOuterAu
         },
+        objectType: "boundary",
         labelMarginPixels: 10
       },
       labelsLayer

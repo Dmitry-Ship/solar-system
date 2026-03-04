@@ -446,6 +446,19 @@
     return guideLines;
   }
 
+  function createMatryoshkaSourceGuideShapes(sourceMarkers) {
+    if (!Array.isArray(sourceMarkers) || sourceMarkers.length === 0) {
+      return [];
+    }
+
+    const guideLines = [];
+    for (const sourceMarker of sourceMarkers) {
+      guideLines.push(...createMatryoshkaSourceGuideShape(sourceMarker));
+    }
+
+    return guideLines;
+  }
+
   function createSpacecraftTrajectoryGuideLine(sourceMarker, oppositeSideReferenceMarker) {
     if (!sourceMarker || !oppositeSideReferenceMarker) return null;
 
@@ -557,17 +570,12 @@
       ...focalRunPoints.slice(1),
       ...turnOutPoints.slice(1)
     ];
-    const labelAnchorPoint =
-      trajectoryPoints[Math.floor(trajectoryPoints.length * 0.64)] || exitPoint;
 
-    return directionalGuideLineFromMarker(sourceMarker, "#ffe8a6", {
+    return directionalGuideLineFromMarker(sourceMarker, "#63ff8a", {
       points: trajectoryPoints,
       opacity: 0.96,
       dashPattern: [10, 6],
-      depthTest: false,
-      label: "spacecraft trajectory",
-      labelAnchorPoint,
-      labelMarginPixels: 10
+      depthTest: false
     });
   }
 
@@ -659,7 +667,8 @@
     const c61Marker = directionalMarkerByName["61 Cygni"] || null;
     const gliese300Marker = directionalMarkerByName["Gliese 300"] || null;
 
-    const directionalGuideLines = createMatryoshkaSourceGuideShape(gliese300Marker);
+    const directionalGuideLines =
+      createMatryoshkaSourceGuideShapes(directionalMarkers);
     const spacecraftTrajectoryGuideLine = createSpacecraftTrajectoryGuideLine(
       c61Marker,
       gliese300Marker

@@ -68,6 +68,38 @@ body {
   white-space: nowrap;
 }
 
+.body-label[data-object-type="planet"] {
+  color: #9fc8ff;
+}
+
+.body-label[data-object-type="dwarf-planet"] {
+  color: #b6e4bf;
+}
+
+.body-label[data-object-type="comet"] {
+  color: #ffd39a;
+}
+
+.body-label[data-object-type="spacecraft"] {
+  color: #a9ffe0;
+}
+
+.body-label[data-object-type="interstellar-object"] {
+  color: #f2c9ff;
+}
+
+.body-label[data-object-type="directional-marker"] {
+  color: #ffe9a0;
+}
+
+.body-label[data-object-type="boundary"] {
+  color: #8fd6ff;
+}
+
+.body-label[data-object-type="guide-line"] {
+  color: #ffe7a2;
+}
+
 .hud p {
   margin: 0.35rem 0;
   font-size: 0.85rem;

@@ -178,7 +178,9 @@
 
     return {
       mesh: anchorObject,
-      labelElement: app.createLabelElement(labelsLayer, rawLabel),
+      labelElement: app.createLabelElement(labelsLayer, rawLabel, {
+        objectType: "guide-line"
+      }),
       renderRadius: 0,
       minPixelRadius: 0,
       requiresDirectionalGuides: true,

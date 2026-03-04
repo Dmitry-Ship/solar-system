@@ -15,10 +15,15 @@
     return layer;
   };
 
-  app.createLabelElement = function createLabelElement(layer, text) {
+  app.createLabelElement = function createLabelElement(layer, text, options = {}) {
     const label = document.createElement("div");
     label.className = "body-label";
     label.textContent = text;
+    const objectType =
+      typeof options.objectType === "string" ? options.objectType.trim() : "";
+    if (objectType) {
+      label.dataset.objectType = objectType;
+    }
     layer.appendChild(label);
     return label;
   };
