@@ -110,7 +110,8 @@
             renderRadius: voyager.renderRadius,
             minPixelRadius: voyager.minPixelRadius || 2.1,
             objectType: "spacecraft",
-            fixedPosition: voyager.position
+            fixedPosition: voyager.position,
+            togglesWithNamesButton: true
           },
           bodyGroup,
           bodyGeometry
