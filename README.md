@@ -12,7 +12,6 @@ Interactive Three.js visualization of the Solar System, dwarf planets, comets, b
 - `src/data.js`: procedural scene-data factories (`createSceneData`).
 - `src/app.js`: runtime bootstrap + frame loop orchestration.
 - `src/app/*.js`: focused runtime modules:
-  - `helpers.js`: cache preparation + generic helpers.
   - `labels.js`: labels DOM layer + body/label scaling updater.
   - `bodies.js`: body runtime creation + orbit/fixed-body builders.
   - `particles.js`: stars/oort/belt builders + belt updater.

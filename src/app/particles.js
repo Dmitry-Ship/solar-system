@@ -127,7 +127,7 @@
   };
 
   app.createAsteroidBeltsUpdater = function createAsteroidBeltsUpdater(options) {
-    const { beltRuntimes, math, normalizeAngle } = options;
+    const { beltRuntimes, math } = options;
     const orbitalPositionScratch = options.orbitalPositionScratch || { x: 0, y: 0, z: 0 };
     const motionTimeScale = options.motionTimeScale ?? 1;
 
@@ -137,7 +137,7 @@
         let offset = 0;
 
         for (const particle of belt.particles) {
-          particle.theta = normalizeAngle(
+          particle.theta = math.normalizeAngle(
             particle.theta + particle.meanMotion * deltaSeconds * motionTimeScale
           );
 

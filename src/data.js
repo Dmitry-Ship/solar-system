@@ -231,6 +231,20 @@
     return points;
   }
 
+  function createLinearPolyline(pointA, pointB, segmentCount) {
+    const safeSegments = Math.max(1, Math.floor(segmentCount || 0));
+    const points = [];
+    for (let index = 0; index <= safeSegments; index += 1) {
+      const t = index / safeSegments;
+      points.push({
+        x: pointA.x + (pointB.x - pointA.x) * t,
+        y: pointA.y + (pointB.y - pointA.y) * t,
+        z: pointA.z + (pointB.z - pointA.z) * t
+      });
+    }
+    return points;
+  }
+
   function resolveGuideLinePoints(marker, options) {
     const fallbackStartPoint =
       options.startPoint ||
@@ -435,49 +449,116 @@
   function createSpacecraftTrajectoryGuideLine(sourceMarker, oppositeSideReferenceMarker) {
     if (!sourceMarker || !oppositeSideReferenceMarker) return null;
 
-    const stopPoint = math.pointOnRadiusAlongDirection(
+    const focalLineOuterPoint = math.pointOnRadiusAlongDirection(
       oppositeSideReferenceMarker,
       -SPACECRAFT_TRAJECTORY_STOP_DISTANCE_AU
     );
-    const focalAxisDirection = math.normalizeVector({
+    const focalLinePoint = math.pointOnRadiusAlongDirection(
+      oppositeSideReferenceMarker,
+      -constants.SOLAR_GRAVITATIONAL_LENS_AU
+    );
+    const focalAxisOutwardDirection = math.normalizeVector({
       x: -oppositeSideReferenceMarker.x,
       y: -oppositeSideReferenceMarker.y,
       z: -oppositeSideReferenceMarker.z
     });
-    const directVector = {
-      x: stopPoint.x - sourceMarker.x,
-      y: stopPoint.y - sourceMarker.y,
-      z: stopPoint.z - sourceMarker.z
+    const focalAxisInwardDirection = {
+      x: -focalAxisOutwardDirection.x,
+      y: -focalAxisOutwardDirection.y,
+      z: -focalAxisOutwardDirection.z
     };
-    const directDistanceAu = Math.hypot(
-      directVector.x,
-      directVector.y,
-      directVector.z
-    );
-    if (directDistanceAu <= 1e-6) return null;
 
-    const straightLineDirection = math.normalizeVector(directVector);
-    const startHandleLengthAu = directDistanceAu * 0.78;
-    const endHandleLengthAu = directDistanceAu * 0.25;
-    const controlPointA = offsetPointAlongDirection(
+    const sourceToFocalOuterVector = {
+      x: focalLineOuterPoint.x - sourceMarker.x,
+      y: focalLineOuterPoint.y - sourceMarker.y,
+      z: focalLineOuterPoint.z - sourceMarker.z
+    };
+    const sourceToFocalOuterDistanceAu = Math.hypot(
+      sourceToFocalOuterVector.x,
+      sourceToFocalOuterVector.y,
+      sourceToFocalOuterVector.z
+    );
+    if (sourceToFocalOuterDistanceAu <= 1e-6) return null;
+
+    const sourceApproachDirection = math.normalizeVector(sourceToFocalOuterVector);
+    const firstTurnStartHandleAu = sourceToFocalOuterDistanceAu * 0.72;
+    const firstTurnEndHandleAu = sourceToFocalOuterDistanceAu * 0.26;
+    const firstTurnControlA = offsetPointAlongDirection(
       sourceMarker,
-      straightLineDirection,
-      startHandleLengthAu
+      sourceApproachDirection,
+      firstTurnStartHandleAu
     );
-    const controlPointB = offsetPointAlongDirection(
-      stopPoint,
-      focalAxisDirection,
-      endHandleLengthAu
+    const firstTurnControlB = offsetPointAlongDirection(
+      focalLineOuterPoint,
+      focalAxisOutwardDirection,
+      firstTurnEndHandleAu
     );
-    const trajectoryPoints = createCubicBezierPolyline(
+    const turnIntoFocalLinePoints = createCubicBezierPolyline(
       sourceMarker,
-      controlPointA,
-      controlPointB,
-      stopPoint,
-      72
+      firstTurnControlA,
+      firstTurnControlB,
+      focalLineOuterPoint,
+      54
     );
+    const focalRunPoints = createLinearPolyline(
+      focalLineOuterPoint,
+      focalLinePoint,
+      26
+    );
+
+    const exitPoint = math.pointOnRadiusAlongDirection(
+      sourceMarker,
+      -SPACECRAFT_TRAJECTORY_STOP_DISTANCE_AU
+    );
+    const focalToExitVector = {
+      x: exitPoint.x - focalLinePoint.x,
+      y: exitPoint.y - focalLinePoint.y,
+      z: exitPoint.z - focalLinePoint.z
+    };
+    const focalToExitDistanceAu = Math.hypot(
+      focalToExitVector.x,
+      focalToExitVector.y,
+      focalToExitVector.z
+    );
+    if (focalToExitDistanceAu <= 1e-6) return null;
+
+    const exitDirection = math.normalizeVector({
+      x: -sourceMarker.x,
+      y: -sourceMarker.y,
+      z: -sourceMarker.z
+    });
+    const secondTurnStartHandleAu = Math.max(
+      constants.SOLAR_GRAVITATIONAL_LENS_AU * 0.38,
+      focalToExitDistanceAu * 0.28
+    );
+    const secondTurnEndHandleAu = Math.max(
+      constants.HELIOPAUSE_AU * 1.1,
+      focalToExitDistanceAu * 0.2
+    );
+    const secondTurnControlA = offsetPointAlongDirection(
+      focalLinePoint,
+      focalAxisInwardDirection,
+      secondTurnStartHandleAu
+    );
+    const secondTurnControlB = offsetPointAlongDirection(
+      exitPoint,
+      exitDirection,
+      -secondTurnEndHandleAu
+    );
+    const turnOutPoints = createCubicBezierPolyline(
+      focalLinePoint,
+      secondTurnControlA,
+      secondTurnControlB,
+      exitPoint,
+      56
+    );
+    const trajectoryPoints = [
+      ...turnIntoFocalLinePoints,
+      ...focalRunPoints.slice(1),
+      ...turnOutPoints.slice(1)
+    ];
     const labelAnchorPoint =
-      trajectoryPoints[Math.floor(trajectoryPoints.length * 0.58)] || stopPoint;
+      trajectoryPoints[Math.floor(trajectoryPoints.length * 0.64)] || exitPoint;
 
     return directionalGuideLineFromMarker(sourceMarker, "#ffe8a6", {
       points: trajectoryPoints,
@@ -514,6 +595,32 @@
     };
   }
 
+  function prepareOrbitGroupBodies(
+    sourceBodies,
+    group,
+    orbitOpacityForBodyRadius
+  ) {
+    const shouldUseRadiusOrbitOpacity = group.key !== "comets";
+    const groupOrbitColor = group.orbitColor || constants.ORBIT_COLOR;
+
+    for (const body of sourceBodies) {
+      body.orbitRadius = body.au;
+      body.renderRadius = body.radiusKm / constants.KM_PER_AU;
+      body.orbitColor = groupOrbitColor;
+      body.orbitOpacity = shouldUseRadiusOrbitOpacity
+        ? orbitOpacityForBodyRadius(body.radiusKm)
+        : 0.1;
+      body.orbitPath = math.orbitPoints(
+        body.orbitRadius,
+        body.inclination,
+        body.node,
+        group.segments,
+        body.eccentricity,
+        body.periapsisArg
+      );
+    }
+  }
+
   function createSceneData() {
     const planets = seedBodies(PLANET_DEFINITIONS, constants.ORBIT_COLOR);
     const dwarfPlanets = seedBodies(
@@ -522,6 +629,17 @@
     );
     const comets = seedBodies(COMET_DEFINITIONS, constants.ORBIT_COLOR);
     const orbitingBodies = [...planets, ...dwarfPlanets];
+    const orbitOpacityForBodyRadius = createOrbitOpacityCalculator(orbitingBodies);
+    const orbitGroupBodies = {
+      planets,
+      dwarfPlanets,
+      comets
+    };
+
+    for (const group of ORBIT_RENDER_GROUPS) {
+      const sourceBodies = orbitGroupBodies[group.key] || [];
+      prepareOrbitGroupBodies(sourceBodies, group, orbitOpacityForBodyRadius);
+    }
 
     const directionalMarkers = DIRECTIONAL_MARKER_DEFINITIONS.map((definition) =>
       markerOnSphereFromRaDec(
@@ -550,20 +668,33 @@
       directionalGuideLines.push(spacecraftTrajectoryGuideLine);
     }
 
+    const voyagers = VOYAGERS.map((voyager) => ({
+      ...voyager,
+      position: { ...voyager.position },
+      renderRadius: voyager.radiusKm / constants.KM_PER_AU
+    }));
+    const driftingBodies = createDriftingBodies(DRIFTING_BODIES).map((body) => ({
+      ...body,
+      renderRadius: body.radiusKm / constants.KM_PER_AU
+    }));
+    const asteroidBelts = ASTEROID_BELT_CONFIGS.map((beltConfig) => {
+      const belt = createAsteroidBelt(beltConfig);
+      for (const particle of belt.particles) {
+        particle.orbitRadius = particle.au;
+      }
+      return belt;
+    });
+
     return {
       planets,
       dwarfPlanets,
       comets,
       orbitRenderGroups: ORBIT_RENDER_GROUPS,
-      orbitOpacityForBodyRadius: createOrbitOpacityCalculator(orbitingBodies),
-      voyagers: VOYAGERS.map((voyager) => ({
-        ...voyager,
-        position: { ...voyager.position }
-      })),
-      driftingBodies: createDriftingBodies(DRIFTING_BODIES),
+      voyagers,
+      driftingBodies,
       directionalMarkers,
       directionalGuideLines,
-      asteroidBelts: ASTEROID_BELT_CONFIGS.map((belt) => createAsteroidBelt(belt)),
+      asteroidBelts,
       oortCloud: createOortCloud(OORT_CLOUD_CONFIG),
       stars: createStars(1700)
     };

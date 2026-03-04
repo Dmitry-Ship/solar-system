@@ -284,13 +284,13 @@
   };
 
   app.createOrbitingBodiesUpdater = function createOrbitingBodiesUpdater(options) {
-    const { orbitalSourceBodies, bodyRuntimes, math, normalizeAngle } = options;
+    const { orbitalSourceBodies, bodyRuntimes, math } = options;
     const orbitalPositionScratch = options.orbitalPositionScratch || { x: 0, y: 0, z: 0 };
     const motionTimeScale = options.motionTimeScale ?? 1;
 
     return function updateOrbitingBodies(deltaSeconds) {
       for (const body of orbitalSourceBodies) {
-        body.theta = normalizeAngle(
+        body.theta = math.normalizeAngle(
           body.theta + body.meanMotion * deltaSeconds * motionTimeScale
         );
       }

@@ -19,6 +19,13 @@
     return result;
   }
 
+  function normalizeAngle(value) {
+    const turn = Math.PI * 2;
+    let result = value % turn;
+    if (result < 0) result += turn;
+    return result;
+  }
+
   function normalizeVector(vector) {
     const length = Math.hypot(vector.x, vector.y, vector.z);
     if (length < 1e-9) return { x: 0, y: 0, z: 0 };
@@ -221,6 +228,7 @@
     clamp,
     degToRad,
     equatorialToEcliptic,
+    normalizeAngle,
     normalizeVector,
     orbitPlanePointInto,
     orbitPoints,

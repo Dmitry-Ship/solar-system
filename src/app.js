@@ -19,42 +19,12 @@
       );
     }
 
-    const requiredAppFunctions = [
-      "normalizeAngle",
-      "prepareSceneCaches",
-      "createLabelsLayer",
-      "createBodyRuntime",
-      "createSelectiveBloomRenderer",
-      "buildStarField",
-      "buildOortCloud",
-      "buildHeliosphereShells",
-      "buildGuideLines",
-      "buildAsteroidBelts",
-      "buildOrbitingBodies",
-      "buildFixedBodies",
-      "setupHudControls",
-      "setInitialCameraPlacement",
-      "updateHeliosphereShells",
-      "updateGuideLineVisuals",
-      "applyGuideLineVisibility",
-      "createOrbitingBodiesUpdater",
-      "createAsteroidBeltsUpdater",
-      "createBodyVisualScaleAndLabelsUpdater"
-    ];
-
-    for (const functionName of requiredAppFunctions) {
-      if (typeof app[functionName] !== "function") {
-        throw new Error(`SolarSystem bootstrap failed: missing app.${functionName}.`);
-      }
-    }
-
     const canvas = document.getElementById("scene");
     if (!(canvas instanceof HTMLCanvasElement)) {
       throw new Error('Expected canvas element with id "scene".');
     }
 
     const sceneData = data.createSceneData();
-    app.prepareSceneCaches(sceneData, constants, math);
 
     const state = {
       showBodyNames: true,
@@ -205,14 +175,12 @@
       orbitalSourceBodies,
       bodyRuntimes,
       math,
-      normalizeAngle: app.normalizeAngle,
       orbitalPositionScratch,
       motionTimeScale
     });
     const updateAsteroidBelts = app.createAsteroidBeltsUpdater({
       beltRuntimes,
       math,
-      normalizeAngle: app.normalizeAngle,
       orbitalPositionScratch,
       motionTimeScale
     });
