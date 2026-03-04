@@ -1,6 +1,13 @@
 (() => {
-  const namespace = (window.SolarSystem = window.SolarSystem || {});
-  const { constants } = namespace;
+  const namespace = window.SolarSystem;
+  if (!namespace || !namespace.domain || !namespace.domain.catalogs) {
+    throw new Error("raw definitions bootstrap failed: missing domain catalogs namespace.");
+  }
+
+  const constants = namespace.domain.constants?.SIMULATION_CONSTANTS;
+  if (!constants) {
+    throw new Error("raw definitions bootstrap failed: missing simulation constants.");
+  }
 
   const PLANET_DEFINITIONS = [
     {
@@ -627,7 +634,7 @@
     }
   ];
 
-  namespace.dataDefinitions = Object.freeze({
+  namespace.domain.catalogs.rawDefinitions = Object.freeze({
     PLANET_DEFINITIONS,
     DWARF_PLANET_DEFINITIONS,
     COMET_DEFINITIONS,

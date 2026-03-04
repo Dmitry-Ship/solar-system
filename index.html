@@ -6,10 +6,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Solar System and Oort Cloud</title>
   <link rel="stylesheet" href="styles.css" />
-  <script defer src="src/constants.js"></script>
-  <script defer src="src/math.js"></script>
-  <script defer src="src/data/definitions.js"></script>
-  <script defer src="src/data.js"></script>
+
+  <script defer src="src/core/namespace.js"></script>
+  <script defer src="src/core/contracts.js"></script>
+  <script defer src="src/core/service-container.js"></script>
+  <script defer src="src/core/lifecycle.js"></script>
+
+  <script defer src="src/domain/constants/simulation-constants.js"></script>
+  <script defer src="src/domain/math/orbital-math.js"></script>
+  <script defer src="src/domain/models/orbital-body.js"></script>
+  <script defer src="src/domain/models/fixed-body.js"></script>
+  <script defer src="src/domain/models/guide-line.js"></script>
+  <script defer src="src/domain/models/scene-data.js"></script>
+  <script defer src="src/domain/catalogs/raw-definitions.js"></script>
+  <script defer src="src/domain/catalogs/planet-catalog.js"></script>
+  <script defer src="src/domain/catalogs/dwarf-planet-catalog.js"></script>
+  <script defer src="src/domain/catalogs/comet-catalog.js"></script>
+  <script defer src="src/domain/catalogs/marker-catalog.js"></script>
+  <script defer src="src/domain/catalogs/belt-catalog.js"></script>
+  <script defer src="src/domain/catalogs/shell-catalog.js"></script>
+
+  <script defer src="src/application/state/app-state.js"></script>
+  <script defer src="src/application/factories/guide-line-factory.js"></script>
+  <script defer src="src/application/factories/scene-data-factory.js"></script>
+  <script defer src="src/application/services/orbit-propagation-service.js"></script>
+  <script defer src="src/application/services/asteroid-belt-service.js"></script>
+  <script defer src="src/application/services/label-projection-service.js"></script>
+  <script defer src="src/application/services/camera-fit-service.js"></script>
+  <script defer src="src/application/systems/simulation-system.js"></script>
+
   <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/Pass.js"></script>
@@ -19,15 +44,25 @@
   <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-  <script defer src="src/app/labels.js"></script>
-  <script defer src="src/app/bodies.js"></script>
-  <script defer src="src/app/particles.js"></script>
-  <script defer src="src/app/shells.js"></script>
-  <script defer src="src/app/guides.js"></script>
-  <script defer src="src/app/hud.js"></script>
-  <script defer src="src/app/camera.js"></script>
-  <script defer src="src/app/postprocessing.js"></script>
-  <script defer src="src/app.js"></script>
+
+  <script defer src="src/infrastructure/dom/labels-layer.js"></script>
+  <script defer src="src/infrastructure/dom/hud-controller.js"></script>
+  <script defer src="src/infrastructure/three/renderers/body-renderer.js"></script>
+  <script defer src="src/infrastructure/three/renderers/orbit-renderer.js"></script>
+  <script defer src="src/infrastructure/three/renderers/particle-renderer.js"></script>
+  <script defer src="src/infrastructure/three/renderers/guide-renderer.js"></script>
+  <script defer src="src/infrastructure/three/renderers/shell-renderer.js"></script>
+  <script defer src="src/infrastructure/three/renderers/postprocessing-renderer.js"></script>
+  <script defer src="src/infrastructure/three/controllers/camera-controller.js"></script>
+
+  <script defer src="src/compat/constants-compat.js"></script>
+  <script defer src="src/compat/math-compat.js"></script>
+  <script defer src="src/compat/data-compat.js"></script>
+  <script defer src="src/compat/app-compat.js"></script>
+
+  <script defer src="src/runtime/frame-loop.js"></script>
+  <script defer src="src/runtime/solar-system-application.js"></script>
+  <script defer src="src/debug/smoke-checks.js"></script>
 </head>
 
 <body>

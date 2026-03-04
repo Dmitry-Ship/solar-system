@@ -1,8 +1,12 @@
 (() => {
-  const namespace = (window.SolarSystem = window.SolarSystem || {});
+  const namespace = window.SolarSystem;
+  if (!namespace || !namespace.domain || !namespace.domain.constants) {
+    throw new Error("simulation constants bootstrap failed: missing domain constants namespace.");
+  }
+
   const maxZoomAu = 6000;
 
-  namespace.constants = Object.freeze({
+  const SIMULATION_CONSTANTS = Object.freeze({
     SCENE_OUTER_AU: 3000,
     HELIOPAUSE_AU: 120,
     HELIOPAUSE_MIXING_BAND_AU: 16,
@@ -24,4 +28,6 @@
     SUN_BLOOM_RADIUS: 0.55,
     SUN_BLOOM_THRESHOLD: 0.72
   });
+
+  namespace.domain.constants.SIMULATION_CONSTANTS = SIMULATION_CONSTANTS;
 })();
