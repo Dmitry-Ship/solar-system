@@ -25,8 +25,4 @@
   root.infrastructure.three.controllers =
     root.infrastructure.three.controllers || {};
   root.infrastructure.dom = root.infrastructure.dom || {};
-
-  root.core.getNamespace = function getNamespace() {
-    return root;
-  };
 })();

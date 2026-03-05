@@ -21,7 +21,10 @@
   const PostprocessingRenderer =
     namespace.infrastructure.three.renderers.PostprocessingRenderer;
   const CameraController = namespace.infrastructure.three.controllers.CameraController;
-  const FrameLoop = namespace.runtime.FrameLoop;
+  const FrameScheduler = namespace.core.FrameScheduler;
+  if (!FrameScheduler) {
+    throw new Error("runtime bootstrap failed: missing FrameScheduler.");
+  }
 
   class SolarSystemApplication {
     constructor(options = {}) {
@@ -32,6 +35,9 @@
 
       this.initialized = false;
       this.frameLoop = null;
+      this.canvas = null;
+      this.labelsLayerElement = null;
+
       this.handleResize = this.resize.bind(this);
       this.handlePointerDown = this.onPointerDown.bind(this);
       this.handlePointerUp = this.onPointerUp.bind(this);
@@ -55,84 +61,122 @@
       }
     }
 
-    initialize() {
-      if (this.initialized) return;
+    getViewportSize() {
+      return {
+        width: Math.max(1, window.innerWidth),
+        height: Math.max(1, window.innerHeight)
+      };
+    }
 
-      this.assertThreeDependencies();
+    getPixelRatio() {
+      return Math.min(window.devicePixelRatio || 1, 2);
+    }
 
-      const THREE = window.THREE;
+    createCanvas() {
       const canvas = document.getElementById(this.canvasId);
       if (!(canvas instanceof HTMLCanvasElement)) {
-        throw new Error(`Expected canvas element with id \"${this.canvasId}\".`);
+        throw new Error(`Expected canvas element with id "${this.canvasId}".`);
       }
+
       this.canvas = canvas;
+      return canvas;
+    }
 
-      this.sceneData = this.data.createSceneData();
-      this.state = new AppState(this.constants);
-
-      this.renderer = new THREE.WebGLRenderer({
+    createRenderer(THREE) {
+      const { width, height } = this.getViewportSize();
+      const renderer = new THREE.WebGLRenderer({
         canvas: this.canvas,
         antialias: true,
         powerPreference: "high-performance"
       });
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-      if ("outputColorSpace" in this.renderer && THREE.SRGBColorSpace) {
-        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-      } else if ("outputEncoding" in this.renderer && THREE.sRGBEncoding !== undefined) {
-        this.renderer.outputEncoding = THREE.sRGBEncoding;
-      }
-      this.renderer.setClearColor(this.constants.BACKGROUND_COLOR, 1);
 
-      this.scene = new THREE.Scene();
-      this.camera = new THREE.PerspectiveCamera(
+      renderer.setPixelRatio(this.getPixelRatio());
+      renderer.setSize(width, height, false);
+      if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) {
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+      } else if ("outputEncoding" in renderer && THREE.sRGBEncoding !== undefined) {
+        renderer.outputEncoding = THREE.sRGBEncoding;
+      }
+      renderer.setClearColor(this.constants.BACKGROUND_COLOR, 1);
+
+      return renderer;
+    }
+
+    createScene(THREE) {
+      const scene = new THREE.Scene();
+      scene.add(new THREE.AmbientLight("#ffffff", 0.5));
+      scene.add(new THREE.PointLight("#ffd794", 1.2, 0, 0));
+      return scene;
+    }
+
+    createCamera(THREE) {
+      const { width, height } = this.getViewportSize();
+      return new THREE.PerspectiveCamera(
         48,
-        Math.max(1, window.innerWidth) / Math.max(1, window.innerHeight),
+        width / height,
         this.constants.NEAR_CLIP,
         this.constants.SCENE_OUTER_AU * 12
       );
+    }
 
-      this.postprocessingRenderer = new PostprocessingRenderer({
+    createPostprocessingRenderer() {
+      const { width, height } = this.getViewportSize();
+      return new PostprocessingRenderer({
         renderer: this.renderer,
         scene: this.scene,
         camera: this.camera,
-        width: Math.max(1, window.innerWidth),
-        height: Math.max(1, window.innerHeight),
+        width,
+        height,
         bloomStrength: this.constants.SUN_BLOOM_STRENGTH,
         bloomRadius: this.constants.SUN_BLOOM_RADIUS,
         bloomThreshold: this.constants.SUN_BLOOM_THRESHOLD
       });
+    }
 
-      this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
-      this.controls.enableDamping = true;
-      this.controls.dampingFactor = 0.08;
-      this.controls.enablePan = false;
-      this.controls.rotateSpeed = 0.68;
-      this.controls.zoomSpeed = 0.05;
-      this.controls.minDistance = this.state.minCamera;
-      this.controls.maxDistance = this.state.maxCamera;
-      this.controls.target.set(0, 0, 0);
+    createControls(THREE) {
+      const controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.enablePan = false;
+      controls.rotateSpeed = 0.68;
+      controls.zoomSpeed = 0.05;
+      controls.minDistance = this.state.minCamera;
+      controls.maxDistance = this.state.maxCamera;
+      controls.target.set(0, 0, 0);
+      return controls;
+    }
 
-      this.canvas.addEventListener("pointerdown", this.handlePointerDown);
-      window.addEventListener("pointerup", this.handlePointerUp);
+    createSceneGroups(THREE) {
+      return {
+        orbitGroup: new THREE.Group(),
+        shellGroup: new THREE.Group(),
+        guideLineGroup: new THREE.Group(),
+        particleGroup: new THREE.Group(),
+        bodyGroup: new THREE.Group()
+      };
+    }
 
-      this.labelsLayer = new LabelsLayer();
-      this.labelsLayerElement = this.labelsLayer.createLayer();
-
-      this.scene.add(new THREE.AmbientLight("#ffffff", 0.5));
-      this.scene.add(new THREE.PointLight("#ffd794", 1.2, 0, 0));
-
-      this.orbitGroup = new THREE.Group();
-      this.shellGroup = new THREE.Group();
-      this.guideLineGroup = new THREE.Group();
-      this.particleGroup = new THREE.Group();
-      this.bodyGroup = new THREE.Group();
-
+    attachSceneGroups() {
       this.scene.add(this.orbitGroup);
       this.scene.add(this.shellGroup);
       this.scene.add(this.guideLineGroup);
       this.scene.add(this.particleGroup);
       this.scene.add(this.bodyGroup);
+    }
+
+    initializeState() {
+      this.sceneData = this.data.createSceneData();
+      this.state = new AppState(this.constants);
+    }
+
+    initializeLabelsLayer() {
+      this.labelsLayer = new LabelsLayer();
+      this.labelsLayerElement = this.labelsLayer.createLayer();
+    }
+
+    initializeRuntimeCollections(THREE) {
+      Object.assign(this, this.createSceneGroups(THREE));
+      this.attachSceneGroups();
 
       this.bodyGeometry = new THREE.SphereGeometry(1, 20, 12);
       this.bodyRuntimes = [];
@@ -140,7 +184,9 @@
       this.beltRuntimes = [];
       this.orbitalSourceBodies = [];
       this.orbitalPositionScratch = { x: 0, y: 0, z: 0 };
+    }
 
+    initializeRenderers() {
       this.bodyRenderer = new BodyRenderer({ labelsLayer: this.labelsLayer });
       this.orbitRenderer = new OrbitRenderer({ bodyRenderer: this.bodyRenderer });
       this.particleRenderer = new ParticleRenderer();
@@ -149,7 +195,9 @@
         constants: this.constants,
         shellCatalog: namespace.domain.catalogs.shellCatalog
       });
+    }
 
+    buildSceneContents() {
       this.particleRenderer.buildStarField(this.sceneData, this.particleGroup);
       this.particleRenderer.buildOortCloud(this.sceneData, this.particleGroup);
       this.shellRuntimes = this.shellRenderer.buildHeliosphereShells(this.shellGroup);
@@ -182,7 +230,10 @@
         this.bodyRuntimes,
         this.constants
       );
+      this.createSunRuntime();
+    }
 
+    createSunRuntime() {
       const sunRuntime = this.bodyRenderer.createBodyRuntime(
         {
           name: "Sun",
@@ -197,7 +248,9 @@
       );
       this.bodyRuntimes.push(sunRuntime);
       this.postprocessingRenderer.markBloomObject(sunRuntime.mesh);
+    }
 
+    initializeHud() {
       this.hudController = new HudController({
         state: this.state,
         controls: this.controls,
@@ -213,7 +266,9 @@
         )
       });
       this.hud = this.hudController.setup();
+    }
 
+    initializeCameraController() {
       this.cameraController = new CameraController({
         camera: this.camera,
         controls: this.controls,
@@ -224,7 +279,9 @@
         })
       });
       this.cameraController.setInitialPlacement();
+    }
 
+    initializeSimulationServices(THREE) {
       this.orbitPropagationService = new OrbitPropagationService({
         orbitalSourceBodies: this.orbitalSourceBodies,
         bodyRuntimes: this.bodyRuntimes,
@@ -245,7 +302,9 @@
         state: this.state,
         projectionScratch: new THREE.Vector3()
       });
+    }
 
+    initializeSimulationSystem() {
       this.simulationSystem = new SimulationSystem({
         orbitPropagationService: this.orbitPropagationService,
         asteroidBeltService: this.asteroidBeltService,
@@ -258,11 +317,45 @@
         guideLineRuntimes: this.guideLineRuntimes,
         camera: this.camera
       });
+    }
 
+    registerEvents() {
+      this.canvas.addEventListener("pointerdown", this.handlePointerDown);
+      window.addEventListener("pointerup", this.handlePointerUp);
       window.addEventListener("resize", this.handleResize);
+    }
+
+    applyInitialRenderState() {
       this.resize();
       this.orbitRenderer.applyOrbitVisibility(this.state, this.orbitGroup);
       this.guideRenderer.applyGuideLineVisibility(this.state, this.guideLineRuntimes);
+    }
+
+    initialize() {
+      if (this.initialized) return;
+
+      this.assertThreeDependencies();
+
+      const THREE = window.THREE;
+      this.createCanvas();
+      this.initializeState();
+
+      this.renderer = this.createRenderer(THREE);
+      this.scene = this.createScene(THREE);
+      this.camera = this.createCamera(THREE);
+      this.postprocessingRenderer = this.createPostprocessingRenderer();
+      this.controls = this.createControls(THREE);
+
+      this.initializeLabelsLayer();
+      this.initializeRuntimeCollections(THREE);
+      this.initializeRenderers();
+      this.buildSceneContents();
+      this.initializeHud();
+      this.initializeCameraController();
+      this.initializeSimulationServices(THREE);
+      this.initializeSimulationSystem();
+      this.registerEvents();
+      this.applyInitialRenderState();
 
       this.initialized = true;
     }
@@ -282,9 +375,8 @@
     resize() {
       if (!this.initialized && !this.renderer) return;
 
-      const width = Math.max(1, window.innerWidth);
-      const height = Math.max(1, window.innerHeight);
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      const { width, height } = this.getViewportSize();
+      const pixelRatio = this.getPixelRatio();
 
       this.renderer.setPixelRatio(pixelRatio);
       this.renderer.setSize(width, height, false);
@@ -309,7 +401,7 @@
         return;
       }
 
-      this.frameLoop = new FrameLoop((deltaSeconds, elapsedSeconds) => {
+      this.frameLoop = new FrameScheduler((deltaSeconds, elapsedSeconds) => {
         this.simulationSystem.update(deltaSeconds, elapsedSeconds);
       });
       this.frameLoop.start();
@@ -326,7 +418,12 @@
       window.removeEventListener("resize", this.handleResize);
       window.removeEventListener("pointerup", this.handlePointerUp);
       if (this.canvas) {
+        this.canvas.classList.remove("dragging");
         this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
+      }
+      if (this.labelsLayerElement) {
+        this.labelsLayerElement.remove();
+        this.labelsLayerElement = null;
       }
       this.initialized = false;
     }

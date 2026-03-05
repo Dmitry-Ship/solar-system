@@ -4,12 +4,12 @@ Interactive Three.js visualization of the Solar System, dwarf planets, comets, b
 
 ## Architecture layers
 
-- `src/core`: namespace bootstrap, lifecycle contracts, DI container, frame scheduler.
+- `src/core`: namespace bootstrap and frame scheduler.
 - `src/domain`: immutable constants/catalogs, orbital math utilities, and domain models.
 - `src/application`: scene-data factories, state, simulation services, and update system.
 - `src/infrastructure`: Three.js renderers/controllers and DOM adapters.
 - `src/compat`: legacy `window.SolarSystem.{constants,math,data,app}` facades.
-- `src/runtime`: composition root (`SolarSystemApplication`) and frame loop wiring.
+- `src/runtime`: composition root (`SolarSystemApplication`) and bootstrap.
 - `src/debug`: smoke-check harness (`window.SolarSystem.debug.runSmokeChecks()`).
 
 ## Compatibility contract

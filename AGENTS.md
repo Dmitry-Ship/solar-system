@@ -4,7 +4,7 @@
 
 - `index.html`: document shell and script loading order by architecture layer.
 - `styles.css`: visual styles for HUD and labels.
-- `src/core/*.js`: namespace bootstrap, contracts, DI container, frame lifecycle.
+- `src/core/*.js`: namespace bootstrap and frame lifecycle.
 - `src/domain/constants/*.js`: immutable simulation constants.
 - `src/domain/math/*.js`: deterministic orbital math utilities.
 - `src/domain/models/*.js`: domain model wrappers for immutable definitions.
@@ -17,7 +17,7 @@
 - `src/infrastructure/three/renderers/*.js`: Three.js render/runtime modules.
 - `src/infrastructure/three/controllers/*.js`: camera and control adapters.
 - `src/compat/*.js`: legacy `window.SolarSystem.{constants,math,data,app}` facades.
-- `src/runtime/*.js`: composition root and animation frame loop.
+- `src/runtime/*.js`: composition root and runtime bootstrap.
 - `src/debug/*.js`: smoke-check/debug utilities.
 
 ## Design principles
