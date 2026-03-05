@@ -21,6 +21,14 @@
         this.maxMatryoshkaFocalOffsetAu +
         this.markerCatalog.DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU;
       this.spacecraftTrajectoryStopDistanceAu = 2500;
+      this.spacecraftTrajectorySolarAssistApproachDistanceAu =
+        this.constants.HELIOPAUSE_AU * 0.9;
+      this.spacecraftTrajectorySolarAssistDepartureDistanceAu =
+        this.constants.HELIOPAUSE_AU * 1.2;
+      this.spacecraftTrajectorySolarAssistPerihelionAu = Math.max(
+        (this.constants.SUN_RADIUS_KM / this.constants.KM_PER_AU) * 80,
+        0.35
+      );
     }
 
     clonePoint(point) {
@@ -86,6 +94,154 @@
         });
       }
       return points;
+    }
+
+    vectorLength(vector) {
+      return Math.hypot(vector.x, vector.y, vector.z);
+    }
+
+    distanceBetweenPoints(pointA, pointB) {
+      return Math.hypot(pointB.x - pointA.x, pointB.y - pointA.y, pointB.z - pointA.z);
+    }
+
+    crossVectors(vectorA, vectorB) {
+      return {
+        x: vectorA.y * vectorB.z - vectorA.z * vectorB.y,
+        y: vectorA.z * vectorB.x - vectorA.x * vectorB.z,
+        z: vectorA.x * vectorB.y - vectorA.y * vectorB.x
+      };
+    }
+
+    dotVectors(vectorA, vectorB) {
+      return vectorA.x * vectorB.x + vectorA.y * vectorB.y + vectorA.z * vectorB.z;
+    }
+
+    resolveSpacecraftTrajectoryTurnNormal(entryDirection, exitDirection) {
+      let turnNormal = this.crossVectors(entryDirection, exitDirection);
+      if (this.vectorLength(turnNormal) <= 1e-6) {
+        const fallbackAxis =
+          Math.abs(entryDirection.z) < 0.92
+            ? { x: 0, y: 0, z: 1 }
+            : { x: 0, y: 1, z: 0 };
+        turnNormal = this.crossVectors(entryDirection, fallbackAxis);
+      }
+      return this.math.normalizeVector(turnNormal);
+    }
+
+    buildSpacecraftSolarAssistPoints(
+      focalLinePoint,
+      exitPoint,
+      focalAxisInwardDirection,
+      exitDirection
+    ) {
+      const entryDirection = this.math.normalizeVector(focalLinePoint);
+      const turnNormal = this.resolveSpacecraftTrajectoryTurnNormal(
+        entryDirection,
+        exitDirection
+      );
+      const perihelionBlendVector = {
+        x: entryDirection.x + exitDirection.x,
+        y: entryDirection.y + exitDirection.y,
+        z: entryDirection.z + exitDirection.z
+      };
+      let perihelionDirection =
+        this.vectorLength(perihelionBlendVector) > 1e-6
+          ? this.math.normalizeVector(perihelionBlendVector)
+          : this.math.normalizeVector(this.crossVectors(turnNormal, entryDirection));
+      if (this.vectorLength(perihelionDirection) <= 1e-6) {
+        perihelionDirection = entryDirection;
+      }
+
+      const perihelionTangentVector = {
+        x: exitDirection.x - entryDirection.x,
+        y: exitDirection.y - entryDirection.y,
+        z: exitDirection.z - entryDirection.z
+      };
+      let perihelionTangentDirection =
+        this.vectorLength(perihelionTangentVector) > 1e-6
+          ? this.math.normalizeVector(perihelionTangentVector)
+          : this.math.normalizeVector(this.crossVectors(turnNormal, perihelionDirection));
+      if (this.dotVectors(perihelionTangentDirection, exitDirection) < 0) {
+        perihelionTangentDirection = {
+          x: -perihelionTangentDirection.x,
+          y: -perihelionTangentDirection.y,
+          z: -perihelionTangentDirection.z
+        };
+      }
+
+      const solarAssistApproachPoint = this.math.pointOnRadiusAlongDirection(
+        focalLinePoint,
+        this.spacecraftTrajectorySolarAssistApproachDistanceAu
+      );
+      const solarAssistDeparturePoint = this.math.pointOnRadiusAlongDirection(
+        exitDirection,
+        this.spacecraftTrajectorySolarAssistDepartureDistanceAu
+      );
+      const perihelionPoint = this.math.pointOnRadiusAlongDirection(
+        perihelionDirection,
+        this.spacecraftTrajectorySolarAssistPerihelionAu
+      );
+
+      const approachToPerihelionDistanceAu = this.distanceBetweenPoints(
+        solarAssistApproachPoint,
+        perihelionPoint
+      );
+      const perihelionToDepartureDistanceAu = this.distanceBetweenPoints(
+        perihelionPoint,
+        solarAssistDeparturePoint
+      );
+      const solarAssistApproachHandleAu = approachToPerihelionDistanceAu * 0.55;
+      const perihelionHandleAu =
+        Math.min(approachToPerihelionDistanceAu, perihelionToDepartureDistanceAu) * 0.42;
+      const solarAssistDepartureHandleAu = perihelionToDepartureDistanceAu * 0.52;
+
+      const solarApproachRunPoints = this.createLinearPolyline(
+        focalLinePoint,
+        solarAssistApproachPoint,
+        22
+      );
+      const solarAssistEntryPoints = this.createCubicBezierPolyline(
+        solarAssistApproachPoint,
+        this.offsetPointAlongDirection(
+          solarAssistApproachPoint,
+          focalAxisInwardDirection,
+          solarAssistApproachHandleAu
+        ),
+        this.offsetPointAlongDirection(
+          perihelionPoint,
+          perihelionTangentDirection,
+          -perihelionHandleAu
+        ),
+        perihelionPoint,
+        48
+      );
+      const solarAssistExitPoints = this.createCubicBezierPolyline(
+        perihelionPoint,
+        this.offsetPointAlongDirection(
+          perihelionPoint,
+          perihelionTangentDirection,
+          perihelionHandleAu
+        ),
+        this.offsetPointAlongDirection(
+          solarAssistDeparturePoint,
+          exitDirection,
+          -solarAssistDepartureHandleAu
+        ),
+        solarAssistDeparturePoint,
+        52
+      );
+      const outboundCruisePoints = this.createLinearPolyline(
+        solarAssistDeparturePoint,
+        exitPoint,
+        32
+      );
+
+      return [
+        ...solarApproachRunPoints,
+        ...solarAssistEntryPoints.slice(1),
+        ...solarAssistExitPoints.slice(1),
+        ...outboundCruisePoints.slice(1)
+      ];
     }
 
     resolveGuideLinePoints(marker, options) {
@@ -368,52 +524,23 @@
         sourceMarker,
         -this.spacecraftTrajectoryStopDistanceAu
       );
-      const focalToExitVector = {
-        x: exitPoint.x - focalLinePoint.x,
-        y: exitPoint.y - focalLinePoint.y,
-        z: exitPoint.z - focalLinePoint.z
-      };
-      const focalToExitDistanceAu = Math.hypot(
-        focalToExitVector.x,
-        focalToExitVector.y,
-        focalToExitVector.z
-      );
-      if (focalToExitDistanceAu <= 1e-6) return null;
-
       const exitDirection = this.math.normalizeVector({
         x: -sourceMarker.x,
         y: -sourceMarker.y,
         z: -sourceMarker.z
       });
-      const secondTurnStartHandleAu = Math.max(
-        this.constants.SOLAR_GRAVITATIONAL_LENS_AU * 0.38,
-        focalToExitDistanceAu * 0.28
-      );
-      const secondTurnEndHandleAu = Math.max(
-        this.constants.HELIOPAUSE_AU * 1.1,
-        focalToExitDistanceAu * 0.2
-      );
-      const secondTurnControlA = this.offsetPointAlongDirection(
+      const solarAssistPoints = this.buildSpacecraftSolarAssistPoints(
         focalLinePoint,
+        exitPoint,
         focalAxisInwardDirection,
-        secondTurnStartHandleAu
+        exitDirection
       );
-      const secondTurnControlB = this.offsetPointAlongDirection(
-        exitPoint,
-        exitDirection,
-        -secondTurnEndHandleAu
-      );
-      const turnOutPoints = this.createCubicBezierPolyline(
-        focalLinePoint,
-        secondTurnControlA,
-        secondTurnControlB,
-        exitPoint,
-        56
-      );
+      if (solarAssistPoints.length < 2) return null;
+
       const trajectoryPoints = [
         ...turnIntoFocalLinePoints,
         ...focalRunPoints.slice(1),
-        ...turnOutPoints.slice(1)
+        ...solarAssistPoints.slice(1)
       ];
 
       return this.directionalGuideLineFromMarker(sourceMarker, "#63ff8a", {
