@@ -159,6 +159,7 @@
         points,
         color,
         renderStyle: options.renderStyle || "line",
+        visibilityKey: options.visibilityKey || "lightRays",
         opacity: options.opacity ?? 0.96,
         showStartRim: options.showStartRim ?? true,
         showEndRim: options.showEndRim ?? true,
@@ -417,6 +418,7 @@
 
       return this.directionalGuideLineFromMarker(sourceMarker, "#63ff8a", {
         points: trajectoryPoints,
+        visibilityKey: "spacecraftTrajectory",
         opacity: 0.96,
         dashPattern: [10, 6],
         depthTest: false

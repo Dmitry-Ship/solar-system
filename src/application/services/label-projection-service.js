@@ -4,6 +4,31 @@
     throw new Error("label projection service bootstrap failed: missing application services namespace.");
   }
 
+  const LIGHT_RAY_VISIBILITY_KEY = "lightRays";
+  const SPACECRAFT_TRAJECTORY_VISIBILITY_KEY = "spacecraftTrajectory";
+
+  function isGuideVisibilityEnabled(state, visibilityKey) {
+    if (!state || !visibilityKey) return true;
+
+    if (visibilityKey === SPACECRAFT_TRAJECTORY_VISIBILITY_KEY) {
+      if (typeof state.showSpacecraftTrajectory === "boolean") {
+        return state.showSpacecraftTrajectory;
+      }
+    } else if (visibilityKey === LIGHT_RAY_VISIBILITY_KEY) {
+      if (typeof state.showLightRays === "boolean") {
+        return state.showLightRays;
+      }
+    } else if (typeof state[visibilityKey] === "boolean") {
+      return state[visibilityKey];
+    }
+
+    if (typeof state.showDirectionalGuides === "boolean") {
+      return state.showDirectionalGuides;
+    }
+
+    return false;
+  }
+
   class LabelProjectionService {
     constructor(options) {
       const THREE = window.THREE;
@@ -42,9 +67,12 @@
 
         if (!runtime.labelElement) continue;
 
+        const guideVisibilityKey =
+          runtime.guideVisibilityKey ||
+          (runtime.requiresDirectionalGuides ? LIGHT_RAY_VISIBILITY_KEY : "");
         if (
           (!this.state.showBodyNames && runtime.togglesWithNamesButton) ||
-          (runtime.requiresDirectionalGuides && !this.state.showDirectionalGuides)
+          !isGuideVisibilityEnabled(this.state, guideVisibilityKey)
         ) {
           runtime.labelElement.style.display = "none";
           continue;

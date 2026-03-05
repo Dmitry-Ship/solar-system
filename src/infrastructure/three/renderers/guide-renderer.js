@@ -13,6 +13,8 @@
   const LIGHT_RAY_MIN_VISIBLE_RADIUS = 1e-8;
   const EDGE_FALLBACK_EPSILON = 1e-12;
   const LIGHT_RAY_RIM_SEGMENTS = 120;
+  const LIGHT_RAY_VISIBILITY_KEY = "lightRays";
+  const SPACECRAFT_TRAJECTORY_VISIBILITY_KEY = "spacecraftTrajectory";
 
   function hasDashPattern(pattern) {
     return Array.isArray(pattern) && pattern.length >= 2;
@@ -155,6 +157,32 @@
     };
   }
 
+  function resolveGuideVisibilityKey(guideLine) {
+    return guideLine.visibilityKey || LIGHT_RAY_VISIBILITY_KEY;
+  }
+
+  function isGuideVisibilityEnabled(state, visibilityKey) {
+    if (!state) return false;
+
+    if (visibilityKey === SPACECRAFT_TRAJECTORY_VISIBILITY_KEY) {
+      if (typeof state.showSpacecraftTrajectory === "boolean") {
+        return state.showSpacecraftTrajectory;
+      }
+    } else if (visibilityKey === LIGHT_RAY_VISIBILITY_KEY) {
+      if (typeof state.showLightRays === "boolean") {
+        return state.showLightRays;
+      }
+    } else if (typeof state[visibilityKey] === "boolean") {
+      return state[visibilityKey];
+    }
+
+    if (typeof state.showDirectionalGuides === "boolean") {
+      return state.showDirectionalGuides;
+    }
+
+    return false;
+  }
+
   class GuideRenderer {
     constructor(options) {
       this.labelsLayer = options.labelsLayer;
@@ -172,6 +200,7 @@
       const anchorObject = new THREE.Object3D();
       anchorObject.position.set(anchorPoint.x, anchorPoint.y, anchorPoint.z);
 
+      const visibilityKey = resolveGuideVisibilityKey(guideLine);
       return {
         mesh: anchorObject,
         labelElement: this.labelsLayer.createLabel(rawLabel, {
@@ -179,7 +208,8 @@
         }),
         renderRadius: 0,
         minPixelRadius: 0,
-        requiresDirectionalGuides: true,
+        requiresDirectionalGuides: visibilityKey === LIGHT_RAY_VISIBILITY_KEY,
+        guideVisibilityKey: visibilityKey,
         labelAnchorPosition: anchorObject.position,
         labelAnchorRadius: 0,
         labelMarginPixels: Math.max(1, guideLine.labelMarginPixels || 8)
@@ -336,6 +366,7 @@
           (point) => new THREE.Vector3(point.x, point.y, point.z)
         );
         const isLightRay = guideLine.renderStyle === "lightRay";
+        const visibilityKey = resolveGuideVisibilityKey(guideLine);
 
         if (isLightRay) {
           const lightRayRuntime = this.createLightRay(guideLine, points);
@@ -343,7 +374,8 @@
           guideLineGroup.add(lightRayRuntime.object);
           guideLineRuntimes.push({
             object: lightRayRuntime.object,
-            update: lightRayRuntime.update
+            update: lightRayRuntime.update,
+            visibilityKey
           });
           if (Array.isArray(bodyRuntimes)) {
             const labelRuntime = this.createGuideLineLabelRuntime(THREE, guideLine);
@@ -369,7 +401,10 @@
         line.frustumCulled = false;
 
         guideLineGroup.add(line);
-        guideLineRuntimes.push({ object: line });
+        guideLineRuntimes.push({
+          object: line,
+          visibilityKey
+        });
         if (Array.isArray(bodyRuntimes)) {
           const labelRuntime = this.createGuideLineLabelRuntime(THREE, guideLine);
           if (labelRuntime) {
@@ -381,7 +416,10 @@
 
     applyGuideLineVisibility(state, guideLineRuntimes) {
       for (const runtime of guideLineRuntimes) {
-        runtime.object.visible = state.showDirectionalGuides;
+        runtime.object.visible = isGuideVisibilityEnabled(
+          state,
+          runtime.visibilityKey || LIGHT_RAY_VISIBILITY_KEY
+        );
       }
     }
   }

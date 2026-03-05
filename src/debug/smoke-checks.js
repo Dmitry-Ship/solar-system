@@ -149,11 +149,15 @@
     const namesToggleButton = document.getElementById("names-toggle");
     const orbitsToggleButton = document.getElementById("orbits-toggle");
     const lightRayToggleButton = document.getElementById("light-ray-toggle");
+    const spacecraftTrajectoryToggleButton = document.getElementById(
+      "spacecraft-trajectory-toggle"
+    );
     const zoomToggleButton = document.getElementById("zoom-toggle");
     const uiButtonsPresent =
       !!namesToggleButton &&
       !!orbitsToggleButton &&
       !!lightRayToggleButton &&
+      !!spacecraftTrajectoryToggleButton &&
       !!zoomToggleButton;
     results.push(
       createResult(

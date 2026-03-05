@@ -21,6 +21,9 @@
       const namesToggleButton = document.getElementById("names-toggle");
       const orbitToggleButton = document.getElementById("orbits-toggle");
       const lightRayToggleButton = document.getElementById("light-ray-toggle");
+      const spacecraftTrajectoryToggleButton = document.getElementById(
+        "spacecraft-trajectory-toggle"
+      );
 
       const updateBooleanToggleLabel = (
         button,
@@ -104,13 +107,13 @@
 
       if (lightRayToggleButton) {
         lightRayToggleButton.addEventListener("click", () => {
-          this.state.showDirectionalGuides = !this.state.showDirectionalGuides;
+          this.state.showLightRays = !this.state.showLightRays;
           if (typeof this.onGuideVisibilityChanged === "function") {
             this.onGuideVisibilityChanged(this.state, this.guideLineRuntimes);
           }
           updateBooleanToggleLabel(
             lightRayToggleButton,
-            this.state.showDirectionalGuides,
+            this.state.showLightRays,
             "Hide Light Rays",
             "Show Light Rays"
           );
@@ -118,9 +121,31 @@
 
         updateBooleanToggleLabel(
           lightRayToggleButton,
-          this.state.showDirectionalGuides,
+          this.state.showLightRays,
           "Hide Light Rays",
           "Show Light Rays"
+        );
+      }
+
+      if (spacecraftTrajectoryToggleButton) {
+        spacecraftTrajectoryToggleButton.addEventListener("click", () => {
+          this.state.showSpacecraftTrajectory = !this.state.showSpacecraftTrajectory;
+          if (typeof this.onGuideVisibilityChanged === "function") {
+            this.onGuideVisibilityChanged(this.state, this.guideLineRuntimes);
+          }
+          updateBooleanToggleLabel(
+            spacecraftTrajectoryToggleButton,
+            this.state.showSpacecraftTrajectory,
+            "Hide Spacecraft Trajectory",
+            "Show Spacecraft Trajectory"
+          );
+        });
+
+        updateBooleanToggleLabel(
+          spacecraftTrajectoryToggleButton,
+          this.state.showSpacecraftTrajectory,
+          "Hide Spacecraft Trajectory",
+          "Show Spacecraft Trajectory"
         );
       }
 
