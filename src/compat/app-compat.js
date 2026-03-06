@@ -8,7 +8,6 @@
   const OrbitRenderer = namespace.infrastructure.three.renderers.OrbitRenderer;
   const ParticleRenderer = namespace.infrastructure.three.renderers.ParticleRenderer;
   const GuideRenderer = namespace.infrastructure.three.renderers.GuideRenderer;
-  const ShellRenderer = namespace.infrastructure.three.renderers.ShellRenderer;
   const PostprocessingRenderer =
     namespace.infrastructure.three.renderers.PostprocessingRenderer;
   const LabelsLayer = namespace.infrastructure.dom.LabelsLayer;
@@ -199,26 +198,6 @@
   app.applyOrbitVisibility = function applyOrbitVisibility(state, orbitGroup) {
     const renderer = new OrbitRenderer({ bodyRenderer: null });
     renderer.applyOrbitVisibility(state, orbitGroup);
-  };
-
-  app.buildHeliosphereShells = function buildHeliosphereShells(constants, shellGroup) {
-    const renderer = new ShellRenderer({
-      constants,
-      shellCatalog: namespace.domain.catalogs.shellCatalog
-    });
-    return renderer.buildHeliosphereShells(shellGroup);
-  };
-
-  app.updateHeliosphereShells = function updateHeliosphereShells(
-    shellRuntimes,
-    camera,
-    elapsedSeconds = 0
-  ) {
-    const renderer = new ShellRenderer({
-      constants: namespace.constants,
-      shellCatalog: namespace.domain.catalogs.shellCatalog
-    });
-    renderer.updateHeliosphereShells(shellRuntimes, camera, elapsedSeconds);
   };
 
   app.setupHudControls = function setupHudControls(

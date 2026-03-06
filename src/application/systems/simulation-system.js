@@ -9,11 +9,9 @@
       this.orbitPropagationService = options.orbitPropagationService;
       this.asteroidBeltService = options.asteroidBeltService;
       this.controls = options.controls;
-      this.shellRenderer = options.shellRenderer;
       this.guideRenderer = options.guideRenderer;
       this.labelProjectionService = options.labelProjectionService;
       this.postprocessingRenderer = options.postprocessingRenderer;
-      this.shellRuntimes = options.shellRuntimes || [];
       this.guideLineRuntimes = options.guideLineRuntimes || [];
       this.camera = options.camera;
     }
@@ -29,14 +27,6 @@
 
       if (this.controls && typeof this.controls.update === "function") {
         this.controls.update();
-      }
-
-      if (this.shellRenderer && typeof this.shellRenderer.updateHeliosphereShells === "function") {
-        this.shellRenderer.updateHeliosphereShells(
-          this.shellRuntimes,
-          this.camera,
-          elapsedSeconds
-        );
       }
 
       if (this.guideRenderer && typeof this.guideRenderer.updateGuideLineVisuals === "function") {

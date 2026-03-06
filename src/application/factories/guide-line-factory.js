@@ -22,9 +22,9 @@
         this.markerCatalog.DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU;
       this.spacecraftTrajectoryStopDistanceAu = 2500;
       this.spacecraftTrajectorySolarAssistApproachDistanceAu =
-        this.constants.HELIOPAUSE_AU * 0.9;
+        this.constants.SPACECRAFT_TRAJECTORY_SOLAR_ASSIST_APPROACH_AU;
       this.spacecraftTrajectorySolarAssistDepartureDistanceAu =
-        this.constants.HELIOPAUSE_AU * 1.2;
+        this.constants.SPACECRAFT_TRAJECTORY_SOLAR_ASSIST_DEPARTURE_AU;
       this.spacecraftTrajectorySolarAssistPerihelionAu = Math.max(
         (this.constants.SUN_RADIUS_KM / this.constants.KM_PER_AU) * 80,
         0.35

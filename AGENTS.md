@@ -37,5 +37,4 @@
   - labels: `src/infrastructure/dom/labels-layer.js`
   - bodies/orbits: `src/infrastructure/three/renderers/body-renderer.js`, `src/infrastructure/three/renderers/orbit-renderer.js`
   - guide lines: `src/infrastructure/three/renderers/guide-renderer.js`
-  - shells: `src/infrastructure/three/renderers/shell-renderer.js`
   - particle systems: `src/infrastructure/three/renderers/particle-renderer.js`

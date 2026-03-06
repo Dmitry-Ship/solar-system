@@ -18,7 +18,6 @@
       this.cometCatalog = options.cometCatalog;
       this.markerCatalog = options.markerCatalog;
       this.beltCatalog = options.beltCatalog;
-      this.shellCatalog = options.shellCatalog;
       this.rawDefinitions = options.rawDefinitions;
       this.guideLineFactory = options.guideLineFactory;
     }

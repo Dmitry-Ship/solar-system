@@ -153,49 +153,6 @@
         bodyRuntimes.push(runtime);
       }
 
-      const heliopauseMarkerDirection = new THREE.Vector3(
-        constants.HELIOPAUSE_FLOW_DIRECTION.x,
-        constants.HELIOPAUSE_FLOW_DIRECTION.y,
-        constants.HELIOPAUSE_FLOW_DIRECTION.z
-      ).normalize();
-
-      const heliopauseMarker = this.createBodyRuntime(
-        {
-          name: "Heliopause",
-          color: "#8ccfff",
-          renderRadius: 0,
-          minPixelRadius: 1,
-          objectType: "boundary",
-          lit: false,
-          labelAnchorPosition: { x: 0, y: 0, z: 0 },
-          labelAnchorRadius: constants.HELIOPAUSE_AU,
-          fixedPosition: {
-            x: heliopauseMarkerDirection.x * constants.HELIOPAUSE_AU,
-            y: heliopauseMarkerDirection.y * constants.HELIOPAUSE_AU,
-            z: heliopauseMarkerDirection.z * constants.HELIOPAUSE_AU
-          }
-        },
-        bodyGroup,
-        bodyGeometry
-      );
-      bodyRuntimes.push(heliopauseMarker);
-
-      const oortCloudOuterAu = Math.max(
-        constants.HELIOPAUSE_AU,
-        sceneData?.oortCloud?.outerAu || constants.SCENE_OUTER_AU
-      );
-      const oortCloudLabelAnchor = this.createLabelAnchorRuntime({
-        name: "Oort Cloud",
-        label: "Oort Cloud",
-        fixedPosition: {
-          x: heliopauseMarkerDirection.x * oortCloudOuterAu,
-          y: heliopauseMarkerDirection.y * oortCloudOuterAu,
-          z: heliopauseMarkerDirection.z * oortCloudOuterAu
-        },
-        objectType: "boundary",
-        labelMarginPixels: 10
-      });
-      bodyRuntimes.push(oortCloudLabelAnchor);
     }
   }
 

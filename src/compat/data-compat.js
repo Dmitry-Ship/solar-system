@@ -44,7 +44,6 @@
     cometCatalog: namespace.domain.catalogs.cometCatalog,
     markerCatalog: namespace.domain.catalogs.markerCatalog,
     beltCatalog: namespace.domain.catalogs.beltCatalog,
-    shellCatalog: namespace.domain.catalogs.shellCatalog,
     rawDefinitions,
     guideLineFactory,
     random: Math.random

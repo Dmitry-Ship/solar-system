@@ -17,7 +17,6 @@
   const OrbitRenderer = namespace.infrastructure.three.renderers.OrbitRenderer;
   const ParticleRenderer = namespace.infrastructure.three.renderers.ParticleRenderer;
   const GuideRenderer = namespace.infrastructure.three.renderers.GuideRenderer;
-  const ShellRenderer = namespace.infrastructure.three.renderers.ShellRenderer;
   const PostprocessingRenderer =
     namespace.infrastructure.three.renderers.PostprocessingRenderer;
   const CameraController = namespace.infrastructure.three.controllers.CameraController;
@@ -149,7 +148,6 @@
     createSceneGroups(THREE) {
       return {
         orbitGroup: new THREE.Group(),
-        shellGroup: new THREE.Group(),
         guideLineGroup: new THREE.Group(),
         particleGroup: new THREE.Group(),
         bodyGroup: new THREE.Group()
@@ -158,7 +156,6 @@
 
     attachSceneGroups() {
       this.scene.add(this.orbitGroup);
-      this.scene.add(this.shellGroup);
       this.scene.add(this.guideLineGroup);
       this.scene.add(this.particleGroup);
       this.scene.add(this.bodyGroup);
@@ -191,16 +188,11 @@
       this.orbitRenderer = new OrbitRenderer({ bodyRenderer: this.bodyRenderer });
       this.particleRenderer = new ParticleRenderer();
       this.guideRenderer = new GuideRenderer({ labelsLayer: this.labelsLayer });
-      this.shellRenderer = new ShellRenderer({
-        constants: this.constants,
-        shellCatalog: namespace.domain.catalogs.shellCatalog
-      });
     }
 
     buildSceneContents() {
       this.particleRenderer.buildStarField(this.sceneData, this.particleGroup);
       this.particleRenderer.buildOortCloud(this.sceneData, this.particleGroup);
-      this.shellRuntimes = this.shellRenderer.buildHeliosphereShells(this.shellGroup);
       this.guideRenderer.buildGuideLines(
         this.sceneData,
         this.guideLineGroup,
@@ -309,11 +301,9 @@
         orbitPropagationService: this.orbitPropagationService,
         asteroidBeltService: this.asteroidBeltService,
         controls: this.controls,
-        shellRenderer: this.shellRenderer,
         guideRenderer: this.guideRenderer,
         labelProjectionService: this.labelProjectionService,
         postprocessingRenderer: this.postprocessingRenderer,
-        shellRuntimes: this.shellRuntimes,
         guideLineRuntimes: this.guideLineRuntimes,
         camera: this.camera
       });
