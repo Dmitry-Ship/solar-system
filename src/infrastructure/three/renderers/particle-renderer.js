@@ -10,6 +10,23 @@
   }
 
   class ParticleRenderer {
+    static clamp01(value) {
+      return Math.min(1, Math.max(0, value));
+    }
+
+    static inverseLerp(start, end, value) {
+      if (Math.abs(end - start) < 1e-6) {
+        return value >= end ? 1 : 0;
+      }
+
+      return ParticleRenderer.clamp01((value - start) / (end - start));
+    }
+
+    static smoothstep(start, end, value) {
+      const t = ParticleRenderer.inverseLerp(start, end, value);
+      return t * t * (3 - 2 * t);
+    }
+
     buildStarField(sceneData, particleGroup) {
       const THREE = window.THREE;
       if (!THREE) {
@@ -91,6 +108,10 @@
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
         geometry.attributes.position.setUsage(THREE.DynamicDrawUsage);
+        const baseOpacity = Math.min(
+          belt.maxOpacity ?? 0.22,
+          belt.alpha * (belt.opacityScale ?? 0.2)
+        );
 
         const points = new THREE.Points(
           geometry,
@@ -98,14 +119,23 @@
             color: belt.color,
             size: belt.particleSize ?? 0.02,
             transparent: true,
-            opacity: Math.min(belt.maxOpacity ?? 0.22, belt.alpha * (belt.opacityScale ?? 0.2)),
+            opacity: baseOpacity,
             sizeAttenuation: true,
             depthWrite: false
           })
         );
 
         particleGroup.add(points);
-        beltRuntimes.push({ belt, geometry, positions });
+        beltRuntimes.push({
+          belt,
+          geometry,
+          positions,
+          points,
+          baseOpacity,
+          minOpacityFactor: belt.minOpacityFactor ?? 0.12,
+          fadeStartAngularRadius: belt.fadeStartAngularRadius ?? 0.08,
+          fadeEndAngularRadius: belt.fadeEndAngularRadius ?? 0.02
+        });
 
         let offset = 0;
         for (const particle of belt.particles) {
@@ -127,6 +157,39 @@
         }
 
         geometry.attributes.position.needsUpdate = true;
+      }
+    }
+
+    updateAsteroidBeltVisuals(beltRuntimes, camera) {
+      if (!camera || !Array.isArray(beltRuntimes) || beltRuntimes.length === 0) {
+        return;
+      }
+
+      const cameraDistance = Math.max(camera.position.length(), 1e-4);
+
+      for (const beltRuntime of beltRuntimes) {
+        const {
+          belt,
+          points,
+          baseOpacity,
+          minOpacityFactor,
+          fadeStartAngularRadius,
+          fadeEndAngularRadius
+        } = beltRuntime;
+        if (!points || !points.material) {
+          continue;
+        }
+
+        const beltRadius = ((belt.innerAu || 0) + (belt.outerAu || 0)) * 0.5;
+        const angularRadius = beltRadius / cameraDistance;
+        const closeVisibility = ParticleRenderer.smoothstep(
+          fadeEndAngularRadius,
+          fadeStartAngularRadius,
+          angularRadius
+        );
+        const opacityFactor =
+          minOpacityFactor + (1 - minOpacityFactor) * closeVisibility;
+        points.material.opacity = baseOpacity * opacityFactor;
       }
     }
   }

@@ -153,6 +153,14 @@
     return service.update.bind(service);
   };
 
+  app.updateAsteroidBeltVisuals = function updateAsteroidBeltVisuals(
+    beltRuntimes,
+    camera
+  ) {
+    const renderer = new ParticleRenderer();
+    renderer.updateAsteroidBeltVisuals(beltRuntimes, camera);
+  };
+
   app.createLightRay = function createLightRay(guideLine, points) {
     const renderer = new GuideRenderer({
       labelsLayer: {

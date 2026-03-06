@@ -8,6 +8,8 @@
     constructor(options) {
       this.orbitPropagationService = options.orbitPropagationService;
       this.asteroidBeltService = options.asteroidBeltService;
+      this.particleRenderer = options.particleRenderer;
+      this.beltRuntimes = options.beltRuntimes || [];
       this.controls = options.controls;
       this.guideRenderer = options.guideRenderer;
       this.labelProjectionService = options.labelProjectionService;
@@ -27,6 +29,13 @@
 
       if (this.controls && typeof this.controls.update === "function") {
         this.controls.update();
+      }
+
+      if (
+        this.particleRenderer &&
+        typeof this.particleRenderer.updateAsteroidBeltVisuals === "function"
+      ) {
+        this.particleRenderer.updateAsteroidBeltVisuals(this.beltRuntimes, this.camera);
       }
 
       if (this.guideRenderer && typeof this.guideRenderer.updateGuideLineVisuals === "function") {

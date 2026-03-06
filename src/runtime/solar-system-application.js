@@ -301,6 +301,8 @@
       this.simulationSystem = new SimulationSystem({
         orbitPropagationService: this.orbitPropagationService,
         asteroidBeltService: this.asteroidBeltService,
+        particleRenderer: this.particleRenderer,
+        beltRuntimes: this.beltRuntimes,
         controls: this.controls,
         guideRenderer: this.guideRenderer,
         labelProjectionService: this.labelProjectionService,
@@ -320,6 +322,7 @@
       this.resize();
       this.orbitRenderer.applyOrbitVisibility(this.state, this.orbitGroup);
       this.guideRenderer.applyGuideLineVisibility(this.state, this.guideRuntimes);
+      this.particleRenderer.updateAsteroidBeltVisuals(this.beltRuntimes, this.camera);
     }
 
     initialize() {
