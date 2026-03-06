@@ -9,20 +9,8 @@
       this.showBodyNames = true;
       this.showOrbits = true;
       this.showLightRays = false;
-      this.showSpacecraftTrajectory = false;
       this.minCamera = constants.MIN_ZOOM_AU;
       this.maxCamera = constants.MAX_ZOOM_AU;
-
-      Object.defineProperty(this, "showDirectionalGuides", {
-        enumerable: true,
-        configurable: true,
-        get: () => this.showLightRays && this.showSpacecraftTrajectory,
-        set: (isVisible) => {
-          const nextValue = Boolean(isVisible);
-          this.showLightRays = nextValue;
-          this.showSpacecraftTrajectory = nextValue;
-        }
-      });
     }
   }
 

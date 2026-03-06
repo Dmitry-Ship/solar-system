@@ -275,21 +275,8 @@
             definition.label
           )
       );
-      const cygnus61Marker =
-        directionalMarkers.find((marker) => marker.name === "61 Cygni") || null;
-      const gliese300Marker =
-        directionalMarkers.find((marker) => marker.name === "Gliese 300") || null;
-
       const directionalGuideLines =
         this.guideLineFactory.createMatryoshkaSourceGuideShapes(directionalMarkers);
-      const spacecraftTrajectoryGuideLine =
-        this.guideLineFactory.createSpacecraftTrajectoryGuideLine(
-          cygnus61Marker,
-          gliese300Marker
-        );
-      if (spacecraftTrajectoryGuideLine) {
-        directionalGuideLines.push(spacecraftTrajectoryGuideLine);
-      }
 
       return {
         planets,

@@ -77,37 +77,6 @@
           validSceneData ? "Scene data collections were generated." : "Scene data shape is invalid."
         )
       );
-
-      const spacecraftTrajectoryGuideLine = Array.isArray(sceneData.directionalGuideLines)
-        ? sceneData.directionalGuideLines.find(
-            (guideLine) => guideLine?.visibilityKey === "spacecraftTrajectory"
-          )
-        : null;
-      const spacecraftTrajectoryPerihelionAu = Array.isArray(
-        spacecraftTrajectoryGuideLine?.points
-      )
-        ? spacecraftTrajectoryGuideLine.points.reduce(
-            (minimumDistanceAu, point) =>
-              Math.min(minimumDistanceAu, Math.hypot(point.x, point.y, point.z)),
-            Infinity
-          )
-        : Infinity;
-      const spacecraftTrajectoryUsesSolarAssist =
-        !!spacecraftTrajectoryGuideLine &&
-        Array.isArray(spacecraftTrajectoryGuideLine.points) &&
-        spacecraftTrajectoryGuideLine.points.length > 8 &&
-        spacecraftTrajectoryPerihelionAu <= 1;
-      results.push(
-        createResult(
-          "Spacecraft Solar Assist",
-          spacecraftTrajectoryUsesSolarAssist,
-          spacecraftTrajectoryUsesSolarAssist
-            ? `Trajectory swings within ${spacecraftTrajectoryPerihelionAu.toFixed(
-                2
-              )} AU of the Sun.`
-            : "Trajectory guide line is missing or never dives into a near-solar assist."
-        )
-      );
     } catch (error) {
       results.push(
         createResult("Scene Assembly", false, `Scene factory threw: ${error.message}`)
@@ -180,15 +149,11 @@
     const namesToggleButton = document.getElementById("names-toggle");
     const orbitsToggleButton = document.getElementById("orbits-toggle");
     const lightRayToggleButton = document.getElementById("light-ray-toggle");
-    const spacecraftTrajectoryToggleButton = document.getElementById(
-      "spacecraft-trajectory-toggle"
-    );
     const zoomToggleButton = document.getElementById("zoom-toggle");
     const uiButtonsPresent =
       !!namesToggleButton &&
       !!orbitsToggleButton &&
       !!lightRayToggleButton &&
-      !!spacecraftTrajectoryToggleButton &&
       !!zoomToggleButton;
     results.push(
       createResult(
