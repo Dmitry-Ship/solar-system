@@ -180,7 +180,6 @@
       this.guideLineRuntimes = [];
       this.beltRuntimes = [];
       this.orbitalSourceBodies = [];
-      this.orbitalPositionScratch = { x: 0, y: 0, z: 0 };
     }
 
     initializeRenderers() {
@@ -203,8 +202,7 @@
         this.sceneData,
         this.particleGroup,
         this.beltRuntimes,
-        this.math,
-        this.orbitalPositionScratch
+        this.math
       );
       this.orbitRenderer.buildOrbitingBodies(
         this.sceneData,
@@ -219,8 +217,7 @@
         this.sceneData,
         this.bodyGroup,
         this.bodyGeometry,
-        this.bodyRuntimes,
-        this.constants
+        this.bodyRuntimes
       );
       this.createSunRuntime();
     }
@@ -278,13 +275,11 @@
         orbitalSourceBodies: this.orbitalSourceBodies,
         bodyRuntimes: this.bodyRuntimes,
         math: this.math,
-        orbitalPositionScratch: this.orbitalPositionScratch,
         motionTimeScale: 1
       });
       this.asteroidBeltService = new AsteroidBeltService({
         beltRuntimes: this.beltRuntimes,
         math: this.math,
-        orbitalPositionScratch: this.orbitalPositionScratch,
         motionTimeScale: 1
       });
       this.labelProjectionService = new LabelProjectionService({
@@ -391,8 +386,8 @@
         return;
       }
 
-      this.frameLoop = new FrameScheduler((deltaSeconds, elapsedSeconds) => {
-        this.simulationSystem.update(deltaSeconds, elapsedSeconds);
+      this.frameLoop = new FrameScheduler((deltaSeconds) => {
+        this.simulationSystem.update(deltaSeconds);
       });
       this.frameLoop.start();
     }

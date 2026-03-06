@@ -10,19 +10,13 @@
 
   const GuideLineFactory = namespace.application.factories.GuideLineFactory;
   const SceneDataFactory = namespace.application.factories.SceneDataFactory;
-  const OrbitalBody = namespace.domain.models.OrbitalBody;
-  const FixedBody = namespace.domain.models.FixedBody;
-  const SceneData = namespace.domain.models.SceneData;
 
   if (
     !constants ||
     !math ||
     !rawDefinitions ||
     !GuideLineFactory ||
-    !SceneDataFactory ||
-    !OrbitalBody ||
-    !FixedBody ||
-    !SceneData
+    !SceneDataFactory
   ) {
     throw new Error("data compatibility bootstrap failed: missing dependencies.");
   }
@@ -36,9 +30,6 @@
   const sceneDataFactory = new SceneDataFactory({
     constants,
     math,
-    orbitalBodyModel: OrbitalBody,
-    fixedBodyModel: FixedBody,
-    sceneDataModel: SceneData,
     planetCatalog: namespace.domain.catalogs.planetCatalog,
     dwarfPlanetCatalog: namespace.domain.catalogs.dwarfPlanetCatalog,
     cometCatalog: namespace.domain.catalogs.cometCatalog,

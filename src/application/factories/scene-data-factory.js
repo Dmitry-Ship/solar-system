@@ -8,9 +8,6 @@
     constructor(options) {
       this.constants = options.constants;
       this.math = options.math;
-      this.orbitalBodyModel = options.orbitalBodyModel;
-      this.fixedBodyModel = options.fixedBodyModel;
-      this.sceneDataModel = options.sceneDataModel;
       this.random = options.random || Math.random;
 
       this.planetCatalog = options.planetCatalog;
@@ -22,23 +19,24 @@
       this.guideLineFactory = options.guideLineFactory;
     }
 
+    createOrbitalBody(item, defaultOrbitColor) {
+      const orbitRadius = Math.max(item.au || 1, 1e-6);
+      return {
+        ...item,
+        theta: this.random() * Math.PI * 2,
+        meanMotion:
+          item.speed ||
+          this.constants.EARTH_MEAN_MOTION / Math.pow(orbitRadius, 1.5),
+        inclination: this.math.degToRad(item.inclinationDeg || 0),
+        node: this.math.degToRad(item.nodeDeg || 0),
+        periapsisArg: this.math.degToRad(item.periapsisArgDeg || 0),
+        eccentricity: this.math.clamp(item.eccentricity || 0, 0, 0.999),
+        orbitColor: item.orbitColor || defaultOrbitColor
+      };
+    }
+
     seedBodies(definitions, defaultOrbitColor) {
-      return definitions.map((item) => {
-        const runtimeDefinition = {
-          ...item,
-          theta: this.random() * Math.PI * 2,
-          meanMotion:
-            item.speed ||
-            this.constants.EARTH_MEAN_MOTION /
-              Math.pow(Math.max(item.au || 1, 1e-6), 1.5),
-          inclination: this.math.degToRad(item.inclinationDeg || 0),
-          node: this.math.degToRad(item.nodeDeg || 0),
-          periapsisArg: this.math.degToRad(item.periapsisArgDeg || 0),
-          eccentricity: this.math.clamp(item.eccentricity || 0, 0, 0.999),
-          orbitColor: item.orbitColor || defaultOrbitColor
-        };
-        return new this.orbitalBodyModel(runtimeDefinition).toMutableRuntime();
-      });
+      return definitions.map((item) => this.createOrbitalBody(item, defaultOrbitColor));
     }
 
     markerOnSphereFromRaDec(
@@ -67,27 +65,38 @@
 
     createDriftingBodies(definitions) {
       return definitions.map((item) => {
-        const definition = (() => {
-          if (item.position) {
-            return {
-              ...item,
-              x: item.position.x,
-              y: item.position.y,
-              z: item.position.z
-            };
-          }
-
-          const direction = this.math.randomUnitVector3D(this.random);
+        if (item.position) {
           return {
             ...item,
-            x: direction.x * item.startAu,
-            y: direction.y * item.startAu,
-            z: direction.z * item.startAu
+            x: item.position.x,
+            y: item.position.y,
+            z: item.position.z
           };
-        })();
+        }
 
-        return new this.fixedBodyModel(definition).toMutableRuntime();
+        const direction = this.math.randomUnitVector3D(this.random);
+        return {
+          ...item,
+          x: direction.x * item.startAu,
+          y: direction.y * item.startAu,
+          z: direction.z * item.startAu
+        };
       });
+    }
+
+    createVoyagers(definitions) {
+      return definitions.map((voyager) => ({
+        ...voyager,
+        position: { ...voyager.position },
+        renderRadius: voyager.radiusKm / this.constants.KM_PER_AU
+      }));
+    }
+
+    createDriftingBodiesWithRenderRadius(definitions) {
+      return this.createDriftingBodies(definitions).map((body) => ({
+        ...body,
+        renderRadius: body.radiusKm / this.constants.KM_PER_AU
+      }));
     }
 
     createAsteroidBelt(config) {
@@ -103,6 +112,7 @@
 
         particles.push({
           au,
+          orbitRadius: au,
           eccentricity,
           theta: this.random() * Math.PI * 2,
           inclination,
@@ -164,6 +174,10 @@
     }
 
     createOrbitOpacityCalculator(orbitingBodies) {
+      if (!orbitingBodies.length) {
+        return () => 0.4;
+      }
+
       let minOrbitBodyRadiusKm = Infinity;
       let maxOrbitBodyRadiusKm = 0;
       for (const body of orbitingBodies) {
@@ -232,8 +246,11 @@
       };
 
       for (const group of this.beltCatalog.ORBIT_RENDER_GROUPS) {
-        const sourceBodies = orbitGroupBodies[group.key] || [];
-        this.prepareOrbitGroupBodies(sourceBodies, group, orbitOpacityForBodyRadius);
+        this.prepareOrbitGroupBodies(
+          orbitGroupBodies[group.key] || [],
+          group,
+          orbitOpacityForBodyRadius
+        );
       }
 
       const directionalMarkers = this.markerCatalog.DIRECTIONAL_MARKER_DEFINITIONS.map(
@@ -248,12 +265,10 @@
             definition.label
           )
       );
-      const directionalMarkerByName = Object.fromEntries(
-        directionalMarkers.map((marker) => [marker.name, marker])
-      );
-
-      const c61Marker = directionalMarkerByName["61 Cygni"] || null;
-      const gliese300Marker = directionalMarkerByName["Gliese 300"] || null;
+      const c61Marker =
+        directionalMarkers.find((marker) => marker.name === "61 Cygni") || null;
+      const gliese300Marker =
+        directionalMarkers.find((marker) => marker.name === "Gliese 300") || null;
 
       const directionalGuideLines =
         this.guideLineFactory.createMatryoshkaSourceGuideShapes(directionalMarkers);
@@ -266,40 +281,23 @@
         directionalGuideLines.push(spacecraftTrajectoryGuideLine);
       }
 
-      const voyagers = this.rawDefinitions.VOYAGERS.map((voyager) => ({
-        ...voyager,
-        position: { ...voyager.position },
-        renderRadius: voyager.radiusKm / this.constants.KM_PER_AU
-      }));
-      const driftingBodies = this.createDriftingBodies(
-        this.rawDefinitions.DRIFTING_BODIES
-      ).map((body) => ({
-        ...body,
-        renderRadius: body.radiusKm / this.constants.KM_PER_AU
-      }));
-      const asteroidBelts = this.beltCatalog.ASTEROID_BELT_CONFIGS.map((beltConfig) => {
-        const belt = this.createAsteroidBelt(beltConfig);
-        for (const particle of belt.particles) {
-          particle.orbitRadius = particle.au;
-        }
-        return belt;
-      });
-
-      const sceneData = new this.sceneDataModel({
+      return {
         planets,
         dwarfPlanets,
         comets,
         orbitRenderGroups: this.beltCatalog.ORBIT_RENDER_GROUPS,
-        voyagers,
-        driftingBodies,
+        voyagers: this.createVoyagers(this.rawDefinitions.VOYAGERS),
+        driftingBodies: this.createDriftingBodiesWithRenderRadius(
+          this.rawDefinitions.DRIFTING_BODIES
+        ),
         directionalMarkers,
         directionalGuideLines,
-        asteroidBelts,
+        asteroidBelts: this.beltCatalog.ASTEROID_BELT_CONFIGS.map((beltConfig) =>
+          this.createAsteroidBelt(beltConfig)
+        ),
         oortCloud: this.createOortCloud(this.beltCatalog.OORT_CLOUD_CONFIG),
         stars: this.createStars(1700)
-      });
-
-      return sceneData.toLegacyShape();
+      };
     }
   }
 

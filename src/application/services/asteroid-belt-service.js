@@ -17,17 +17,18 @@
     }
 
     update(deltaSeconds) {
+      const motionStep = deltaSeconds * this.motionTimeScale;
+      const { math, orbitalPositionScratch } = this;
+
       for (const beltRuntime of this.beltRuntimes) {
         const { belt, positions, geometry } = beltRuntime;
         let offset = 0;
 
         for (const particle of belt.particles) {
-          particle.theta = this.math.normalizeAngle(
-            particle.theta + particle.meanMotion * deltaSeconds * this.motionTimeScale
-          );
+          particle.theta = math.normalizeAngle(particle.theta + particle.meanMotion * motionStep);
 
-          this.math.orbitalPositionInto(
-            this.orbitalPositionScratch,
+          math.orbitalPositionInto(
+            orbitalPositionScratch,
             particle.orbitRadius,
             particle.theta,
             particle.inclination,
@@ -37,9 +38,9 @@
             particle.periapsisArg
           );
 
-          positions[offset] = this.orbitalPositionScratch.x;
-          positions[offset + 1] = this.orbitalPositionScratch.y;
-          positions[offset + 2] = this.orbitalPositionScratch.z;
+          positions[offset] = orbitalPositionScratch.x;
+          positions[offset + 1] = orbitalPositionScratch.y;
+          positions[offset + 2] = orbitalPositionScratch.z;
           offset += 3;
         }
 

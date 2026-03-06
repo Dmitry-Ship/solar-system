@@ -84,6 +84,8 @@
         throw new Error("buildAsteroidBelts: missing THREE.");
       }
 
+      const orbitalPosition = orbitalPositionScratch || { x: 0, y: 0, z: 0 };
+
       for (const belt of sceneData.asteroidBelts) {
         const positions = new Float32Array(belt.particles.length * 3);
         const geometry = new THREE.BufferGeometry();
@@ -108,7 +110,7 @@
         let offset = 0;
         for (const particle of belt.particles) {
           math.orbitalPositionInto(
-            orbitalPositionScratch,
+            orbitalPosition,
             particle.orbitRadius,
             particle.theta,
             particle.inclination,
@@ -118,9 +120,9 @@
             particle.periapsisArg
           );
 
-          positions[offset] = orbitalPositionScratch.x;
-          positions[offset + 1] = orbitalPositionScratch.y;
-          positions[offset + 2] = orbitalPositionScratch.z;
+          positions[offset] = orbitalPosition.x;
+          positions[offset + 1] = orbitalPosition.y;
+          positions[offset + 2] = orbitalPosition.z;
           offset += 3;
         }
 

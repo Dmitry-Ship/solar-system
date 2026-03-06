@@ -16,7 +16,7 @@
       this.camera = options.camera;
     }
 
-    update(deltaSeconds, elapsedSeconds) {
+    update(deltaSeconds) {
       if (this.orbitPropagationService) {
         this.orbitPropagationService.update(deltaSeconds);
       }

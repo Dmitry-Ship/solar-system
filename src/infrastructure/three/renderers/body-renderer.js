@@ -96,9 +96,8 @@
       };
     }
 
-    buildFixedBodies(sceneData, bodyGroup, bodyGeometry, bodyRuntimes, constants) {
-      const THREE = window.THREE;
-      if (!THREE) {
+    buildFixedBodies(sceneData, bodyGroup, bodyGeometry, bodyRuntimes) {
+      if (!window.THREE) {
         throw new Error("buildFixedBodies: missing THREE.");
       }
 

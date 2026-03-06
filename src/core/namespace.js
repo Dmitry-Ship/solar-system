@@ -11,7 +11,6 @@
 
   root.domain.constants = root.domain.constants || {};
   root.domain.math = root.domain.math || {};
-  root.domain.models = root.domain.models || {};
   root.domain.catalogs = root.domain.catalogs || {};
 
   root.application.state = root.application.state || {};

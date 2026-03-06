@@ -18,18 +18,19 @@
     }
 
     update(deltaSeconds) {
+      const motionStep = deltaSeconds * this.motionTimeScale;
+      const { math, orbitalPositionScratch } = this;
+
       for (const body of this.orbitalSourceBodies) {
-        body.theta = this.math.normalizeAngle(
-          body.theta + body.meanMotion * deltaSeconds * this.motionTimeScale
-        );
+        body.theta = math.normalizeAngle(body.theta + body.meanMotion * motionStep);
       }
 
       for (const runtime of this.bodyRuntimes) {
-        if (!runtime.orbitalSource) continue;
-
         const source = runtime.orbitalSource;
-        this.math.orbitalPositionInto(
-          this.orbitalPositionScratch,
+        if (!source) continue;
+
+        math.orbitalPositionInto(
+          orbitalPositionScratch,
           source.orbitRadius,
           source.theta,
           source.inclination,
@@ -40,9 +41,9 @@
         );
 
         runtime.mesh.position.set(
-          this.orbitalPositionScratch.x,
-          this.orbitalPositionScratch.y,
-          this.orbitalPositionScratch.z
+          orbitalPositionScratch.x,
+          orbitalPositionScratch.y,
+          orbitalPositionScratch.z
         );
       }
     }
