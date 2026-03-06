@@ -12,7 +12,7 @@
       this.guideRenderer = options.guideRenderer;
       this.labelProjectionService = options.labelProjectionService;
       this.postprocessingRenderer = options.postprocessingRenderer;
-      this.guideLineRuntimes = options.guideLineRuntimes || [];
+      this.guideRuntimes = options.guideRuntimes || options.guideLineRuntimes || [];
       this.camera = options.camera;
     }
 
@@ -30,7 +30,7 @@
       }
 
       if (this.guideRenderer && typeof this.guideRenderer.updateGuideLineVisuals === "function") {
-        this.guideRenderer.updateGuideLineVisuals(this.guideLineRuntimes, this.camera);
+        this.guideRenderer.updateGuideLineVisuals(this.guideRuntimes, this.camera);
       }
 
       if (this.labelProjectionService) {

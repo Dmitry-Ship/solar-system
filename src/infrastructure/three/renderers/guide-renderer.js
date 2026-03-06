@@ -342,8 +342,8 @@
       };
     }
 
-    updateGuideLineVisuals(guideLineRuntimes, camera) {
-      for (const runtime of guideLineRuntimes) {
+    updateGuideLineVisuals(guideRuntimes, camera) {
+      for (const runtime of guideRuntimes) {
         if (typeof runtime.update === "function") {
           runtime.update(camera);
         }
@@ -353,8 +353,8 @@
     buildGuideLines(
       sceneData,
       guideLineGroup,
-      guideLineRuntimes,
-      bodyRuntimes
+      guideRuntimes,
+      sceneObjectRuntimes
     ) {
       const THREE = window.THREE;
       if (!THREE) {
@@ -372,15 +372,15 @@
           const lightRayRuntime = this.createLightRay(guideLine, points);
           if (!lightRayRuntime) continue;
           guideLineGroup.add(lightRayRuntime.object);
-          guideLineRuntimes.push({
+          guideRuntimes.push({
             object: lightRayRuntime.object,
             update: lightRayRuntime.update,
             visibilityKey
           });
-          if (Array.isArray(bodyRuntimes)) {
+          if (Array.isArray(sceneObjectRuntimes)) {
             const labelRuntime = this.createGuideLineLabelRuntime(THREE, guideLine);
             if (labelRuntime) {
-              bodyRuntimes.push(labelRuntime);
+              sceneObjectRuntimes.push(labelRuntime);
             }
           }
           continue;
@@ -401,21 +401,21 @@
         line.frustumCulled = false;
 
         guideLineGroup.add(line);
-        guideLineRuntimes.push({
+        guideRuntimes.push({
           object: line,
           visibilityKey
         });
-        if (Array.isArray(bodyRuntimes)) {
+        if (Array.isArray(sceneObjectRuntimes)) {
           const labelRuntime = this.createGuideLineLabelRuntime(THREE, guideLine);
           if (labelRuntime) {
-            bodyRuntimes.push(labelRuntime);
+            sceneObjectRuntimes.push(labelRuntime);
           }
         }
       }
     }
 
-    applyGuideLineVisibility(state, guideLineRuntimes) {
-      for (const runtime of guideLineRuntimes) {
+    applyGuideLineVisibility(state, guideRuntimes) {
+      for (const runtime of guideRuntimes) {
         runtime.object.visible = isGuideVisibilityEnabled(
           state,
           runtime.visibilityKey || LIGHT_RAY_VISIBILITY_KEY

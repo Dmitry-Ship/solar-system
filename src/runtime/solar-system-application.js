@@ -29,7 +29,8 @@
     constructor(options = {}) {
       this.canvasId = options.canvasId || "scene";
       this.constants = options.constants || namespace.constants;
-      this.data = options.data || namespace.data;
+      this.sceneDataApi = options.data || namespace.data;
+      this.data = this.sceneDataApi;
       this.math = options.math || namespace.math;
 
       this.initialized = false;
@@ -162,7 +163,7 @@
     }
 
     initializeState() {
-      this.sceneData = this.data.createSceneData();
+      this.sceneData = this.sceneDataApi.createSceneData();
       this.state = new AppState(this.constants);
     }
 
@@ -176,10 +177,15 @@
       this.attachSceneGroups();
 
       this.bodyGeometry = new THREE.SphereGeometry(1, 20, 12);
-      this.bodyRuntimes = [];
-      this.guideLineRuntimes = [];
+      this.sceneObjectRuntimes = [];
+      this.guideRuntimes = [];
       this.beltRuntimes = [];
-      this.orbitalSourceBodies = [];
+      this.orbitingBodies = [];
+
+      // Preserve legacy property names for the compat facade.
+      this.bodyRuntimes = this.sceneObjectRuntimes;
+      this.guideLineRuntimes = this.guideRuntimes;
+      this.orbitalSourceBodies = this.orbitingBodies;
     }
 
     initializeRenderers() {
@@ -195,8 +201,8 @@
       this.guideRenderer.buildGuideLines(
         this.sceneData,
         this.guideLineGroup,
-        this.guideLineRuntimes,
-        this.bodyRuntimes
+        this.guideRuntimes,
+        this.sceneObjectRuntimes
       );
       this.particleRenderer.buildAsteroidBelts(
         this.sceneData,
@@ -209,15 +215,15 @@
         this.orbitGroup,
         this.bodyGroup,
         this.bodyGeometry,
-        this.bodyRuntimes,
-        this.orbitalSourceBodies,
+        this.sceneObjectRuntimes,
+        this.orbitingBodies,
         this.math
       );
       this.bodyRenderer.buildFixedBodies(
         this.sceneData,
         this.bodyGroup,
         this.bodyGeometry,
-        this.bodyRuntimes
+        this.sceneObjectRuntimes
       );
       this.createSunRuntime();
     }
@@ -235,7 +241,7 @@
         this.bodyGroup,
         this.bodyGeometry
       );
-      this.bodyRuntimes.push(sunRuntime);
+      this.sceneObjectRuntimes.push(sunRuntime);
       this.postprocessingRenderer.markBloomObject(sunRuntime.mesh);
     }
 
@@ -244,7 +250,7 @@
         state: this.state,
         controls: this.controls,
         orbitGroup: this.orbitGroup,
-        guideLineRuntimes: this.guideLineRuntimes,
+        guideRuntimes: this.guideRuntimes,
         camera: this.camera,
         math: this.math,
         onOrbitVisibilityChanged: this.orbitRenderer.applyOrbitVisibility.bind(
@@ -272,8 +278,8 @@
 
     initializeSimulationServices(THREE) {
       this.orbitPropagationService = new OrbitPropagationService({
-        orbitalSourceBodies: this.orbitalSourceBodies,
-        bodyRuntimes: this.bodyRuntimes,
+        orbitingBodies: this.orbitingBodies,
+        sceneObjectRuntimes: this.sceneObjectRuntimes,
         math: this.math,
         motionTimeScale: 1
       });
@@ -285,7 +291,7 @@
       this.labelProjectionService = new LabelProjectionService({
         renderer: this.renderer,
         camera: this.camera,
-        bodyRuntimes: this.bodyRuntimes,
+        sceneObjectRuntimes: this.sceneObjectRuntimes,
         state: this.state,
         projectionScratch: new THREE.Vector3()
       });
@@ -299,7 +305,7 @@
         guideRenderer: this.guideRenderer,
         labelProjectionService: this.labelProjectionService,
         postprocessingRenderer: this.postprocessingRenderer,
-        guideLineRuntimes: this.guideLineRuntimes,
+        guideRuntimes: this.guideRuntimes,
         camera: this.camera
       });
     }
@@ -313,7 +319,7 @@
     applyInitialRenderState() {
       this.resize();
       this.orbitRenderer.applyOrbitVisibility(this.state, this.orbitGroup);
-      this.guideRenderer.applyGuideLineVisibility(this.state, this.guideLineRuntimes);
+      this.guideRenderer.applyGuideLineVisibility(this.state, this.guideRuntimes);
     }
 
     initialize() {

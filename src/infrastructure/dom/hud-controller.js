@@ -9,7 +9,7 @@
       this.state = options.state;
       this.controls = options.controls;
       this.orbitGroup = options.orbitGroup;
-      this.guideLineRuntimes = options.guideLineRuntimes;
+      this.guideRuntimes = options.guideRuntimes || options.guideLineRuntimes || [];
       this.camera = options.camera;
       this.math = options.math;
       this.onOrbitVisibilityChanged = options.onOrbitVisibilityChanged;
@@ -109,7 +109,7 @@
         lightRayToggleButton.addEventListener("click", () => {
           this.state.showLightRays = !this.state.showLightRays;
           if (typeof this.onGuideVisibilityChanged === "function") {
-            this.onGuideVisibilityChanged(this.state, this.guideLineRuntimes);
+            this.onGuideVisibilityChanged(this.state, this.guideRuntimes);
           }
           updateBooleanToggleLabel(
             lightRayToggleButton,
@@ -131,7 +131,7 @@
         spacecraftTrajectoryToggleButton.addEventListener("click", () => {
           this.state.showSpacecraftTrajectory = !this.state.showSpacecraftTrajectory;
           if (typeof this.onGuideVisibilityChanged === "function") {
-            this.onGuideVisibilityChanged(this.state, this.guideLineRuntimes);
+            this.onGuideVisibilityChanged(this.state, this.guideRuntimes);
           }
           updateBooleanToggleLabel(
             spacecraftTrajectoryToggleButton,

@@ -46,8 +46,8 @@
       orbitGroup,
       bodyGroup,
       bodyGeometry,
-      bodyRuntimes,
-      orbitalSourceBodies,
+      sceneObjectRuntimes,
+      orbitingBodies,
       math
     ) {
       const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
@@ -58,26 +58,28 @@
         comets: "comet"
       };
 
-      for (const group of sceneData.orbitRenderGroups) {
-        const sourceBodies = sceneData[group.key] || [];
-        for (const sourceBody of sourceBodies) {
+      const orbitRenderGroupConfigs =
+        sceneData.orbitRenderGroupConfigs || sceneData.orbitRenderGroups;
+      for (const orbitRenderGroup of orbitRenderGroupConfigs) {
+        const orbitingBodiesInGroup = sceneData[orbitRenderGroup.key] || [];
+        for (const orbitingBody of orbitingBodiesInGroup) {
           const orbitLine = this.buildOrbitLine(
-            sourceBody.orbitPath,
-            sourceBody.orbitColor,
-            sourceBody.orbitOpacity
+            orbitingBody.orbitPath,
+            orbitingBody.orbitColor,
+            orbitingBody.orbitOpacity
           );
           orbitGroup.add(orbitLine);
 
-          const fallbackMinPixelRadius = group.key === "planets" ? 1.25 : 1.1;
+          const fallbackMinPixelRadius = orbitRenderGroup.key === "planets" ? 1.25 : 1.1;
           const runtime = this.bodyRenderer.createBodyRuntime(
             {
-              name: sourceBody.name,
-              color: sourceBody.color,
-              renderRadius: sourceBody.renderRadius,
-              minPixelRadius: sourceBody.minPixelRadius || fallbackMinPixelRadius,
-              orbitalSource: sourceBody,
-              objectType: labelObjectTypeByGroupKey[group.key] || "orbiting-body",
-              togglesWithNamesButton: namesToggleTargetGroups.has(group.key)
+              name: orbitingBody.name,
+              color: orbitingBody.color,
+              renderRadius: orbitingBody.renderRadius,
+              minPixelRadius: orbitingBody.minPixelRadius || fallbackMinPixelRadius,
+              orbitingBody,
+              objectType: labelObjectTypeByGroupKey[orbitRenderGroup.key] || "orbiting-body",
+              togglesWithNamesButton: namesToggleTargetGroups.has(orbitRenderGroup.key)
             },
             bodyGroup,
             bodyGeometry
@@ -85,13 +87,13 @@
 
           math.orbitalPositionInto(
             orbitalPositionScratch,
-            sourceBody.orbitRadius,
-            sourceBody.theta,
-            sourceBody.inclination,
-            sourceBody.node,
+            orbitingBody.orbitRadius,
+            orbitingBody.theta,
+            orbitingBody.inclination,
+            orbitingBody.node,
             0,
-            sourceBody.eccentricity,
-            sourceBody.periapsisArg
+            orbitingBody.eccentricity,
+            orbitingBody.periapsisArg
           );
 
           runtime.mesh.position.set(
@@ -100,8 +102,8 @@
             orbitalPositionScratch.z
           );
 
-          bodyRuntimes.push(runtime);
-          orbitalSourceBodies.push(sourceBody);
+          sceneObjectRuntimes.push(runtime);
+          orbitingBodies.push(orbitingBody);
         }
       }
     }

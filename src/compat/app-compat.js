@@ -76,8 +76,8 @@
     orbitGroup,
     bodyGroup,
     bodyGeometry,
-    bodyRuntimes,
-    orbitalSourceBodies,
+    sceneObjectRuntimes,
+    orbitingBodies,
     labelsLayerElement,
     math
   ) {
@@ -90,8 +90,8 @@
       orbitGroup,
       bodyGroup,
       bodyGeometry,
-      bodyRuntimes,
-      orbitalSourceBodies,
+      sceneObjectRuntimes,
+      orbitingBodies,
       math
     );
   };
@@ -100,7 +100,7 @@
     sceneData,
     bodyGroup,
     bodyGeometry,
-    bodyRuntimes,
+    sceneObjectRuntimes,
     labelsLayerElement,
     constants
   ) {
@@ -111,7 +111,7 @@
       sceneData,
       bodyGroup,
       bodyGeometry,
-      bodyRuntimes,
+      sceneObjectRuntimes,
       constants
     );
   };
@@ -164,17 +164,17 @@
     return renderer.createLightRay(guideLine, points);
   };
 
-  app.updateGuideLineVisuals = function updateGuideLineVisuals(guideLineRuntimes, camera) {
+  app.updateGuideLineVisuals = function updateGuideLineVisuals(guideRuntimes, camera) {
     const renderer = new GuideRenderer({ labelsLayer: null });
-    renderer.updateGuideLineVisuals(guideLineRuntimes, camera);
+    renderer.updateGuideLineVisuals(guideRuntimes, camera);
   };
 
   app.buildGuideLines = function buildGuideLines(
     sceneData,
     guideLineGroup,
-    guideLineRuntimes,
+    guideRuntimes,
     labelsLayerElement,
-    bodyRuntimes
+    sceneObjectRuntimes
   ) {
     const renderer = new GuideRenderer({
       labelsLayer: createLabelAdapter(labelsLayerElement)
@@ -182,17 +182,14 @@
     renderer.buildGuideLines(
       sceneData,
       guideLineGroup,
-      guideLineRuntimes,
-      bodyRuntimes
+      guideRuntimes,
+      sceneObjectRuntimes
     );
   };
 
-  app.applyGuideLineVisibility = function applyGuideLineVisibility(
-    state,
-    guideLineRuntimes
-  ) {
+  app.applyGuideLineVisibility = function applyGuideLineVisibility(state, guideRuntimes) {
     const renderer = new GuideRenderer({ labelsLayer: null });
-    renderer.applyGuideLineVisibility(state, guideLineRuntimes);
+    renderer.applyGuideLineVisibility(state, guideRuntimes);
   };
 
   app.applyOrbitVisibility = function applyOrbitVisibility(state, orbitGroup) {
@@ -203,7 +200,7 @@
   app.setupHudControls = function setupHudControls(
     state,
     controls,
-    guideLineRuntimes,
+    guideRuntimes,
     camera,
     math,
     orbitGroup
@@ -212,7 +209,7 @@
       state,
       controls,
       orbitGroup,
-      guideLineRuntimes,
+      guideRuntimes,
       camera,
       math,
       onOrbitVisibilityChanged: app.applyOrbitVisibility,

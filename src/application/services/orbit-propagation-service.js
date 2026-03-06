@@ -6,8 +6,8 @@
 
   class OrbitPropagationService {
     constructor(options) {
-      this.orbitalSourceBodies = options.orbitalSourceBodies;
-      this.bodyRuntimes = options.bodyRuntimes;
+      this.orbitingBodies = options.orbitingBodies || options.orbitalSourceBodies || [];
+      this.sceneObjectRuntimes = options.sceneObjectRuntimes || options.bodyRuntimes || [];
       this.math = options.math;
       this.motionTimeScale = options.motionTimeScale ?? 1;
       this.orbitalPositionScratch = options.orbitalPositionScratch || {
@@ -21,23 +21,25 @@
       const motionStep = deltaSeconds * this.motionTimeScale;
       const { math, orbitalPositionScratch } = this;
 
-      for (const body of this.orbitalSourceBodies) {
-        body.theta = math.normalizeAngle(body.theta + body.meanMotion * motionStep);
+      for (const orbitingBody of this.orbitingBodies) {
+        orbitingBody.theta = math.normalizeAngle(
+          orbitingBody.theta + orbitingBody.meanMotion * motionStep
+        );
       }
 
-      for (const runtime of this.bodyRuntimes) {
-        const source = runtime.orbitalSource;
-        if (!source) continue;
+      for (const runtime of this.sceneObjectRuntimes) {
+        const orbitingBody = runtime.orbitingBody || runtime.orbitalSource;
+        if (!orbitingBody) continue;
 
         math.orbitalPositionInto(
           orbitalPositionScratch,
-          source.orbitRadius,
-          source.theta,
-          source.inclination,
-          source.node,
+          orbitingBody.orbitRadius,
+          orbitingBody.theta,
+          orbitingBody.inclination,
+          orbitingBody.node,
           0,
-          source.eccentricity,
-          source.periapsisArg
+          orbitingBody.eccentricity,
+          orbitingBody.periapsisArg
         );
 
         runtime.mesh.position.set(

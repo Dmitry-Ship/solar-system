@@ -50,7 +50,8 @@
         }),
         renderRadius: config.renderRadius || 0,
         minPixelRadius: config.minPixelRadius || 1,
-        orbitalSource: config.orbitalSource || null,
+        orbitingBody: config.orbitingBody || config.orbitalSource || null,
+        orbitalSource: config.orbitingBody || config.orbitalSource || null,
         togglesWithNamesButton: Boolean(config.togglesWithNamesButton),
         labelAnchorPosition: config.labelAnchorPosition
           ? new THREE.Vector3(
@@ -96,7 +97,7 @@
       };
     }
 
-    buildFixedBodies(sceneData, bodyGroup, bodyGeometry, bodyRuntimes) {
+    buildFixedBodies(sceneData, bodyGroup, bodyGeometry, sceneObjectRuntimes) {
       if (!window.THREE) {
         throw new Error("buildFixedBodies: missing THREE.");
       }
@@ -115,7 +116,7 @@
           bodyGroup,
           bodyGeometry
         );
-        bodyRuntimes.push(runtime);
+        sceneObjectRuntimes.push(runtime);
       }
 
       for (const body of sceneData.driftingBodies) {
@@ -131,7 +132,7 @@
           bodyGroup,
           bodyGeometry
         );
-        bodyRuntimes.push(runtime);
+        sceneObjectRuntimes.push(runtime);
       }
 
       for (const marker of sceneData.directionalMarkers) {
@@ -149,7 +150,7 @@
           bodyGroup,
           bodyGeometry
         );
-        bodyRuntimes.push(runtime);
+        sceneObjectRuntimes.push(runtime);
       }
 
     }

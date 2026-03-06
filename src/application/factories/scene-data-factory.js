@@ -19,24 +19,26 @@
       this.guideLineFactory = options.guideLineFactory;
     }
 
-    createOrbitalBody(item, defaultOrbitColor) {
-      const orbitRadius = Math.max(item.au || 1, 1e-6);
+    createOrbitingBody(bodyDefinition, defaultOrbitColor) {
+      const orbitRadius = Math.max(bodyDefinition.au || 1, 1e-6);
       return {
-        ...item,
+        ...bodyDefinition,
         theta: this.random() * Math.PI * 2,
         meanMotion:
-          item.speed ||
+          bodyDefinition.speed ||
           this.constants.EARTH_MEAN_MOTION / Math.pow(orbitRadius, 1.5),
-        inclination: this.math.degToRad(item.inclinationDeg || 0),
-        node: this.math.degToRad(item.nodeDeg || 0),
-        periapsisArg: this.math.degToRad(item.periapsisArgDeg || 0),
-        eccentricity: this.math.clamp(item.eccentricity || 0, 0, 0.999),
-        orbitColor: item.orbitColor || defaultOrbitColor
+        inclination: this.math.degToRad(bodyDefinition.inclinationDeg || 0),
+        node: this.math.degToRad(bodyDefinition.nodeDeg || 0),
+        periapsisArg: this.math.degToRad(bodyDefinition.periapsisArgDeg || 0),
+        eccentricity: this.math.clamp(bodyDefinition.eccentricity || 0, 0, 0.999),
+        orbitColor: bodyDefinition.orbitColor || defaultOrbitColor
       };
     }
 
-    seedBodies(definitions, defaultOrbitColor) {
-      return definitions.map((item) => this.createOrbitalBody(item, defaultOrbitColor));
+    createOrbitingBodies(definitions, defaultOrbitColor) {
+      return definitions.map((definition) =>
+        this.createOrbitingBody(definition, defaultOrbitColor)
+      );
     }
 
     markerOnSphereFromRaDec(
@@ -64,50 +66,52 @@
     }
 
     createDriftingBodies(definitions) {
-      return definitions.map((item) => {
-        if (item.position) {
+      return definitions.map((bodyDefinition) => {
+        if (bodyDefinition.position) {
           return {
-            ...item,
-            x: item.position.x,
-            y: item.position.y,
-            z: item.position.z
+            ...bodyDefinition,
+            x: bodyDefinition.position.x,
+            y: bodyDefinition.position.y,
+            z: bodyDefinition.position.z
           };
         }
 
         const direction = this.math.randomUnitVector3D(this.random);
         return {
-          ...item,
-          x: direction.x * item.startAu,
-          y: direction.y * item.startAu,
-          z: direction.z * item.startAu
+          ...bodyDefinition,
+          x: direction.x * bodyDefinition.startAu,
+          y: direction.y * bodyDefinition.startAu,
+          z: direction.z * bodyDefinition.startAu
         };
       });
     }
 
-    createVoyagers(definitions) {
-      return definitions.map((voyager) => ({
-        ...voyager,
-        position: { ...voyager.position },
-        renderRadius: voyager.radiusKm / this.constants.KM_PER_AU
+    createVoyagerSceneBodies(definitions) {
+      return definitions.map((voyagerDefinition) => ({
+        ...voyagerDefinition,
+        position: { ...voyagerDefinition.position },
+        renderRadius: voyagerDefinition.radiusKm / this.constants.KM_PER_AU
       }));
     }
 
-    createDriftingBodiesWithRenderRadius(definitions) {
-      return this.createDriftingBodies(definitions).map((body) => ({
-        ...body,
-        renderRadius: body.radiusKm / this.constants.KM_PER_AU
+    createRenderableDriftingBodies(definitions) {
+      return this.createDriftingBodies(definitions).map((driftingBody) => ({
+        ...driftingBody,
+        renderRadius: driftingBody.radiusKm / this.constants.KM_PER_AU
       }));
     }
 
-    createAsteroidBelt(config) {
+    createAsteroidBelt(beltConfig) {
       const particles = [];
-      const maxInclinationRad = this.math.degToRad(config.maxInclinationDeg);
+      const maxInclinationRad = this.math.degToRad(beltConfig.maxInclinationDeg);
 
-      for (let i = 0; i < config.count; i += 1) {
-        const au = config.innerAu + this.random() * (config.outerAu - config.innerAu);
+      for (let i = 0; i < beltConfig.count; i += 1) {
+        const au =
+          beltConfig.innerAu +
+          this.random() * (beltConfig.outerAu - beltConfig.innerAu);
         const eccentricity =
-          config.eccentricityMin +
-          this.random() * (config.eccentricityMax - config.eccentricityMin);
+          beltConfig.eccentricityMin +
+          this.random() * (beltConfig.eccentricityMax - beltConfig.eccentricityMin);
         const inclination = maxInclinationRad * Math.pow(this.random(), 1.8);
 
         particles.push({
@@ -120,22 +124,22 @@
           periapsisArg: this.random() * Math.PI * 2,
           meanMotion:
             (this.constants.EARTH_MEAN_MOTION / Math.pow(Math.max(au, 0.2), 1.5)) *
-            (config.timeScale || 1)
+            (beltConfig.timeScale || 1)
         });
       }
 
       return {
-        ...config,
+        ...beltConfig,
         particles
       };
     }
 
-    createOortCloud(config) {
+    createOortCloud(cloudConfig) {
       const particles = [];
-      const innerCubed = Math.pow(config.innerAu, 3);
-      const outerCubed = Math.pow(config.outerAu, 3);
+      const innerCubed = Math.pow(cloudConfig.innerAu, 3);
+      const outerCubed = Math.pow(cloudConfig.outerAu, 3);
 
-      for (let i = 0; i < config.count; i += 1) {
+      for (let i = 0; i < cloudConfig.count; i += 1) {
         const radius = Math.cbrt(innerCubed + this.random() * (outerCubed - innerCubed));
         const theta = this.random() * Math.PI * 2;
         const yUnit = this.random() * 2 - 1;
@@ -149,13 +153,13 @@
       }
 
       return {
-        ...config,
+        ...cloudConfig,
         particles
       };
     }
 
     createStars(count) {
-      const items = [];
+      const starPositions = [];
       for (let i = 0; i < count; i += 1) {
         const distance =
           this.beltCatalog.STAR_DISTANCE_MIN_AU +
@@ -164,13 +168,13 @@
               this.beltCatalog.STAR_DISTANCE_MIN_AU);
         const theta = this.random() * Math.PI * 2;
         const phi = Math.acos(2 * this.random() - 1);
-        items.push({
+        starPositions.push({
           x: distance * Math.sin(phi) * Math.cos(theta),
           y: distance * Math.cos(phi),
           z: distance * Math.sin(phi) * Math.sin(theta)
         });
       }
-      return items;
+      return starPositions;
     }
 
     createOrbitOpacityCalculator(orbitingBodies) {
@@ -180,8 +184,8 @@
 
       let minOrbitBodyRadiusKm = Infinity;
       let maxOrbitBodyRadiusKm = 0;
-      for (const body of orbitingBodies) {
-        const safeRadius = Math.max(1, body.radiusKm || 1);
+      for (const orbitingBody of orbitingBodies) {
+        const safeRadius = Math.max(1, orbitingBody.radiusKm || 1);
         minOrbitBodyRadiusKm = Math.min(minOrbitBodyRadiusKm, safeRadius);
         maxOrbitBodyRadiusKm = Math.max(maxOrbitBodyRadiusKm, safeRadius);
       }
@@ -201,54 +205,60 @@
       };
     }
 
-    prepareOrbitGroupBodies(sourceBodies, group, orbitOpacityForBodyRadius) {
-      const shouldUseRadiusOrbitOpacity = group.key !== "comets";
-      const groupOrbitColor = group.orbitColor || this.constants.ORBIT_COLOR;
+    applyOrbitRenderMetadata(
+      orbitingBodies,
+      orbitRenderGroupConfig,
+      orbitOpacityForBodyRadius
+    ) {
+      const shouldUseRadiusOrbitOpacity = orbitRenderGroupConfig.key !== "comets";
+      const orbitColor =
+        orbitRenderGroupConfig.orbitColor || this.constants.ORBIT_COLOR;
 
-      for (const body of sourceBodies) {
-        body.orbitRadius = body.au;
-        body.renderRadius = body.radiusKm / this.constants.KM_PER_AU;
-        body.orbitColor = groupOrbitColor;
-        body.orbitOpacity = shouldUseRadiusOrbitOpacity
-          ? orbitOpacityForBodyRadius(body.radiusKm)
+      for (const orbitingBody of orbitingBodies) {
+        orbitingBody.orbitRadius = orbitingBody.au;
+        orbitingBody.renderRadius = orbitingBody.radiusKm / this.constants.KM_PER_AU;
+        orbitingBody.orbitColor = orbitColor;
+        orbitingBody.orbitOpacity = shouldUseRadiusOrbitOpacity
+          ? orbitOpacityForBodyRadius(orbitingBody.radiusKm)
           : 0.1;
-        body.orbitPath = this.math.orbitPoints(
-          body.orbitRadius,
-          body.inclination,
-          body.node,
-          group.segments,
-          body.eccentricity,
-          body.periapsisArg
+        orbitingBody.orbitPath = this.math.orbitPoints(
+          orbitingBody.orbitRadius,
+          orbitingBody.inclination,
+          orbitingBody.node,
+          orbitRenderGroupConfig.segments,
+          orbitingBody.eccentricity,
+          orbitingBody.periapsisArg
         );
       }
     }
 
     createSceneData() {
-      const planets = this.seedBodies(
+      const planets = this.createOrbitingBodies(
         this.planetCatalog.PLANET_DEFINITIONS,
         this.constants.ORBIT_COLOR
       );
-      const dwarfPlanets = this.seedBodies(
+      const dwarfPlanets = this.createOrbitingBodies(
         this.dwarfPlanetCatalog.DWARF_PLANET_DEFINITIONS,
         this.constants.ORBIT_COLOR
       );
-      const comets = this.seedBodies(
+      const comets = this.createOrbitingBodies(
         this.cometCatalog.COMET_DEFINITIONS,
         this.constants.ORBIT_COLOR
       );
 
-      const orbitingBodies = [...planets, ...dwarfPlanets];
-      const orbitOpacityForBodyRadius = this.createOrbitOpacityCalculator(orbitingBodies);
-      const orbitGroupBodies = {
+      const orbitOpacityBodies = [...planets, ...dwarfPlanets];
+      const orbitOpacityForBodyRadius = this.createOrbitOpacityCalculator(orbitOpacityBodies);
+      const orbitingBodiesByGroupKey = {
         planets,
         dwarfPlanets,
         comets
       };
+      const orbitRenderGroupConfigs = this.beltCatalog.ORBIT_RENDER_GROUPS;
 
-      for (const group of this.beltCatalog.ORBIT_RENDER_GROUPS) {
-        this.prepareOrbitGroupBodies(
-          orbitGroupBodies[group.key] || [],
-          group,
+      for (const orbitRenderGroupConfig of orbitRenderGroupConfigs) {
+        this.applyOrbitRenderMetadata(
+          orbitingBodiesByGroupKey[orbitRenderGroupConfig.key] || [],
+          orbitRenderGroupConfig,
           orbitOpacityForBodyRadius
         );
       }
@@ -265,7 +275,7 @@
             definition.label
           )
       );
-      const c61Marker =
+      const cygnus61Marker =
         directionalMarkers.find((marker) => marker.name === "61 Cygni") || null;
       const gliese300Marker =
         directionalMarkers.find((marker) => marker.name === "Gliese 300") || null;
@@ -274,7 +284,7 @@
         this.guideLineFactory.createMatryoshkaSourceGuideShapes(directionalMarkers);
       const spacecraftTrajectoryGuideLine =
         this.guideLineFactory.createSpacecraftTrajectoryGuideLine(
-          c61Marker,
+          cygnus61Marker,
           gliese300Marker
         );
       if (spacecraftTrajectoryGuideLine) {
@@ -285,9 +295,10 @@
         planets,
         dwarfPlanets,
         comets,
-        orbitRenderGroups: this.beltCatalog.ORBIT_RENDER_GROUPS,
-        voyagers: this.createVoyagers(this.rawDefinitions.VOYAGERS),
-        driftingBodies: this.createDriftingBodiesWithRenderRadius(
+        orbitRenderGroupConfigs,
+        orbitRenderGroups: orbitRenderGroupConfigs,
+        voyagers: this.createVoyagerSceneBodies(this.rawDefinitions.VOYAGERS),
+        driftingBodies: this.createRenderableDriftingBodies(
           this.rawDefinitions.DRIFTING_BODIES
         ),
         directionalMarkers,

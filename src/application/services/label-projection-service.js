@@ -39,7 +39,7 @@
       this.THREE = THREE;
       this.renderer = options.renderer;
       this.camera = options.camera;
-      this.bodyRuntimes = options.bodyRuntimes;
+      this.sceneObjectRuntimes = options.sceneObjectRuntimes || options.bodyRuntimes || [];
       this.state = options.state;
       this.projectionScratch = options.projectionScratch || new THREE.Vector3();
     }
@@ -50,7 +50,7 @@
       const viewportHeight = this.renderer.domElement.clientHeight;
       const halfFovTangent = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) * 0.5);
 
-      for (const runtime of this.bodyRuntimes) {
+      for (const runtime of this.sceneObjectRuntimes) {
         const distance = Math.max(
           1e-6,
           this.camera.position.distanceTo(runtime.mesh.position)
