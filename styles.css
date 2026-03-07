@@ -114,6 +114,17 @@ body {
   gap: 0.45rem;
 }
 
+.hud-control-group {
+  margin-top: 0.75rem;
+}
+
+.hud-control-heading {
+  font: 600 0.72rem/1 "Avenir Next", "Futura", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .zoom-button {
   appearance: none;
   border: 1px solid rgba(180, 204, 255, 0.45);

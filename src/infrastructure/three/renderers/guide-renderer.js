@@ -265,7 +265,14 @@
     };
   }
 
-  function areGuideLinesVisible(state) {
+  function isGuideLineVisible(state, visibilityKey) {
+    if (typeof visibilityKey === "string" && visibilityKey) {
+      if (typeof state?.isLightRayVisible === "function") {
+        return state.isLightRayVisible(visibilityKey);
+      }
+      return Boolean(state?.lightRayVisibilityByKey?.[visibilityKey]);
+    }
+
     return Boolean(state?.showLightRays);
   }
 
@@ -294,6 +301,7 @@
         renderRadius: 0,
         minPixelRadius: 0,
         togglesWithLightRaysButton: true,
+        lightRayVisibilityKey: guideLine.visibilityKey,
         labelAnchorPosition: anchorObject.position,
         labelAnchorRadius: 0,
         labelMarginPixels: Math.max(1, guideLine.labelMarginPixels || 8)
@@ -360,7 +368,9 @@
           if (!lightRayRuntime) continue;
           guideLineGroup.add(lightRayRuntime.object);
           guideRuntimes.push({
-            object: lightRayRuntime.object
+            object: lightRayRuntime.object,
+            visibilityKey: guideLine.visibilityKey,
+            visibilityLabel: guideLine.visibilityLabel
           });
           if (Array.isArray(sceneObjectRuntimes)) {
             const labelRuntime = this.createGuideLineLabelRuntime(THREE, guideLine);
@@ -387,7 +397,9 @@
 
         guideLineGroup.add(line);
         guideRuntimes.push({
-          object: line
+          object: line,
+          visibilityKey: guideLine.visibilityKey,
+          visibilityLabel: guideLine.visibilityLabel
         });
         if (Array.isArray(sceneObjectRuntimes)) {
           const labelRuntime = this.createGuideLineLabelRuntime(THREE, guideLine);
@@ -400,7 +412,7 @@
 
     applyGuideLineVisibility(state, guideRuntimes) {
       for (const runtime of guideRuntimes) {
-        runtime.object.visible = areGuideLinesVisible(state);
+        runtime.object.visible = isGuideLineVisible(state, runtime.visibilityKey);
       }
     }
   }

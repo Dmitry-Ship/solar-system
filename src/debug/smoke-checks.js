@@ -160,18 +160,27 @@
 
     const namesToggleButton = document.getElementById("names-toggle");
     const orbitsToggleButton = document.getElementById("orbits-toggle");
-    const lightRayToggleButton = document.getElementById("light-ray-toggle");
+    const lightRayToggleButtons = Array.from(
+      document.querySelectorAll("#light-ray-controls [data-light-ray-key]")
+    );
     const zoomToggleButton = document.getElementById("zoom-toggle");
+    const expectedLightRayToggleCount = new Set(
+      (sceneData?.directionalGuideLines || [])
+        .map((guideLine) => guideLine.visibilityKey)
+        .filter(Boolean)
+    ).size;
     const uiButtonsPresent =
       !!namesToggleButton &&
       !!orbitsToggleButton &&
-      !!lightRayToggleButton &&
+      lightRayToggleButtons.length === expectedLightRayToggleCount &&
       !!zoomToggleButton;
     results.push(
       createResult(
         "UI Controls Presence",
         uiButtonsPresent,
-        uiButtonsPresent ? "HUD controls are present." : "One or more HUD controls missing."
+        uiButtonsPresent
+          ? "HUD controls are present."
+          : "One or more HUD controls missing."
       )
     );
 

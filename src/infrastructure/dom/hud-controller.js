@@ -16,11 +16,31 @@
       this.onGuideVisibilityChanged = options.onGuideVisibilityChanged;
     }
 
+    getLightRayControls() {
+      const controlsByKey = new Map();
+
+      for (const runtime of this.guideRuntimes) {
+        const visibilityKey =
+          typeof runtime?.visibilityKey === "string" ? runtime.visibilityKey.trim() : "";
+        if (!visibilityKey || controlsByKey.has(visibilityKey)) continue;
+
+        controlsByKey.set(visibilityKey, {
+          key: visibilityKey,
+          label:
+            typeof runtime.visibilityLabel === "string" && runtime.visibilityLabel.trim()
+              ? runtime.visibilityLabel.trim()
+              : visibilityKey
+        });
+      }
+
+      return Array.from(controlsByKey.values());
+    }
+
     setup() {
       const zoomToggleButton = document.getElementById("zoom-toggle");
       const namesToggleButton = document.getElementById("names-toggle");
       const orbitToggleButton = document.getElementById("orbits-toggle");
-      const lightRayToggleButton = document.getElementById("light-ray-toggle");
+      const lightRayControlsContainer = document.getElementById("light-ray-controls");
 
       const updateBooleanToggleLabel = (
         button,
@@ -102,26 +122,43 @@
         );
       }
 
-      if (lightRayToggleButton) {
-        lightRayToggleButton.addEventListener("click", () => {
-          this.state.showLightRays = !this.state.showLightRays;
-          if (typeof this.onGuideVisibilityChanged === "function") {
-            this.onGuideVisibilityChanged(this.state, this.guideRuntimes);
-          }
-          updateBooleanToggleLabel(
-            lightRayToggleButton,
-            this.state.showLightRays,
-            "Hide Light Rays",
-            "Show Light Rays"
-          );
-        });
+      if (lightRayControlsContainer) {
+        const lightRayControls = this.getLightRayControls();
+        lightRayControlsContainer.textContent = "";
+        const lightRayControlGroup = lightRayControlsContainer.closest(".hud-control-group");
+        if (lightRayControlGroup) {
+          lightRayControlGroup.hidden = lightRayControls.length === 0;
+        }
 
-        updateBooleanToggleLabel(
-          lightRayToggleButton,
-          this.state.showLightRays,
-          "Hide Light Rays",
-          "Show Light Rays"
-        );
+        for (const lightRayControl of lightRayControls) {
+          this.state.registerLightRay(lightRayControl.key, false);
+
+          const button = document.createElement("button");
+          button.className = "zoom-button";
+          button.type = "button";
+          button.dataset.lightRayKey = lightRayControl.key;
+          button.setAttribute("aria-pressed", "false");
+          button.addEventListener("click", () => {
+            const isVisible = this.state.toggleLightRayVisibility(lightRayControl.key);
+            if (typeof this.onGuideVisibilityChanged === "function") {
+              this.onGuideVisibilityChanged(this.state, this.guideRuntimes);
+            }
+            updateBooleanToggleLabel(
+              button,
+              isVisible,
+              `Hide ${lightRayControl.label} Ray`,
+              `Show ${lightRayControl.label} Ray`
+            );
+          });
+
+          updateBooleanToggleLabel(
+            button,
+            this.state.isLightRayVisible(lightRayControl.key),
+            `Hide ${lightRayControl.label} Ray`,
+            `Show ${lightRayControl.label} Ray`
+          );
+          lightRayControlsContainer.appendChild(button);
+        }
       }
 
       this.controls.addEventListener("change", this.updateZoomToggleLabel);

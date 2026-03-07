@@ -35,6 +35,15 @@
     return Math.hypot(point.x, point.y, point.z);
   }
 
+  function buildLightRayVisibilityKey(name) {
+    const normalizedName = typeof name === "string" ? name.trim().toLowerCase() : "";
+    if (!normalizedName) {
+      return "light-ray";
+    }
+
+    return `light-ray:${normalizedName.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`;
+  }
+
   function resolveGuideLinePoints(marker, options, dependencies) {
     const { constants, math } = dependencies;
     const fallbackStartPoint =
@@ -132,6 +141,8 @@
       lightRayDashPattern: options.lightRayDashPattern || [],
       dashPattern: options.dashPattern || [],
       depthTest: options.depthTest,
+      visibilityKey: options.visibilityKey || "",
+      visibilityLabel: options.visibilityLabel || "",
       label: options.label || "",
       labelAnchorPoint: options.labelAnchorPoint ? clonePoint(options.labelAnchorPoint) : null,
       labelMarginPixels: options.labelMarginPixels
@@ -264,7 +275,9 @@
           opacity: peakOpacity,
           lightRayRadiusProfileAu,
           lightRayOpacityProfile,
-          lightRayLayerIndex: layerIndex
+          lightRayLayerIndex: layerIndex,
+          visibilityKey: buildLightRayVisibilityKey(sourceMarker.name),
+          visibilityLabel: sourceMarker.name
         },
         dependencies
       )

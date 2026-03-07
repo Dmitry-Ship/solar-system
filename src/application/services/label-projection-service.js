@@ -4,7 +4,14 @@
     throw new Error("label projection service bootstrap failed: missing application services namespace.");
   }
 
-  function areGuideLineLabelsVisible(state) {
+  function areGuideLineLabelsVisible(state, visibilityKey) {
+    if (typeof visibilityKey === "string" && visibilityKey) {
+      if (typeof state?.isLightRayVisible === "function") {
+        return state.isLightRayVisible(visibilityKey);
+      }
+      return Boolean(state?.lightRayVisibilityByKey?.[visibilityKey]);
+    }
+
     return Boolean(state?.showLightRays);
   }
 
@@ -48,7 +55,10 @@
 
         if (
           (!this.state.showBodyNames && runtime.togglesWithNamesButton) ||
-          (runtime.togglesWithLightRaysButton && !areGuideLineLabelsVisible(this.state))
+          (
+            runtime.togglesWithLightRaysButton &&
+            !areGuideLineLabelsVisible(this.state, runtime.lightRayVisibilityKey)
+          )
         ) {
           runtime.labelElement.style.display = "none";
           continue;
