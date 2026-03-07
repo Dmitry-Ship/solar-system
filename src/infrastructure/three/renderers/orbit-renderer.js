@@ -19,13 +19,14 @@
   class OrbitRenderer {
     constructor(options) {
       this.bodyRenderer = options.bodyRenderer;
+      this.THREE = options.THREE || window.THREE;
+      if (!this.THREE) {
+        throw new Error("OrbitRenderer: THREE is required.");
+      }
     }
 
     buildOrbitLine(points, color, opacity) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("buildOrbitLine: missing THREE.");
-      }
+      const { THREE } = this;
 
       const geometry = new THREE.BufferGeometry();
       const positionArray = new Float32Array(points.length * 3);

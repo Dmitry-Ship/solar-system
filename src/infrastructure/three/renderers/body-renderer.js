@@ -12,14 +12,14 @@
   class BodyRenderer {
     constructor(options) {
       this.labelsLayer = options.labelsLayer;
+      this.THREE = options.THREE || window.THREE;
+      if (!this.THREE) {
+        throw new Error("BodyRenderer: THREE is required.");
+      }
     }
 
     createBodyMaterial(config) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("createBodyMaterial: missing THREE.");
-      }
-
+      const { THREE } = this;
       const useLitMaterial = !config.emissive && config.lit !== false;
       const material = useLitMaterial
         ? new THREE.MeshLambertMaterial({
@@ -39,11 +39,7 @@
     }
 
     createSpacecraftMesh(material) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("createSpacecraftMesh: missing THREE.");
-      }
-
+      const { THREE } = this;
       const group = new THREE.Group();
       const baseMaterial = material;
       const busMaterial = new THREE.MeshLambertMaterial({ color: "#c6ccd7" });
@@ -97,10 +93,7 @@
     }
 
     createRenderableMesh(config, bodyGeometry, material) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("createRenderableMesh: missing THREE.");
-      }
+      const { THREE } = this;
 
       if (config.objectType === "spacecraft") {
         return this.createSpacecraftMesh(material);
@@ -116,10 +109,7 @@
     }
 
     createBodyRuntime(config, bodyGroup, bodyGeometry) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("createBodyRuntime: missing THREE.");
-      }
+      const { THREE } = this;
 
       const material = this.createBodyMaterial(config);
       const mesh = this.createRenderableMesh(config, bodyGeometry, material);
@@ -154,10 +144,7 @@
     }
 
     createLabelAnchorRuntime(config) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("createLabelAnchorRuntime: missing THREE.");
-      }
+      const { THREE } = this;
 
       const mesh = new THREE.Object3D();
       mesh.position.set(
@@ -186,7 +173,7 @@
     }
 
     buildFixedBodies(sceneData, bodyGroup, bodyGeometry, sceneObjectRuntimes) {
-      if (!window.THREE) {
+      if (!this.THREE) {
         throw new Error("buildFixedBodies: missing THREE.");
       }
 

@@ -40,6 +40,7 @@
       this.sceneDataApi = options.data || namespace.data;
       this.data = this.sceneDataApi;
       this.math = options.math || namespace.math;
+      this.THREE = options.THREE || window.THREE;
 
       this.initialized = false;
       this.canvas = null;
@@ -52,7 +53,7 @@
     }
 
     assertThreeDependencies() {
-      const THREE = window.THREE;
+      const { THREE } = this;
       if (
         !THREE ||
         !THREE.OrbitControls ||
@@ -90,7 +91,8 @@
       return canvas;
     }
 
-    createRenderer(THREE) {
+    createRenderer() {
+      const { THREE } = this;
       const { width, height } = this.getViewportSize();
       const renderer = new THREE.WebGLRenderer({
         canvas: this.canvas,
@@ -110,14 +112,16 @@
       return renderer;
     }
 
-    createScene(THREE) {
+    createScene() {
+      const { THREE } = this;
       const scene = new THREE.Scene();
       scene.add(new THREE.AmbientLight("#ffffff", 0.5));
       scene.add(new THREE.PointLight("#ffd794", 1.2, 0, 0));
       return scene;
     }
 
-    createCamera(THREE) {
+    createCamera() {
+      const { THREE } = this;
       const { width, height } = this.getViewportSize();
       return new THREE.PerspectiveCamera(
         48,
@@ -128,6 +132,7 @@
     }
 
     createPostprocessingRenderer() {
+      const { THREE } = this;
       const { width, height } = this.getViewportSize();
       return new PostprocessingRenderer({
         renderer: this.renderer,
@@ -141,7 +146,8 @@
       });
     }
 
-    createControls(THREE) {
+    createControls() {
+      const { THREE } = this;
       const controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
       controls.enableDamping = false;
       controls.enablePan = false;
@@ -153,7 +159,8 @@
       return controls;
     }
 
-    createSceneGroups(THREE) {
+    createSceneGroups() {
+      const { THREE } = this;
       return {
         orbitGroup: new THREE.Group(),
         guideLineGroup: new THREE.Group(),
@@ -179,8 +186,9 @@
       this.labelsLayerElement = this.labelsLayer.createLayer();
     }
 
-    initializeRuntimeCollections(THREE) {
-      Object.assign(this, this.createSceneGroups(THREE));
+    initializeRuntimeCollections() {
+      const { THREE } = this;
+      Object.assign(this, this.createSceneGroups());
       this.attachSceneGroups();
 
       this.bodyGeometry = new THREE.SphereGeometry(1, 20, 12);
@@ -190,17 +198,25 @@
       this.beltRuntimes = [];
       this.orbitingBodies = [];
 
-      // Preserve legacy property names for the compat facade.
       this.bodyRuntimes = this.sceneObjectRuntimes;
       this.guideLineRuntimes = this.guideRuntimes;
       this.orbitalSourceBodies = this.orbitingBodies;
     }
 
     initializeRenderers() {
-      this.bodyRenderer = new BodyRenderer({ labelsLayer: this.labelsLayer });
-      this.orbitRenderer = new OrbitRenderer({ bodyRenderer: this.bodyRenderer });
-      this.particleRenderer = new ParticleRenderer();
-      this.guideRenderer = new GuideRenderer({ labelsLayer: this.labelsLayer });
+      this.bodyRenderer = new BodyRenderer({ 
+        labelsLayer: this.labelsLayer,
+        THREE: this.THREE 
+      });
+      this.orbitRenderer = new OrbitRenderer({ 
+        bodyRenderer: this.bodyRenderer,
+        THREE: this.THREE 
+      });
+      this.particleRenderer = new ParticleRenderer({ THREE: this.THREE });
+      this.guideRenderer = new GuideRenderer({ 
+        labelsLayer: this.labelsLayer,
+        THREE: this.THREE 
+      });
     }
 
     initializeVisibilityService() {
@@ -288,13 +304,15 @@
       });
     }
 
-    initializeViewServices(THREE) {
+    initializeViewServices() {
+      const { THREE } = this;
       this.labelProjectionService = new LabelProjectionService({
         renderer: this.renderer,
         camera: this.camera,
         sceneObjectRuntimes: this.sceneObjectRuntimes,
         state: this.state,
-        projectionScratch: new THREE.Vector3()
+        projectionScratch: new THREE.Vector3(),
+        THREE: this.THREE
       });
     }
 
@@ -320,24 +338,23 @@
 
       this.assertThreeDependencies();
 
-      const THREE = window.THREE;
       this.createCanvas();
       this.initializeState();
 
-      this.renderer = this.createRenderer(THREE);
-      this.scene = this.createScene(THREE);
-      this.camera = this.createCamera(THREE);
+      this.renderer = this.createRenderer();
+      this.scene = this.createScene();
+      this.camera = this.createCamera();
       this.postprocessingRenderer = this.createPostprocessingRenderer();
-      this.controls = this.createControls(THREE);
+      this.controls = this.createControls();
 
       this.initializeLabelsLayer();
-      this.initializeRuntimeCollections(THREE);
+      this.initializeRuntimeCollections();
       this.initializeRenderers();
       this.buildSceneContents();
       this.initializeVisibilityService();
       this.initializeHud();
       this.initializeCameraPlacement();
-      this.initializeViewServices(THREE);
+      this.initializeViewServices();
       this.registerEvents();
       this.resize();
 

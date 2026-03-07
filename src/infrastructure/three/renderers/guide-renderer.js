@@ -263,6 +263,10 @@
   class GuideRenderer {
     constructor(options) {
       this.labelsLayer = options.labelsLayer;
+      this.THREE = options.THREE || window.THREE;
+      if (!this.THREE) {
+        throw new Error("GuideRenderer: THREE is required.");
+      }
     }
 
     createGuideLineLabelRuntime(THREE, guideLine) {
@@ -294,10 +298,7 @@
     }
 
     createLightRay(guideLine, points) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("createLightRay: missing THREE.");
-      }
+      const { THREE } = this;
 
       const pointCount = points.length;
       if (pointCount < 2) return null;
@@ -330,10 +331,7 @@
       sceneObjectRuntimes,
       visibilityRuntimes
     ) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("buildGuideLines: missing THREE.");
-      }
+      const { THREE } = this;
 
       for (const guideLine of sceneData.directionalGuideLines) {
         const points = guideLine.points.map(

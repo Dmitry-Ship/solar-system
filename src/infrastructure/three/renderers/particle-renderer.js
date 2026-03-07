@@ -10,6 +10,13 @@
   }
 
   class ParticleRenderer {
+    constructor(options) {
+      this.THREE = options.THREE || window.THREE;
+      if (!this.THREE) {
+        throw new Error("ParticleRenderer: THREE is required.");
+      }
+    }
+
     static clamp01(value) {
       return Math.min(1, Math.max(0, value));
     }
@@ -28,10 +35,7 @@
     }
 
     buildStarField(sceneData, particleGroup) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("buildStarField: missing THREE.");
-      }
+      const { THREE } = this;
 
       const positions = sceneData.stars.positions;
 
@@ -54,10 +58,7 @@
     }
 
     buildOortCloud(sceneData, particleGroup) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("buildOortCloud: missing THREE.");
-      }
+      const { THREE } = this;
 
       const oortCloud = sceneData.oortCloud;
       const positions = oortCloud.positions;
@@ -81,10 +82,7 @@
     }
 
     buildAsteroidBelts(sceneData, particleGroup, beltRuntimes, math, orbitalPositionScratch) {
-      const THREE = window.THREE;
-      if (!THREE) {
-        throw new Error("buildAsteroidBelts: missing THREE.");
-      }
+      const { THREE } = this;
 
       for (const belt of sceneData.asteroidBelts) {
         const positions = belt.positions;

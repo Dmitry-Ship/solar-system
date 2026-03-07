@@ -1,27 +1,45 @@
 (() => {
-  const root = (window.SolarSystem = window.SolarSystem || {});
+  const container = (window.SolarSystem && window.SolarSystem.container) || null;
+  const namespace = (window.SolarSystem = window.SolarSystem || {});
 
-  root.core = root.core || {};
-  root.domain = root.domain || {};
-  root.application = root.application || {};
-  root.infrastructure = root.infrastructure || {};
-  root.runtime = root.runtime || {};
-  root.compat = root.compat || {};
-  root.debug = root.debug || {};
+  namespace.core = namespace.core || {};
+  namespace.core.container = container;
 
-  root.domain.constants = root.domain.constants || {};
-  root.domain.math = root.domain.math || {};
-  root.domain.catalogs = root.domain.catalogs || {};
+  namespace.domain = namespace.domain || {};
+  namespace.application = namespace.application || {};
+  namespace.infrastructure = namespace.infrastructure || {};
+  namespace.runtime = namespace.runtime || {};
+  namespace.compat = namespace.compat || {};
+  namespace.debug = namespace.debug || {};
 
-  root.application.state = root.application.state || {};
-  root.application.factories = root.application.factories || {};
-  root.application.services = root.application.services || {};
-  root.application.systems = root.application.systems || {};
+  namespace.domain.constants = namespace.domain.constants || {};
+  namespace.domain.math = namespace.domain.math || {};
+  namespace.domain.catalogs = namespace.domain.catalogs || {};
 
-  root.infrastructure.three = root.infrastructure.three || {};
-  root.infrastructure.three.renderers =
-    root.infrastructure.three.renderers || {};
-  root.infrastructure.three.controllers =
-    root.infrastructure.three.controllers || {};
-  root.infrastructure.dom = root.infrastructure.dom || {};
+  namespace.application.state = namespace.application.state || {};
+  namespace.application.factories = namespace.application.factories || {};
+  namespace.application.services = namespace.application.services || {};
+  namespace.application.systems = namespace.application.systems || {};
+
+  namespace.infrastructure.three = namespace.infrastructure.three || {};
+  namespace.infrastructure.three.renderers = namespace.infrastructure.three.renderers || {};
+  namespace.infrastructure.three.controllers = namespace.infrastructure.three.controllers || {};
+  namespace.infrastructure.dom = namespace.infrastructure.dom || {};
+
+  function registerService(key, Factory) {
+    if (container) {
+      container.register(key, (c) => new Factory(c));
+    }
+    namespace[key] = Factory;
+  }
+
+  function registerInstance(key, instance) {
+    if (container) {
+      container.registerInstance(key, instance);
+    }
+    namespace[key] = instance;
+  }
+
+  namespace.core.registerService = registerService;
+  namespace.core.registerInstance = registerInstance;
 })();

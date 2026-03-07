@@ -20,6 +20,8 @@
     throw new Error("app compatibility bootstrap failed: missing setInitialCameraPlacement helper.");
   }
 
+  const THREE = window.THREE;
+
   function createLabelAdapter(layer) {
     return {
       createLabel(text, options = {}) {
@@ -56,20 +58,22 @@
     labelsLayerElement
   ) {
     const renderer = new BodyRenderer({
-      labelsLayer: createLabelAdapter(labelsLayerElement)
+      labelsLayer: createLabelAdapter(labelsLayerElement),
+      THREE
     });
     return renderer.createBodyRuntime(config, bodyGroup, bodyGeometry);
   };
 
   app.createLabelAnchorRuntime = function createLabelAnchorRuntime(config, labelsLayerElement) {
     const renderer = new BodyRenderer({
-      labelsLayer: createLabelAdapter(labelsLayerElement)
+      labelsLayer: createLabelAdapter(labelsLayerElement),
+      THREE
     });
     return renderer.createLabelAnchorRuntime(config);
   };
 
   app.buildOrbitLine = function buildOrbitLine(points, color, opacity) {
-    const renderer = new OrbitRenderer({ bodyRenderer: null });
+    const renderer = new OrbitRenderer({ bodyRenderer: null, THREE });
     return renderer.buildOrbitLine(points, color, opacity);
   };
 
@@ -84,9 +88,10 @@
     math
   ) {
     const bodyRenderer = new BodyRenderer({
-      labelsLayer: createLabelAdapter(labelsLayerElement)
+      labelsLayer: createLabelAdapter(labelsLayerElement),
+      THREE
     });
-    const orbitRenderer = new OrbitRenderer({ bodyRenderer });
+    const orbitRenderer = new OrbitRenderer({ bodyRenderer, THREE });
     orbitRenderer.buildOrbitingBodies(
       sceneData,
       orbitGroup,
@@ -107,7 +112,8 @@
     constants
   ) {
     const bodyRenderer = new BodyRenderer({
-      labelsLayer: createLabelAdapter(labelsLayerElement)
+      labelsLayer: createLabelAdapter(labelsLayerElement),
+      THREE
     });
     bodyRenderer.buildFixedBodies(
       sceneData,
@@ -119,12 +125,12 @@
   };
 
   app.buildStarField = function buildStarField(sceneData, particleGroup) {
-    const renderer = new ParticleRenderer();
+    const renderer = new ParticleRenderer({ THREE });
     renderer.buildStarField(sceneData, particleGroup);
   };
 
   app.buildOortCloud = function buildOortCloud(sceneData, particleGroup) {
-    const renderer = new ParticleRenderer();
+    const renderer = new ParticleRenderer({ THREE });
     renderer.buildOortCloud(sceneData, particleGroup);
   };
 
@@ -135,7 +141,7 @@
     math,
     orbitalPositionScratch
   ) {
-    const renderer = new ParticleRenderer();
+    const renderer = new ParticleRenderer({ THREE });
     renderer.buildAsteroidBelts(
       sceneData,
       particleGroup,
@@ -149,7 +155,7 @@
     beltRuntimes,
     camera
   ) {
-    const renderer = new ParticleRenderer();
+    const renderer = new ParticleRenderer({ THREE });
     renderer.updateAsteroidBeltVisuals(beltRuntimes, camera);
   };
 
@@ -159,7 +165,8 @@
         createLabel() {
           return null;
         }
-      }
+      },
+      THREE
     });
     return renderer.createLightRay(guideLine, points);
   };
@@ -173,7 +180,8 @@
     visibilityRuntimes
   ) {
     const renderer = new GuideRenderer({
-      labelsLayer: createLabelAdapter(labelsLayerElement)
+      labelsLayer: createLabelAdapter(labelsLayerElement),
+      THREE
     });
     renderer.buildGuideLines(
       sceneData,
@@ -193,7 +201,7 @@
   };
 
   app.applyOrbitVisibility = function applyOrbitVisibility(state, orbitGroup) {
-    const renderer = new OrbitRenderer({ bodyRenderer: null });
+    const renderer = new OrbitRenderer({ bodyRenderer: null, THREE });
     renderer.applyOrbitVisibility(state, orbitGroup);
   };
 
@@ -238,11 +246,11 @@
 
   app.createBodyVisualScaleAndLabelsUpdater =
     function createBodyVisualScaleAndLabelsUpdater(options) {
-      const service = new LabelProjectionService(options);
+      const service = new LabelProjectionService({ ...options, THREE });
       return service.update.bind(service);
     };
 
   app.createSelectiveBloomRenderer = function createSelectiveBloomRenderer(config) {
-    return new PostprocessingRenderer(config);
+    return new PostprocessingRenderer({ ...config, THREE });
   };
 })();

@@ -13,7 +13,7 @@
 
   class PostprocessingRenderer {
     constructor(config) {
-      const THREE = window.THREE;
+      const THREE = config.THREE || window.THREE;
       if (!THREE) {
         throw new Error("PostprocessingRenderer: missing THREE.");
       }

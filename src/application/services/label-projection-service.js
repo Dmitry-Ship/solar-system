@@ -18,7 +18,7 @@
 
   class LabelProjectionService {
     constructor(options) {
-      const THREE = window.THREE;
+      const THREE = options.THREE || window.THREE;
       if (!THREE) {
         throw new Error("LabelProjectionService: missing THREE.");
       }
