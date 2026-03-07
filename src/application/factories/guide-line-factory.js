@@ -10,6 +10,7 @@
   const MATRYOSHKA_INNER_SOURCE_RADIUS_FACTOR = 0.018;
   const MATRYOSHKA_SOURCE_RADIUS_MIN_MULTIPLIER = 18;
   const LIGHT_RAY_DISTANCE_FADE_POWER = 2.2;
+  const TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT = 18;
 
   function clamp01(value) {
     return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
@@ -33,6 +34,45 @@
 
   function pointDistance(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+  }
+
+  function addPoint(a, b) {
+    return {
+      x: a.x + b.x,
+      y: a.y + b.y,
+      z: a.z + b.z
+    };
+  }
+
+  function scalePoint(point, scalar) {
+    return {
+      x: point.x * scalar,
+      y: point.y * scalar,
+      z: point.z * scalar
+    };
+  }
+
+  function dotProduct(a, b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+  }
+
+  function normalizePoint(point) {
+    const magnitude = pointMagnitude(point);
+    if (magnitude <= 1e-9) {
+      return { x: 0, y: 0, z: 0 };
+    }
+
+    return scalePoint(point, 1 / magnitude);
+  }
+
+  function appendUniquePoint(points, point) {
+    if (!Array.isArray(points) || !point) {
+      return;
+    }
+
+    if (points.length === 0 || pointDistance(points[points.length - 1], point) > 1e-6) {
+      points.push(clonePoint(point));
+    }
   }
 
   function buildDistanceFadeProfile(points, marker) {
@@ -67,6 +107,15 @@
     }
 
     return `light-ray:${normalizedName.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`;
+  }
+
+  function buildTrajectoryVisibilityKey(name) {
+    const normalizedName = typeof name === "string" ? name.trim().toLowerCase() : "";
+    if (!normalizedName) {
+      return "trajectory";
+    }
+
+    return `trajectory:${normalizedName.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`;
   }
 
   function buildLightRayRadiusProfile(
@@ -353,23 +402,190 @@
     return guideLines;
   }
 
+  function resolveMatryoshkaFocalDistanceRange(layerDefinitions, lensDistanceAu) {
+    if (!Array.isArray(layerDefinitions) || layerDefinitions.length === 0) {
+      return {
+        minDistanceAu: lensDistanceAu,
+        maxDistanceAu: lensDistanceAu
+      };
+    }
+
+    let minDistanceAu = Number.POSITIVE_INFINITY;
+    let maxDistanceAu = lensDistanceAu;
+    for (const layerDefinition of layerDefinitions) {
+      const distanceAu = lensDistanceAu + (layerDefinition.focalOffsetAu ?? 0);
+      minDistanceAu = Math.min(minDistanceAu, distanceAu);
+      maxDistanceAu = Math.max(maxDistanceAu, distanceAu);
+    }
+
+    return {
+      minDistanceAu: Number.isFinite(minDistanceAu) ? minDistanceAu : lensDistanceAu,
+      maxDistanceAu
+    };
+  }
+
+  function findMarkerByName(sourceMarkers, markerName) {
+    const normalizedMarkerName = typeof markerName === "string" ? markerName.trim() : "";
+    if (!normalizedMarkerName) {
+      return null;
+    }
+
+    return (
+      sourceMarkers.find(
+        (sourceMarker) =>
+          typeof sourceMarker?.name === "string" &&
+          sourceMarker.name.trim().toLowerCase() === normalizedMarkerName.toLowerCase()
+      ) || null
+    );
+  }
+
+  function appendDirectionalArcPoints(
+    points,
+    startDirection,
+    endDirection,
+    radiusAu,
+    segmentCount
+  ) {
+    const clampedDot = clamp01((dotProduct(startDirection, endDirection) + 1) * 0.5) * 2 - 1;
+    const angle = Math.acos(clampedDot);
+
+    if (angle <= 1e-6) {
+      appendUniquePoint(points, scalePoint(startDirection, radiusAu));
+      appendUniquePoint(points, scalePoint(endDirection, radiusAu));
+      return;
+    }
+
+    const sinAngle = Math.sin(angle);
+    for (let step = 0; step <= segmentCount; step += 1) {
+      const t = step / segmentCount;
+      const startWeight = Math.sin((1 - t) * angle) / sinAngle;
+      const endWeight = Math.sin(t * angle) / sinAngle;
+      const direction = normalizePoint(
+        addPoint(scalePoint(startDirection, startWeight), scalePoint(endDirection, endWeight))
+      );
+      appendUniquePoint(points, scalePoint(direction, radiusAu));
+    }
+  }
+
+  function buildSolarAssistApexDirection(startDirection, endDirection) {
+    return normalizePoint({
+      x: startDirection.x + endDirection.x,
+      y: Math.abs(startDirection.y) + Math.abs(endDirection.y) + 2,
+      z: startDirection.z + endDirection.z
+    });
+  }
+
+  function liftSolarAssistDirection(direction) {
+    return normalizePoint({
+      x: direction.x,
+      y: Math.abs(direction.y) + 0.9,
+      z: direction.z
+    });
+  }
+
+  function createTrajectoryGuideLine(trajectoryDefinition, sourceMarkers, dependencies) {
+    if (!trajectoryDefinition) {
+      return null;
+    }
+
+    const launchMarker = findMarkerByName(sourceMarkers, trajectoryDefinition.launchMarkerName);
+    const firstFocalMarker = findMarkerByName(
+      sourceMarkers,
+      trajectoryDefinition.firstFocalMarkerName
+    );
+    const secondFocalMarker = findMarkerByName(
+      sourceMarkers,
+      trajectoryDefinition.secondFocalMarkerName
+    );
+    if (!launchMarker || !firstFocalMarker || !secondFocalMarker) {
+      return null;
+    }
+
+    const { focalLineMinDistanceAu, focalLineMaxDistanceAu } = dependencies;
+    const firstFocalDirection = normalizePoint(
+      dependencies.math.pointOnRadiusAlongDirection(firstFocalMarker, -1)
+    );
+    const secondFocalDirection = normalizePoint(
+      dependencies.math.pointOnRadiusAlongDirection(secondFocalMarker, -1)
+    );
+    const focalMidDistanceAu = (focalLineMinDistanceAu + focalLineMaxDistanceAu) * 0.5;
+    const firstFocalMidpoint = scalePoint(firstFocalDirection, focalMidDistanceAu);
+    const secondFocalEndPoint = scalePoint(secondFocalDirection, focalLineMaxDistanceAu);
+    const solarAssistEntryDirection = liftSolarAssistDirection(firstFocalDirection);
+    const solarAssistExitDirection = liftSolarAssistDirection(secondFocalDirection);
+    const solarAssistApexDirection = buildSolarAssistApexDirection(
+      solarAssistEntryDirection,
+      solarAssistExitDirection
+    );
+    const solarAssistRadiusAu = Math.max(
+      0.02,
+      Number.isFinite(trajectoryDefinition.solarAssistRadiusAu)
+        ? trajectoryDefinition.solarAssistRadiusAu
+        : 0.25
+    );
+    const points = [];
+
+    appendUniquePoint(points, launchMarker);
+    appendUniquePoint(points, firstFocalMidpoint);
+    appendUniquePoint(points, scalePoint(firstFocalDirection, focalLineMinDistanceAu));
+    appendUniquePoint(points, scalePoint(solarAssistEntryDirection, solarAssistRadiusAu));
+    appendDirectionalArcPoints(
+      points,
+      solarAssistEntryDirection,
+      solarAssistApexDirection,
+      solarAssistRadiusAu,
+      Math.max(2, Math.floor(TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT * 0.5))
+    );
+    appendDirectionalArcPoints(
+      points,
+      solarAssistApexDirection,
+      solarAssistExitDirection,
+      solarAssistRadiusAu,
+      Math.max(2, Math.ceil(TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT * 0.5))
+    );
+    appendUniquePoint(points, scalePoint(secondFocalDirection, focalLineMinDistanceAu));
+    appendUniquePoint(points, secondFocalEndPoint);
+
+    return buildDirectionalGuideLine(launchMarker, trajectoryDefinition.color || "#ffd36e", {
+      points,
+      opacity: 0.94,
+      depthTest: false,
+      visibilityKey: buildTrajectoryVisibilityKey(trajectoryDefinition.name),
+      visibilityLabel: trajectoryDefinition.label || trajectoryDefinition.name,
+      visibilityControlLabel: trajectoryDefinition.label || trajectoryDefinition.name,
+      visibilityGroupKey: "trajectories",
+      visibilityGroupLabel: "Trajectories",
+      initialVisibility: true,
+      label: trajectoryDefinition.label || trajectoryDefinition.name,
+      labelAnchorPoint: firstFocalMidpoint,
+      labelMarginPixels: 10
+    });
+  }
+
+  function createTrajectoryGuideLines(sourceMarkers, dependencies) {
+    if (!Array.isArray(dependencies.markerCatalog.TRAJECTORY_DEFINITIONS)) {
+      return [];
+    }
+
+    return dependencies.markerCatalog.TRAJECTORY_DEFINITIONS.map((trajectoryDefinition) =>
+      createTrajectoryGuideLine(trajectoryDefinition, sourceMarkers, dependencies)
+    ).filter(Boolean);
+  }
+
   function buildDirectionalGuideLines(sourceMarkers, dependencies) {
     if (!Array.isArray(sourceMarkers) || sourceMarkers.length === 0) {
       return [];
     }
 
-    const maxMatryoshkaFocusDistanceAu =
-      dependencies.markerCatalog.MATRYOSHKA_CONE_LAYER_DEFINITIONS.reduce(
-        (maxDistanceAu, layerDefinition) =>
-          Math.max(
-            maxDistanceAu,
-            dependencies.constants.SOLAR_GRAVITATIONAL_LENS_AU +
-              (layerDefinition.focalOffsetAu ?? 0)
-          ),
+    const { minDistanceAu: focalLineMinDistanceAu, maxDistanceAu: maxMatryoshkaFocusDistanceAu } =
+      resolveMatryoshkaFocalDistanceRange(
+        dependencies.markerCatalog.MATRYOSHKA_CONE_LAYER_DEFINITIONS,
         dependencies.constants.SOLAR_GRAVITATIONAL_LENS_AU
       );
     const guideLineDependencies = {
       ...dependencies,
+      focalLineMinDistanceAu,
+      focalLineMaxDistanceAu: maxMatryoshkaFocusDistanceAu,
       directionalGuideSharedEndDistanceAu:
         maxMatryoshkaFocusDistanceAu +
         dependencies.markerCatalog.DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU
@@ -379,6 +595,7 @@
     for (const sourceMarker of sourceMarkers) {
       guideLines.push(...createMatryoshkaSourceGuideShape(sourceMarker, guideLineDependencies));
     }
+    guideLines.push(...createTrajectoryGuideLines(sourceMarkers, guideLineDependencies));
 
     return guideLines;
   }

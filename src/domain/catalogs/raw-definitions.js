@@ -489,12 +489,25 @@
     }
   ];
 
+  const TRAJECTORY_DEFINITIONS = [
+    {
+      name: "61 Cygni Transfer",
+      label: "61 Cygni trajectory",
+      launchMarkerName: "61 Cygni",
+      firstFocalMarkerName: "Gliese 300",
+      secondFocalMarkerName: "61 Cygni",
+      solarAssistRadiusAu: 0.25,
+      color: "#ffd36e"
+    }
+  ];
+
   namespace.domain.catalogs.rawDefinitions = Object.freeze({
     PLANET_DEFINITIONS,
     DWARF_PLANET_DEFINITIONS,
     COMET_DEFINITIONS,
     VOYAGERS,
     DRIFTING_BODIES,
-    DIRECTIONAL_MARKER_DEFINITIONS
+    DIRECTIONAL_MARKER_DEFINITIONS,
+    TRAJECTORY_DEFINITIONS
   });
 })();
