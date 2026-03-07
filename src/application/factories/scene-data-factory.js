@@ -3,6 +3,10 @@
   if (!namespace || !namespace.application || !namespace.application.factories) {
     throw new Error("scene-data factory bootstrap failed: missing application factories namespace.");
   }
+  const buildDirectionalGuideLines = namespace.application.factories.buildDirectionalGuideLines;
+  if (!buildDirectionalGuideLines) {
+    throw new Error("scene-data factory bootstrap failed: missing directional guide-line builder.");
+  }
 
   class SceneDataFactory {
     constructor(options) {
@@ -16,7 +20,6 @@
       this.markerCatalog = options.markerCatalog;
       this.beltCatalog = options.beltCatalog;
       this.rawDefinitions = options.rawDefinitions;
-      this.guideLineFactory = options.guideLineFactory;
     }
 
     createOrbitingBody(bodyDefinition, defaultOrbitColor) {
@@ -276,7 +279,11 @@
           )
       );
       const directionalGuideLines =
-        this.guideLineFactory.createMatryoshkaSourceGuideShapes(directionalMarkers);
+        buildDirectionalGuideLines(directionalMarkers, {
+          constants: this.constants,
+          math: this.math,
+          markerCatalog: this.markerCatalog
+        });
 
       return {
         planets,

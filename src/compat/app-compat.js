@@ -12,11 +12,14 @@
     namespace.infrastructure.three.renderers.PostprocessingRenderer;
   const LabelsLayer = namespace.infrastructure.dom.LabelsLayer;
   const HudController = namespace.infrastructure.dom.HudController;
-  const CameraController = namespace.infrastructure.three.controllers.CameraController;
-  const CameraFitService = namespace.application.services.CameraFitService;
+  const applyInitialCameraPlacement =
+    namespace.infrastructure.three.controllers.setInitialCameraPlacement;
   const OrbitPropagationService = namespace.application.services.OrbitPropagationService;
   const AsteroidBeltService = namespace.application.services.AsteroidBeltService;
   const LabelProjectionService = namespace.application.services.LabelProjectionService;
+  if (!applyInitialCameraPlacement) {
+    throw new Error("app compatibility bootstrap failed: missing setInitialCameraPlacement helper.");
+  }
 
   function createLabelAdapter(layer) {
     return {
@@ -233,14 +236,13 @@
     state,
     math
   ) {
-    const cameraFitService = new CameraFitService({ constants, math });
-    const controller = new CameraController({
+    applyInitialCameraPlacement({
       camera,
       controls,
       state,
-      cameraFitService
+      constants,
+      math
     });
-    controller.setInitialPlacement();
   };
 
   app.createBodyVisualScaleAndLabelsUpdater =

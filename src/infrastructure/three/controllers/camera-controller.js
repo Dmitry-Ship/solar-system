@@ -8,36 +8,36 @@
   ) {
     throw new Error("camera controller bootstrap failed: missing three controllers namespace.");
   }
-
-  class CameraController {
-    constructor(options) {
-      this.camera = options.camera;
-      this.controls = options.controls;
-      this.state = options.state;
-      this.cameraFitService = options.cameraFitService;
-    }
-
-    setInitialPlacement() {
-      const initialDistance = this.cameraFitService.computeInitialDistance(
-        this.camera,
-        this.state
-      );
-
-      const yaw = -0.55;
-      const pitch = 0.35;
-      const cosPitch = Math.cos(pitch);
-
-      this.camera.position.set(
-        Math.sin(yaw) * cosPitch * initialDistance,
-        Math.sin(pitch) * initialDistance,
-        Math.cos(yaw) * cosPitch * initialDistance
-      );
-
-      this.controls.target.set(0, 0, 0);
-      this.camera.lookAt(this.controls.target);
-      this.controls.update();
-    }
+  const computeInitialCameraDistance =
+    namespace.application?.services?.computeInitialCameraDistance;
+  if (!computeInitialCameraDistance) {
+    throw new Error(
+      "camera controller bootstrap failed: missing computeInitialCameraDistance helper."
+    );
   }
 
-  namespace.infrastructure.three.controllers.CameraController = CameraController;
+  function setInitialCameraPlacement({ camera, controls, state, constants, math }) {
+    const initialDistance = computeInitialCameraDistance({
+      camera,
+      state,
+      constants,
+      math
+    });
+    const yaw = -0.55;
+    const pitch = 0.35;
+    const cosPitch = Math.cos(pitch);
+
+    camera.position.set(
+      Math.sin(yaw) * cosPitch * initialDistance,
+      Math.sin(pitch) * initialDistance,
+      Math.cos(yaw) * cosPitch * initialDistance
+    );
+
+    controls.target.set(0, 0, 0);
+    camera.lookAt(controls.target);
+    controls.update();
+  }
+
+  namespace.infrastructure.three.controllers.setInitialCameraPlacement =
+    setInitialCameraPlacement;
 })();

@@ -8,7 +8,6 @@
   const OrbitPropagationService = namespace.application.services.OrbitPropagationService;
   const AsteroidBeltService = namespace.application.services.AsteroidBeltService;
   const LabelProjectionService = namespace.application.services.LabelProjectionService;
-  const CameraFitService = namespace.application.services.CameraFitService;
   const SimulationSystem = namespace.application.systems.SimulationSystem;
 
   const LabelsLayer = namespace.infrastructure.dom.LabelsLayer;
@@ -19,10 +18,13 @@
   const GuideRenderer = namespace.infrastructure.three.renderers.GuideRenderer;
   const PostprocessingRenderer =
     namespace.infrastructure.three.renderers.PostprocessingRenderer;
-  const CameraController = namespace.infrastructure.three.controllers.CameraController;
+  const setInitialCameraPlacement =
+    namespace.infrastructure.three.controllers.setInitialCameraPlacement;
   const FrameScheduler = namespace.core.FrameScheduler;
-  if (!FrameScheduler) {
-    throw new Error("runtime bootstrap failed: missing FrameScheduler.");
+  if (!setInitialCameraPlacement || !FrameScheduler) {
+    throw new Error(
+      "runtime bootstrap failed: missing setInitialCameraPlacement helper or FrameScheduler."
+    );
   }
 
   class SolarSystemApplication {
@@ -263,17 +265,14 @@
       this.hud = this.hudController.setup();
     }
 
-    initializeCameraController() {
-      this.cameraController = new CameraController({
+    initializeCameraPlacement() {
+      setInitialCameraPlacement({
         camera: this.camera,
         controls: this.controls,
         state: this.state,
-        cameraFitService: new CameraFitService({
-          constants: this.constants,
-          math: this.math
-        })
+        constants: this.constants,
+        math: this.math
       });
-      this.cameraController.setInitialPlacement();
     }
 
     initializeSimulationServices(THREE) {
@@ -345,7 +344,7 @@
       this.initializeRenderers();
       this.buildSceneContents();
       this.initializeHud();
-      this.initializeCameraController();
+      this.initializeCameraPlacement();
       this.initializeSimulationServices(THREE);
       this.initializeSimulationSystem();
       this.registerEvents();

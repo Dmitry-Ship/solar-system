@@ -8,24 +8,11 @@
   const math = namespace.domain.math.OrbitalMath;
   const rawDefinitions = namespace.domain.catalogs.rawDefinitions;
 
-  const GuideLineFactory = namespace.application.factories.GuideLineFactory;
   const SceneDataFactory = namespace.application.factories.SceneDataFactory;
 
-  if (
-    !constants ||
-    !math ||
-    !rawDefinitions ||
-    !GuideLineFactory ||
-    !SceneDataFactory
-  ) {
+  if (!constants || !math || !rawDefinitions || !SceneDataFactory) {
     throw new Error("data compatibility bootstrap failed: missing dependencies.");
   }
-
-  const guideLineFactory = new GuideLineFactory({
-    constants,
-    math,
-    markerCatalog: namespace.domain.catalogs.markerCatalog
-  });
 
   const sceneDataFactory = new SceneDataFactory({
     constants,
@@ -36,7 +23,6 @@
     markerCatalog: namespace.domain.catalogs.markerCatalog,
     beltCatalog: namespace.domain.catalogs.beltCatalog,
     rawDefinitions,
-    guideLineFactory,
     random: Math.random
   });
 
