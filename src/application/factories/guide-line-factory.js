@@ -5,9 +5,9 @@
   }
 
   const MATRYOSHKA_PRE_SUN_POINT_COUNT = 18;
-  const MATRYOSHKA_POST_SUN_COLLAPSE_POINT_COUNT = 12;
-  const MATRYOSHKA_POST_FOCUS_EXPANSION_POINT_COUNT = 16;
-  const MATRYOSHKA_PRE_SUN_EXPANSION_POWER = 1.75;
+  const MATRYOSHKA_POST_SUN_COLLAPSE_POINT_COUNT = 18;
+  const MATRYOSHKA_POST_FOCUS_EXPANSION_POINT_COUNT = 18;
+  const MATRYOSHKA_PRE_SUN_EXPANSION_POWER = 3.75;
   const MATRYOSHKA_OUTER_SOURCE_RADIUS_FACTOR = 0.045;
   const MATRYOSHKA_INNER_SOURCE_RADIUS_FACTOR = 0.018;
   const MATRYOSHKA_SOURCE_RADIUS_MIN_MULTIPLIER = 18;
@@ -292,6 +292,43 @@
     ].filter(Boolean);
   }
 
+  function createMatryoshkaFocalLine(sourceMarker, dependencies) {
+    if (!sourceMarker) return null;
+
+    const { constants, math, markerCatalog } = dependencies;
+    const focalPoints = markerCatalog.MATRYOSHKA_CONE_LAYER_DEFINITIONS.map((layerDefinition) =>
+      math.pointOnRadiusAlongDirection(
+        sourceMarker,
+        -(constants.SOLAR_GRAVITATIONAL_LENS_AU + (layerDefinition.focalOffsetAu ?? 0))
+      )
+    );
+
+    if (focalPoints.length < 2) {
+      return null;
+    }
+
+    focalPoints.sort((a, b) => pointMagnitude(a) - pointMagnitude(b));
+
+    return buildDirectionalGuideLine(
+      sourceMarker,
+      markerCatalog.DIRECTIONAL_SOURCE_CONE_COLOR,
+      {
+        points: focalPoints,
+        opacity: 0.48,
+        dashPattern: markerCatalog.DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
+        depthTest: false,
+        visibilityKey: buildLightRayVisibilityKey(sourceMarker.name),
+        visibilityLabel: sourceMarker.name,
+        visibilityControlLabel: `${sourceMarker.name} Ray`,
+        visibilityGroupKey: "light-rays",
+        visibilityGroupLabel: "Light Rays",
+        initialVisibility: false,
+        label: "focal line"
+      },
+      dependencies
+    );
+  }
+
   function createMatryoshkaSourceGuideShape(sourceMarker, dependencies) {
     if (!sourceMarker) return [];
 
@@ -308,6 +345,11 @@
           dependencies
         )
       );
+    }
+
+    const focalLine = createMatryoshkaFocalLine(sourceMarker, dependencies);
+    if (focalLine) {
+      guideLines.push(focalLine);
     }
 
     return guideLines;
