@@ -4,14 +4,12 @@
     throw new Error("guide-line factory bootstrap failed: missing application factories namespace.");
   }
 
-  const MATRYOSHKA_SEGMENT_POINT_COUNT = 18;
+  const MATRYOSHKA_SEGMENT_POINT_COUNT = 26;
   const MATRYOSHKA_PRE_SUN_EXPANSION_POWER = 3.75;
   const MATRYOSHKA_OUTER_SOURCE_RADIUS_FACTOR = 0.045;
   const MATRYOSHKA_INNER_SOURCE_RADIUS_FACTOR = 0.018;
   const MATRYOSHKA_SOURCE_RADIUS_MIN_MULTIPLIER = 18;
-  const MATRYOSHKA_SOURCE_OPACITY_FACTOR = 0.34;
-  const MATRYOSHKA_FOCUS_OPACITY_FACTOR = 0.62;
-  const MATRYOSHKA_END_OPACITY_FACTOR = 0.42;
+  const LIGHT_RAY_DISTANCE_FADE_POWER = 2.2;
 
   function clamp01(value) {
     return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
@@ -31,6 +29,37 @@
 
   function pointMagnitude(point) {
     return Math.hypot(point.x, point.y, point.z);
+  }
+
+  function pointDistance(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+  }
+
+  function buildDistanceFadeProfile(points, marker) {
+    if (!marker) {
+      return null;
+    }
+
+    const distances = points.map((point) => pointDistance(point, marker));
+    const minDistanceFromSource = distances.reduce(
+      (minDistance, distance) => Math.min(minDistance, distance),
+      Number.POSITIVE_INFINITY
+    );
+    const maxDistanceFromSource = distances.reduce(
+      (maxDistance, distance) => Math.max(maxDistance, distance),
+      0
+    );
+    const distanceRange = maxDistanceFromSource - minDistanceFromSource;
+    if (distanceRange <= 1e-6) {
+      return points.map(() => 1);
+    }
+
+    return distances.map((distance) => {
+      const normalizedDistance = clamp01(
+        (distance - minDistanceFromSource) / Math.max(distanceRange, 1e-6)
+      );
+      return 1 - Math.pow(normalizedDistance, LIGHT_RAY_DISTANCE_FADE_POWER);
+    });
   }
 
   function buildLightRayVisibilityKey(name) {
@@ -87,17 +116,35 @@
     };
   }
 
-  function buildLightRayOpacityProfile(points, options, fallbackOpacity) {
+  function buildLightRayOpacityProfile(points, marker, options, fallbackOpacity) {
+    const fallback = clamp01(fallbackOpacity);
     const rawOpacityProfile =
       Array.isArray(options.lightRayOpacityProfile) &&
       options.lightRayOpacityProfile.length === points.length
         ? options.lightRayOpacityProfile
         : null;
+    const baseOpacityProfile = rawOpacityProfile
+      ? rawOpacityProfile.map((opacity) => clamp01(opacity ?? fallback))
+      : points.map(() => fallback);
+    const distanceFadeProfile = buildDistanceFadeProfile(points, marker);
 
-    return points.map((_, index) => {
-      const fallback = Math.max(0, Number.isFinite(fallbackOpacity) ? fallbackOpacity : 0);
-      const opacity = rawOpacityProfile?.[index] ?? fallback;
-      return clamp01(opacity);
+    if (!distanceFadeProfile) {
+      return baseOpacityProfile;
+    }
+
+    let sourcePointIndex = 0;
+    for (let index = 1; index < distanceFadeProfile.length; index += 1) {
+      if (distanceFadeProfile[index] > distanceFadeProfile[sourcePointIndex]) {
+        sourcePointIndex = index;
+      }
+    }
+    const sourceOpacity = clamp01(baseOpacityProfile[sourcePointIndex] ?? fallback);
+
+    return baseOpacityProfile.map((opacity, index) => {
+      const distanceLimitedOpacity = sourceOpacity * distanceFadeProfile[index];
+      return rawOpacityProfile
+        ? Math.min(opacity, distanceLimitedOpacity)
+        : distanceLimitedOpacity;
     });
   }
 
@@ -119,7 +166,7 @@
       fallbackStartRadiusAu,
       fallbackEndRadiusAu
     );
-    const lightRayOpacityProfile = buildLightRayOpacityProfile(points, options, opacity);
+    const lightRayOpacityProfile = buildLightRayOpacityProfile(points, marker, options, opacity);
 
     return {
       points,
@@ -175,11 +222,7 @@
         sunCrossingRadiusAu,
         Math.pow(t, MATRYOSHKA_PRE_SUN_EXPANSION_POWER)
       );
-      const opacity = lerp(
-        peakOpacity * MATRYOSHKA_SOURCE_OPACITY_FACTOR,
-        peakOpacity,
-        Math.pow(t, 1.15)
-      );
+      const opacity = peakOpacity;
       points.push(
         step === 0
           ? clonePoint(sourceMarker)
@@ -194,11 +237,7 @@
         MATRYOSHKA_SEGMENT_POINT_COUNT <= 0 ? 1 : step / MATRYOSHKA_SEGMENT_POINT_COUNT;
       const distanceAu = focusDistanceAu * t;
       const radiusAu = lerp(sunCrossingRadiusAu, focalPointRadiusAu, t);
-      const opacity = lerp(
-        peakOpacity,
-        peakOpacity * MATRYOSHKA_FOCUS_OPACITY_FACTOR,
-        Math.pow(t, 0.9)
-      );
+      const opacity = peakOpacity;
       points.push(math.pointOnRadiusAlongDirection(sourceMarker, -distanceAu));
       lightRayRadiusProfileAu.push(radiusAu);
       lightRayOpacityProfile.push(opacity);
@@ -209,11 +248,7 @@
         MATRYOSHKA_SEGMENT_POINT_COUNT <= 0 ? 1 : step / MATRYOSHKA_SEGMENT_POINT_COUNT;
       const distanceAu = lerp(focusDistanceAu, postFocusEndDistanceAu, t);
       const radiusAu = focusSlopeAuPerAu * Math.max(0, distanceAu - focusDistanceAu);
-      const opacity = lerp(
-        peakOpacity * MATRYOSHKA_FOCUS_OPACITY_FACTOR,
-        peakOpacity * MATRYOSHKA_END_OPACITY_FACTOR,
-        Math.pow(t, 0.95)
-      );
+      const opacity = peakOpacity;
       points.push(math.pointOnRadiusAlongDirection(sourceMarker, -distanceAu));
       lightRayRadiusProfileAu.push(radiusAu);
       lightRayOpacityProfile.push(opacity);
