@@ -4,9 +4,7 @@
     throw new Error("guide-line factory bootstrap failed: missing application factories namespace.");
   }
 
-  const MATRYOSHKA_PRE_SUN_POINT_COUNT = 18;
-  const MATRYOSHKA_POST_SUN_COLLAPSE_POINT_COUNT = 18;
-  const MATRYOSHKA_POST_FOCUS_EXPANSION_POINT_COUNT = 18;
+  const MATRYOSHKA_SEGMENT_POINT_COUNT = 18;
   const MATRYOSHKA_PRE_SUN_EXPANSION_POWER = 3.75;
   const MATRYOSHKA_OUTER_SOURCE_RADIUS_FACTOR = 0.045;
   const MATRYOSHKA_INNER_SOURCE_RADIUS_FACTOR = 0.018;
@@ -169,8 +167,8 @@
     const focalPointRadiusAu = 0;
     const focusSlopeAuPerAu = sunCrossingRadiusAu / Math.max(focusDistanceAu, 1e-6);
 
-    for (let step = 0; step <= MATRYOSHKA_PRE_SUN_POINT_COUNT; step += 1) {
-      const t = MATRYOSHKA_PRE_SUN_POINT_COUNT <= 0 ? 1 : step / MATRYOSHKA_PRE_SUN_POINT_COUNT;
+    for (let step = 0; step <= MATRYOSHKA_SEGMENT_POINT_COUNT; step += 1) {
+      const t = MATRYOSHKA_SEGMENT_POINT_COUNT <= 0 ? 1 : step / MATRYOSHKA_SEGMENT_POINT_COUNT;
       const distanceAu = sourceDistanceAu * (1 - t);
       const radiusAu = lerp(
         sourceRadiusAu,
@@ -191,11 +189,9 @@
       lightRayOpacityProfile.push(opacity);
     }
 
-    for (let step = 1; step <= MATRYOSHKA_POST_SUN_COLLAPSE_POINT_COUNT; step += 1) {
+    for (let step = 1; step <= MATRYOSHKA_SEGMENT_POINT_COUNT; step += 1) {
       const t =
-        MATRYOSHKA_POST_SUN_COLLAPSE_POINT_COUNT <= 0
-          ? 1
-          : step / MATRYOSHKA_POST_SUN_COLLAPSE_POINT_COUNT;
+        MATRYOSHKA_SEGMENT_POINT_COUNT <= 0 ? 1 : step / MATRYOSHKA_SEGMENT_POINT_COUNT;
       const distanceAu = focusDistanceAu * t;
       const radiusAu = lerp(sunCrossingRadiusAu, focalPointRadiusAu, t);
       const opacity = lerp(
@@ -208,11 +204,9 @@
       lightRayOpacityProfile.push(opacity);
     }
 
-    for (let step = 1; step <= MATRYOSHKA_POST_FOCUS_EXPANSION_POINT_COUNT; step += 1) {
+    for (let step = 1; step <= MATRYOSHKA_SEGMENT_POINT_COUNT; step += 1) {
       const t =
-        MATRYOSHKA_POST_FOCUS_EXPANSION_POINT_COUNT <= 0
-          ? 1
-          : step / MATRYOSHKA_POST_FOCUS_EXPANSION_POINT_COUNT;
+        MATRYOSHKA_SEGMENT_POINT_COUNT <= 0 ? 1 : step / MATRYOSHKA_SEGMENT_POINT_COUNT;
       const distanceAu = lerp(focusDistanceAu, postFocusEndDistanceAu, t);
       const radiusAu = focusSlopeAuPerAu * Math.max(0, distanceAu - focusDistanceAu);
       const opacity = lerp(
