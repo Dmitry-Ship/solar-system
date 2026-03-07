@@ -127,7 +127,7 @@
         {
           points: [sourceMarker, incomingTransitionPoint, focalPoint, endPoint],
           renderStyle: "lightRay",
-          opacity: layerDefinition.alpha ?? 0.55,
+          opacity: markerCatalog.MATRYOSHKA_CONE_ALPHA ?? 0.35,
           lightRayRadiusProfileAu: [
             incomingRadiusAu,
             incomingRadiusAu,
