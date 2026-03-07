@@ -4,6 +4,10 @@
     throw new Error("camera fit service bootstrap failed: missing application services namespace.");
   }
 
+  const SCENE_SCREEN_RADIUS_RATIO = 0.44;
+  const INITIAL_SCENE_FIT_MULTIPLIER = 1.08;
+  const MIN_SCENE_SCREEN_RADIUS_RATIO = 0.05;
+
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
@@ -16,11 +20,11 @@
 
     const fitDistance =
       (constants.SCENE_OUTER_AU / Math.tan(THREE.MathUtils.degToRad(camera.fov) * 0.5)) /
-      Math.max(0.05, constants.SCENE_SCREEN_RADIUS_RATIO);
+      Math.max(MIN_SCENE_SCREEN_RADIUS_RATIO, SCENE_SCREEN_RADIUS_RATIO);
     const clampValue = typeof math?.clamp === "function" ? math.clamp : clamp;
 
     return clampValue(
-      fitDistance * constants.INITIAL_SCENE_FIT_MULTIPLIER,
+      fitDistance * INITIAL_SCENE_FIT_MULTIPLIER,
       state.minCamera,
       state.maxCamera
     );

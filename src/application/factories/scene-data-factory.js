@@ -8,6 +8,8 @@
     throw new Error("scene-data factory bootstrap failed: missing directional guide-line builder.");
   }
 
+  const DEFAULT_ORBIT_COLOR = "#b0bdc1";
+
   class SceneDataFactory {
     constructor(options) {
       this.constants = options.constants;
@@ -225,8 +227,7 @@
       orbitOpacityForBodyRadius
     ) {
       const shouldUseRadiusOrbitOpacity = orbitRenderGroupConfig.key !== "comets";
-      const orbitColor =
-        orbitRenderGroupConfig.orbitColor || this.constants.ORBIT_COLOR;
+      const orbitColor = orbitRenderGroupConfig.orbitColor || DEFAULT_ORBIT_COLOR;
 
       for (const orbitingBody of orbitingBodies) {
         orbitingBody.orbitRadius = orbitingBody.au;
@@ -249,15 +250,15 @@
     createSceneData() {
       const planets = this.createOrbitingBodies(
         this.planetCatalog.PLANET_DEFINITIONS,
-        this.constants.ORBIT_COLOR
+        DEFAULT_ORBIT_COLOR
       );
       const dwarfPlanets = this.createOrbitingBodies(
         this.dwarfPlanetCatalog.DWARF_PLANET_DEFINITIONS,
-        this.constants.ORBIT_COLOR
+        DEFAULT_ORBIT_COLOR
       );
       const comets = this.createOrbitingBodies(
         this.cometCatalog.COMET_DEFINITIONS,
-        this.constants.ORBIT_COLOR
+        DEFAULT_ORBIT_COLOR
       );
 
       const orbitOpacityBodies = [...planets, ...dwarfPlanets];
@@ -276,11 +277,13 @@
           orbitOpacityForBodyRadius
         );
       }
+      const directionalMarkerDistanceAu =
+        (this.beltCatalog.STAR_DISTANCE_MIN_AU + this.beltCatalog.STAR_DISTANCE_MAX_AU) * 0.5;
       const directionalMarkers = this.markerCatalog.DIRECTIONAL_MARKER_DEFINITIONS.map(
         (definition) =>
           this.markerOnSphereFromRaDec(
             definition.name,
-            this.markerCatalog.DIRECTIONAL_MARKER_DISTANCE_AU,
+            directionalMarkerDistanceAu,
             definition.raHours,
             definition.decDeg,
             definition.color,

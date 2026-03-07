@@ -4,11 +4,7 @@
     throw new Error("orbital-math bootstrap failed: missing domain math namespace.");
   }
 
-  const constants = namespace.domain.constants?.SIMULATION_CONSTANTS;
-  if (!constants) {
-    throw new Error("orbital-math bootstrap failed: missing simulation constants.");
-  }
-
+  const EARTH_OBLIQUITY_DEG_J2000 = 23.4392911;
   const orbitPlaneScratch = { x: 0, z: 0 };
 
   class OrbitalMath {
@@ -70,7 +66,7 @@
 
     static equatorialToEcliptic(
       vector,
-      obliquityDeg = constants.EARTH_OBLIQUITY_DEG_J2000
+      obliquityDeg = EARTH_OBLIQUITY_DEG_J2000
     ) {
       const epsilon = OrbitalMath.degToRad(obliquityDeg);
       const cosEpsilon = Math.cos(epsilon);

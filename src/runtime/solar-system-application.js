@@ -24,6 +24,15 @@
     );
   }
 
+  const RUNTIME_RENDER_CONFIG = Object.freeze({
+    backgroundColor: "#000000",
+    nearClip: 0.08,
+    cameraFarDistanceMultiplier: 12,
+    bloomStrength: 5.4,
+    bloomRadius: 0.55,
+    bloomThreshold: 0.72
+  });
+
   class SolarSystemApplication {
     constructor(options = {}) {
       this.canvasId = options.canvasId || "scene";
@@ -96,7 +105,7 @@
       } else if ("outputEncoding" in renderer && THREE.sRGBEncoding !== undefined) {
         renderer.outputEncoding = THREE.sRGBEncoding;
       }
-      renderer.setClearColor(this.constants.BACKGROUND_COLOR, 1);
+      renderer.setClearColor(RUNTIME_RENDER_CONFIG.backgroundColor, 1);
 
       return renderer;
     }
@@ -113,8 +122,8 @@
       return new THREE.PerspectiveCamera(
         48,
         width / height,
-        this.constants.NEAR_CLIP,
-        this.constants.SCENE_OUTER_AU * 12
+        RUNTIME_RENDER_CONFIG.nearClip,
+        this.constants.SCENE_OUTER_AU * RUNTIME_RENDER_CONFIG.cameraFarDistanceMultiplier
       );
     }
 
@@ -126,9 +135,9 @@
         camera: this.camera,
         width,
         height,
-        bloomStrength: this.constants.SUN_BLOOM_STRENGTH,
-        bloomRadius: this.constants.SUN_BLOOM_RADIUS,
-        bloomThreshold: this.constants.SUN_BLOOM_THRESHOLD
+        bloomStrength: RUNTIME_RENDER_CONFIG.bloomStrength,
+        bloomRadius: RUNTIME_RENDER_CONFIG.bloomRadius,
+        bloomThreshold: RUNTIME_RENDER_CONFIG.bloomThreshold
       });
     }
 
@@ -162,7 +171,7 @@
 
     initializeState() {
       this.sceneData = this.sceneDataApi.createSceneData();
-      this.state = new AppState(this.constants);
+      this.state = new AppState();
     }
 
     initializeLabelsLayer() {

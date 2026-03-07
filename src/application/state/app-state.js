@@ -4,16 +4,19 @@
     throw new Error("app-state bootstrap failed: missing application state namespace.");
   }
 
+  const MIN_CAMERA_DISTANCE_AU = 0.1;
+  const MAX_CAMERA_DISTANCE_AU = 6000;
+
   class AppState {
-    constructor(constants) {
+    constructor() {
       this.showBodyNames = false;
       this.showOrbits = true;
       this.showLightRays = false;
       this.visibilityByKey = Object.create(null);
       this.visibilityGroupByKey = Object.create(null);
       this.lightRayVisibilityByKey = this.visibilityByKey;
-      this.minCamera = constants.MIN_ZOOM_AU;
-      this.maxCamera = constants.MAX_ZOOM_AU;
+      this.minCamera = MIN_CAMERA_DISTANCE_AU;
+      this.maxCamera = MAX_CAMERA_DISTANCE_AU;
     }
 
     registerVisibility(key, initialVisibility = false, groupKey = "") {
