@@ -27,9 +27,6 @@
       return {
         ...bodyDefinition,
         theta: this.random() * Math.PI * 2,
-        meanMotion:
-          bodyDefinition.speed ||
-          this.constants.EARTH_MEAN_MOTION / Math.pow(orbitRadius, 1.5),
         inclination: this.math.degToRad(bodyDefinition.inclinationDeg || 0),
         node: this.math.degToRad(bodyDefinition.nodeDeg || 0),
         periapsisArg: this.math.degToRad(bodyDefinition.periapsisArgDeg || 0),
@@ -104,60 +101,8 @@
       }));
     }
 
-    createOrbitingBodyMotionState(orbitRenderGroupConfigs, orbitingBodiesByGroupKey) {
-      const bodies = [];
-
-      for (const orbitRenderGroupConfig of orbitRenderGroupConfigs) {
-        const groupBodies = orbitingBodiesByGroupKey[orbitRenderGroupConfig.key] || [];
-        for (const orbitingBody of groupBodies) {
-          orbitingBody.orbitStateIndex = bodies.length;
-          bodies.push(orbitingBody);
-        }
-      }
-
-      const count = bodies.length;
-      const orbitRadius = new Float64Array(count);
-      const theta = new Float64Array(count);
-      const inclination = new Float64Array(count);
-      const node = new Float64Array(count);
-      const eccentricity = new Float64Array(count);
-      const periapsisArg = new Float64Array(count);
-      const meanMotion = new Float64Array(count);
-
-      for (let index = 0; index < count; index += 1) {
-        const orbitingBody = bodies[index];
-        orbitRadius[index] = orbitingBody.orbitRadius;
-        theta[index] = orbitingBody.theta;
-        inclination[index] = orbitingBody.inclination;
-        node[index] = orbitingBody.node;
-        eccentricity[index] = orbitingBody.eccentricity;
-        periapsisArg[index] = orbitingBody.periapsisArg;
-        meanMotion[index] = orbitingBody.meanMotion;
-      }
-
-      return {
-        count,
-        bodies,
-        orbitRadius,
-        theta,
-        inclination,
-        node,
-        eccentricity,
-        periapsisArg,
-        meanMotion,
-        meshes: new Array(count).fill(null)
-      };
-    }
-
     createAsteroidBelt(beltConfig) {
       const particleCount = beltConfig.count;
-      const orbitRadius = new Float64Array(particleCount);
-      const eccentricity = new Float64Array(particleCount);
-      const theta = new Float64Array(particleCount);
-      const inclination = new Float64Array(particleCount);
-      const node = new Float64Array(particleCount);
-      const periapsisArg = new Float64Array(particleCount);
-      const meanMotion = new Float64Array(particleCount);
       const positions = new Float32Array(particleCount * 3);
       const maxInclinationRad = this.math.degToRad(beltConfig.maxInclinationDeg);
       const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
@@ -173,18 +118,7 @@
         const particleTheta = this.random() * Math.PI * 2;
         const particleNode = this.random() * Math.PI * 2;
         const particlePeriapsisArg = this.random() * Math.PI * 2;
-        const particleMeanMotion =
-          (this.constants.EARTH_MEAN_MOTION / Math.pow(Math.max(au, 0.2), 1.5)) *
-          (beltConfig.timeScale || 1);
         const positionOffset = index * 3;
-
-        orbitRadius[index] = au;
-        eccentricity[index] = particleEccentricity;
-        theta[index] = particleTheta;
-        inclination[index] = particleInclination;
-        node[index] = particleNode;
-        periapsisArg[index] = particlePeriapsisArg;
-        meanMotion[index] = particleMeanMotion;
 
         this.math.orbitalPositionInto(
           orbitalPositionScratch,
@@ -205,13 +139,6 @@
       return {
         ...beltConfig,
         particleCount,
-        orbitRadius,
-        eccentricity,
-        theta,
-        inclination,
-        node,
-        periapsisArg,
-        meanMotion,
         positions
       };
     }
@@ -349,11 +276,6 @@
           orbitOpacityForBodyRadius
         );
       }
-      const orbitingBodyMotionState = this.createOrbitingBodyMotionState(
-        orbitRenderGroupConfigs,
-        orbitingBodiesByGroupKey
-      );
-
       const directionalMarkers = this.markerCatalog.DIRECTIONAL_MARKER_DEFINITIONS.map(
         (definition) =>
           this.markerOnSphereFromRaDec(
@@ -377,7 +299,6 @@
         planets,
         dwarfPlanets,
         comets,
-        orbitingBodyMotionState,
         orbitRenderGroupConfigs,
         orbitRenderGroups: orbitRenderGroupConfigs,
         voyagers: this.createVoyagerSceneBodies(this.rawDefinitions.VOYAGERS),

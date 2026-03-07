@@ -14,8 +14,6 @@
   const HudController = namespace.infrastructure.dom.HudController;
   const applyInitialCameraPlacement =
     namespace.infrastructure.three.controllers.setInitialCameraPlacement;
-  const OrbitPropagationService = namespace.application.services.OrbitPropagationService;
-  const AsteroidBeltService = namespace.application.services.AsteroidBeltService;
   const VisibilityService = namespace.application.services.VisibilityService;
   const LabelProjectionService = namespace.application.services.LabelProjectionService;
   if (!applyInitialCameraPlacement) {
@@ -120,11 +118,6 @@
     );
   };
 
-  app.createOrbitingBodiesUpdater = function createOrbitingBodiesUpdater(options) {
-    const service = new OrbitPropagationService(options);
-    return service.update.bind(service);
-  };
-
   app.buildStarField = function buildStarField(sceneData, particleGroup) {
     const renderer = new ParticleRenderer();
     renderer.buildStarField(sceneData, particleGroup);
@@ -152,11 +145,6 @@
     );
   };
 
-  app.createAsteroidBeltsUpdater = function createAsteroidBeltsUpdater(options) {
-    const service = new AsteroidBeltService(options);
-    return service.update.bind(service);
-  };
-
   app.updateAsteroidBeltVisuals = function updateAsteroidBeltVisuals(
     beltRuntimes,
     camera
@@ -174,11 +162,6 @@
       }
     });
     return renderer.createLightRay(guideLine, points);
-  };
-
-  app.updateGuideLineVisuals = function updateGuideLineVisuals(guideRuntimes, camera) {
-    const renderer = new GuideRenderer({ labelsLayer: null });
-    renderer.updateGuideLineVisuals(guideRuntimes, camera);
   };
 
   app.buildGuideLines = function buildGuideLines(
@@ -220,7 +203,8 @@
     guideRuntimes,
     camera,
     math,
-    orbitGroup
+    orbitGroup,
+    requestRender
   ) {
     const controller = new HudController({
       state,
@@ -230,7 +214,8 @@
       camera,
       math,
       onOrbitVisibilityChanged: app.applyOrbitVisibility,
-      onVisibilityChanged: app.applyGuideLineVisibility
+      onVisibilityChanged: app.applyGuideLineVisibility,
+      requestRender
     });
     return controller.setup();
   };

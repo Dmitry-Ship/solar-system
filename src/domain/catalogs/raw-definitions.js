@@ -622,8 +622,7 @@
       eccentricityMax: 0.35,
       count: 7000,
       color: "#a9a28f",
-      alpha: 1.05,
-      timeScale: 1.1
+      alpha: 1.05
     },
     {
       name: "Kuiper Belt",
@@ -637,8 +636,7 @@
       alpha: 1.25,
       particleSize: 0.038,
       opacityScale: 0.28,
-      maxOpacity: 0.34,
-      timeScale: 1
+      maxOpacity: 0.34
     }
   ];
 

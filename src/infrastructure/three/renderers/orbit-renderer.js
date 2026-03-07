@@ -58,15 +58,12 @@
       math
     ) {
       const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
-      const orbitingBodyState = sceneData.orbitingBodyMotionState || null;
-      const shouldPopulateOrbitingBodiesOutput =
-        Array.isArray(orbitingBodies) && orbitingBodies !== orbitingBodyState?.bodies;
+      const shouldPopulateOrbitingBodiesOutput = Array.isArray(orbitingBodies);
       const orbitRenderGroupConfigs =
         sceneData.orbitRenderGroupConfigs || sceneData.orbitRenderGroups;
       for (const orbitRenderGroup of orbitRenderGroupConfigs) {
         const orbitingBodiesInGroup = sceneData[orbitRenderGroup.key] || [];
         for (const orbitingBody of orbitingBodiesInGroup) {
-          const orbitStateIndex = orbitingBody.orbitStateIndex ?? -1;
           const orbitLine = this.buildOrbitLine(
             orbitingBody.orbitPath,
             orbitingBody.orbitColor,
@@ -81,7 +78,6 @@
               color: orbitingBody.color,
               renderRadius: orbitingBody.renderRadius,
               minPixelRadius: orbitingBody.minPixelRadius || fallbackMinPixelRadius,
-              orbitStateIndex,
               orbitingBody,
               objectType:
                 LABEL_OBJECT_TYPE_BY_GROUP_KEY[orbitRenderGroup.key] || "orbiting-body",
@@ -91,33 +87,16 @@
             bodyGeometry
           );
 
-          if (orbitStateIndex >= 0 && orbitingBodyState?.meshes) {
-            orbitingBodyState.meshes[orbitStateIndex] = runtime.mesh;
-          }
-
-          if (orbitStateIndex >= 0 && orbitingBodyState) {
-            math.orbitalPositionInto(
-              orbitalPositionScratch,
-              orbitingBodyState.orbitRadius[orbitStateIndex],
-              orbitingBodyState.theta[orbitStateIndex],
-              orbitingBodyState.inclination[orbitStateIndex],
-              orbitingBodyState.node[orbitStateIndex],
-              0,
-              orbitingBodyState.eccentricity[orbitStateIndex],
-              orbitingBodyState.periapsisArg[orbitStateIndex]
-            );
-          } else {
-            math.orbitalPositionInto(
-              orbitalPositionScratch,
-              orbitingBody.orbitRadius,
-              orbitingBody.theta,
-              orbitingBody.inclination,
-              orbitingBody.node,
-              0,
-              orbitingBody.eccentricity,
-              orbitingBody.periapsisArg
-            );
-          }
+          math.orbitalPositionInto(
+            orbitalPositionScratch,
+            orbitingBody.orbitRadius,
+            orbitingBody.theta,
+            orbitingBody.inclination,
+            orbitingBody.node,
+            0,
+            orbitingBody.eccentricity,
+            orbitingBody.periapsisArg
+          );
 
           runtime.mesh.position.set(
             orbitalPositionScratch.x,

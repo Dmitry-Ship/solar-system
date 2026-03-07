@@ -33,28 +33,6 @@
     return buildPositionBufferFromPoints(fallbackPoints);
   }
 
-  function populateBeltPositionsFromParticles(positions, particles, math, orbitalPositionScratch) {
-    let offset = 0;
-
-    for (const particle of particles) {
-      math.orbitalPositionInto(
-        orbitalPositionScratch,
-        particle.orbitRadius,
-        particle.theta,
-        particle.inclination,
-        particle.node,
-        0,
-        particle.eccentricity,
-        particle.periapsisArg
-      );
-
-      positions[offset] = orbitalPositionScratch.x;
-      positions[offset + 1] = orbitalPositionScratch.y;
-      positions[offset + 2] = orbitalPositionScratch.z;
-      offset += 3;
-    }
-  }
-
   class ParticleRenderer {
     static clamp01(value) {
       return Math.min(1, Math.max(0, value));
@@ -132,8 +110,6 @@
         throw new Error("buildAsteroidBelts: missing THREE.");
       }
 
-      const orbitalPosition = orbitalPositionScratch || { x: 0, y: 0, z: 0 };
-
       for (const belt of sceneData.asteroidBelts) {
         const particleCount =
           belt.particleCount ??
@@ -146,7 +122,6 @@
             : new Float32Array(particleCount * 3);
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-        geometry.attributes.position.setUsage(THREE.DynamicDrawUsage);
         const baseOpacity = Math.min(
           belt.maxOpacity ?? 0.22,
           belt.alpha * (belt.opacityScale ?? 0.2)
@@ -167,17 +142,7 @@
         particleGroup.add(points);
         beltRuntimes.push({
           belt,
-          count: particleCount,
-          geometry,
-          positions,
           points,
-          orbitRadius: belt.orbitRadius || null,
-          theta: belt.theta || null,
-          inclination: belt.inclination || null,
-          node: belt.node || null,
-          eccentricity: belt.eccentricity || null,
-          periapsisArg: belt.periapsisArg || null,
-          meanMotion: belt.meanMotion || null,
           innerAu: belt.innerAu,
           outerAu: belt.outerAu,
           baseOpacity,
@@ -185,17 +150,6 @@
           fadeStartAngularRadius: belt.fadeStartAngularRadius ?? 0.08,
           fadeEndAngularRadius: belt.fadeEndAngularRadius ?? 0.02
         });
-
-        if (!(belt.positions instanceof Float32Array) && Array.isArray(belt.particles)) {
-          populateBeltPositionsFromParticles(
-            positions,
-            belt.particles,
-            math,
-            orbitalPosition
-          );
-        }
-
-        geometry.attributes.position.needsUpdate = true;
       }
     }
 

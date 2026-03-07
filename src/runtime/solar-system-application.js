@@ -5,11 +5,8 @@
   }
 
   const AppState = namespace.application.state.AppState;
-  const OrbitPropagationService = namespace.application.services.OrbitPropagationService;
-  const AsteroidBeltService = namespace.application.services.AsteroidBeltService;
   const VisibilityService = namespace.application.services.VisibilityService;
   const LabelProjectionService = namespace.application.services.LabelProjectionService;
-  const SimulationSystem = namespace.application.systems.SimulationSystem;
 
   const LabelsLayer = namespace.infrastructure.dom.LabelsLayer;
   const HudController = namespace.infrastructure.dom.HudController;
@@ -21,10 +18,9 @@
     namespace.infrastructure.three.renderers.PostprocessingRenderer;
   const setInitialCameraPlacement =
     namespace.infrastructure.three.controllers.setInitialCameraPlacement;
-  const FrameScheduler = namespace.core.FrameScheduler;
-  if (!setInitialCameraPlacement || !FrameScheduler) {
+  if (!setInitialCameraPlacement) {
     throw new Error(
-      "runtime bootstrap failed: missing setInitialCameraPlacement helper or FrameScheduler."
+      "runtime bootstrap failed: missing setInitialCameraPlacement helper."
     );
   }
 
@@ -37,11 +33,11 @@
       this.math = options.math || namespace.math;
 
       this.initialized = false;
-      this.frameLoop = null;
       this.canvas = null;
       this.labelsLayerElement = null;
 
       this.handleResize = this.resize.bind(this);
+      this.handleControlsChange = this.renderScene.bind(this);
       this.handlePointerDown = this.onPointerDown.bind(this);
       this.handlePointerUp = this.onPointerUp.bind(this);
     }
@@ -138,8 +134,7 @@
 
     createControls(THREE) {
       const controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.08;
+      controls.enableDamping = false;
       controls.enablePan = false;
       controls.rotateSpeed = 0.68;
       controls.zoomSpeed = 0.05;
@@ -184,8 +179,7 @@
       this.guideRuntimes = [];
       this.visibilityRuntimes = [];
       this.beltRuntimes = [];
-      this.orbitingBodyMotionState = this.sceneData.orbitingBodyMotionState || null;
-      this.orbitingBodies = this.orbitingBodyMotionState?.bodies || [];
+      this.orbitingBodies = [];
 
       // Preserve legacy property names for the compat facade.
       this.bodyRuntimes = this.sceneObjectRuntimes;
@@ -269,7 +263,8 @@
         onOrbitVisibilityChanged: this.orbitRenderer.applyOrbitVisibility.bind(
           this.orbitRenderer
         ),
-        onVisibilityChanged: this.visibilityService.apply.bind(this.visibilityService)
+        onVisibilityChanged: this.visibilityService.apply.bind(this.visibilityService),
+        requestRender: this.renderScene.bind(this)
       });
       this.hud = this.hudController.setup();
     }
@@ -284,19 +279,7 @@
       });
     }
 
-    initializeSimulationServices(THREE) {
-      this.orbitPropagationService = new OrbitPropagationService({
-        orbitingBodyState: this.orbitingBodyMotionState,
-        orbitingBodies: this.orbitingBodies,
-        sceneObjectRuntimes: this.sceneObjectRuntimes,
-        math: this.math,
-        motionTimeScale: 1
-      });
-      this.asteroidBeltService = new AsteroidBeltService({
-        beltRuntimes: this.beltRuntimes,
-        math: this.math,
-        motionTimeScale: 1
-      });
+    initializeViewServices(THREE) {
       this.labelProjectionService = new LabelProjectionService({
         renderer: this.renderer,
         camera: this.camera,
@@ -306,33 +289,21 @@
       });
     }
 
-    initializeSimulationSystem() {
-      this.simulationSystem = new SimulationSystem({
-        orbitPropagationService: this.orbitPropagationService,
-        asteroidBeltService: this.asteroidBeltService,
-        particleRenderer: this.particleRenderer,
-        beltRuntimes: this.beltRuntimes,
-        controls: this.controls,
-        guideRenderer: this.guideRenderer,
-        labelProjectionService: this.labelProjectionService,
-        postprocessingRenderer: this.postprocessingRenderer,
-        visibilityService: this.visibilityService,
-        guideRuntimes: this.guideRuntimes,
-        camera: this.camera
-      });
-    }
-
     registerEvents() {
       this.canvas.addEventListener("pointerdown", this.handlePointerDown);
       window.addEventListener("pointerup", this.handlePointerUp);
       window.addEventListener("resize", this.handleResize);
+      this.controls.addEventListener("change", this.handleControlsChange);
     }
 
-    applyInitialRenderState() {
-      this.resize();
+    renderScene() {
+      if (!this.renderer || !this.camera) return;
+
       this.orbitRenderer.applyOrbitVisibility(this.state, this.orbitGroup);
       this.visibilityService.apply();
       this.particleRenderer.updateAsteroidBeltVisuals(this.beltRuntimes, this.camera);
+      this.labelProjectionService.update();
+      this.postprocessingRenderer.render();
     }
 
     initialize() {
@@ -357,10 +328,9 @@
       this.initializeVisibilityService();
       this.initializeHud();
       this.initializeCameraPlacement();
-      this.initializeSimulationServices(THREE);
-      this.initializeSimulationSystem();
+      this.initializeViewServices(THREE);
       this.registerEvents();
-      this.applyInitialRenderState();
+      this.resize();
 
       this.initialized = true;
     }
@@ -395,33 +365,31 @@
       if (this.hud && typeof this.hud.updateZoomToggleLabel === "function") {
         this.hud.updateZoomToggleLabel();
       }
+
+      if (this.initialized) {
+        this.renderScene();
+      }
     }
 
     start() {
       if (!this.initialized) {
         this.initialize();
       }
-      if (this.frameLoop) {
-        this.frameLoop.start();
-        return;
-      }
-
-      this.frameLoop = new FrameScheduler((deltaSeconds) => {
-        this.simulationSystem.update(deltaSeconds);
-      });
-      this.frameLoop.start();
+      this.renderScene();
     }
 
-    stop() {
-      if (this.frameLoop) {
-        this.frameLoop.stop();
-      }
-    }
+    stop() {}
 
     dispose() {
       this.stop();
       window.removeEventListener("resize", this.handleResize);
       window.removeEventListener("pointerup", this.handlePointerUp);
+      if (this.controls) {
+        this.controls.removeEventListener("change", this.handleControlsChange);
+        if (typeof this.controls.dispose === "function") {
+          this.controls.dispose();
+        }
+      }
       if (this.canvas) {
         this.canvas.classList.remove("dragging");
         this.canvas.removeEventListener("pointerdown", this.handlePointerDown);

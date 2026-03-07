@@ -15,6 +15,7 @@
       this.math = options.math;
       this.onOrbitVisibilityChanged = options.onOrbitVisibilityChanged;
       this.onVisibilityChanged = options.onVisibilityChanged;
+      this.requestRender = options.requestRender;
     }
 
     getVisibilityControlGroups() {
@@ -109,6 +110,9 @@
               : this.state.minCamera;
           setCameraDistance(targetDistance);
           this.updateZoomToggleLabel();
+          if (typeof this.requestRender === "function") {
+            this.requestRender();
+          }
         });
       }
 
@@ -121,6 +125,9 @@
             "Hide Names",
             "Show Names"
           );
+          if (typeof this.requestRender === "function") {
+            this.requestRender();
+          }
         });
 
         updateBooleanToggleLabel(
@@ -143,6 +150,9 @@
             "Hide Orbits",
             "Show Orbits"
           );
+          if (typeof this.requestRender === "function") {
+            this.requestRender();
+          }
         });
 
         updateBooleanToggleLabel(
@@ -196,6 +206,9 @@
                 `Hide ${visibilityControl.label}`,
                 `Show ${visibilityControl.label}`
               );
+              if (typeof this.requestRender === "function") {
+                this.requestRender();
+              }
             });
 
             updateBooleanToggleLabel(

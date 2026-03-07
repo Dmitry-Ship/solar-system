@@ -67,11 +67,6 @@
         (Array.isArray(sceneData.oortCloud.particles) ||
           sceneData.oortCloud.positions instanceof Float32Array) &&
         ((sceneData.oortCloud.particleCount || sceneData.oortCloud.particles?.length || 0) > 0);
-      const hasPackedOrbitState =
-        !sceneData.orbitingBodyMotionState ||
-        (Array.isArray(sceneData.orbitingBodyMotionState.bodies) &&
-          sceneData.orbitingBodyMotionState.theta instanceof Float64Array &&
-          sceneData.orbitingBodyMotionState.count > 0);
       const validSceneData =
         Array.isArray(sceneData.planets) &&
         sceneData.planets.length > 0 &&
@@ -80,8 +75,7 @@
         Array.isArray(sceneData.comets) &&
         sceneData.comets.length > 0 &&
         hasStars &&
-        hasOortCloud &&
-        hasPackedOrbitState;
+        hasOortCloud;
       results.push(
         createResult(
           "Scene Assembly",

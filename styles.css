@@ -141,10 +141,6 @@ body {
   background: rgba(27, 58, 111, 0.82);
 }
 
-.zoom-button:active {
-  transform: translateY(1px);
-}
-
 .hud code {
   color: #fff6b5;
   font-weight: 600;

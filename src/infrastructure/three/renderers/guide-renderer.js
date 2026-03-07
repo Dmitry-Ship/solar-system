@@ -328,14 +328,6 @@
       };
     }
 
-    updateGuideLineVisuals(guideRuntimes, camera) {
-      for (const runtime of guideRuntimes) {
-        if (typeof runtime.update === "function") {
-          runtime.update(camera);
-        }
-      }
-    }
-
     buildGuideLines(
       sceneData,
       guideLineGroup,
