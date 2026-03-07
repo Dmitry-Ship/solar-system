@@ -104,66 +104,147 @@
       }));
     }
 
-    createAsteroidBelt(beltConfig) {
-      const particles = [];
-      const maxInclinationRad = this.math.degToRad(beltConfig.maxInclinationDeg);
+    createOrbitingBodyMotionState(orbitRenderGroupConfigs, orbitingBodiesByGroupKey) {
+      const bodies = [];
 
-      for (let i = 0; i < beltConfig.count; i += 1) {
+      for (const orbitRenderGroupConfig of orbitRenderGroupConfigs) {
+        const groupBodies = orbitingBodiesByGroupKey[orbitRenderGroupConfig.key] || [];
+        for (const orbitingBody of groupBodies) {
+          orbitingBody.orbitStateIndex = bodies.length;
+          bodies.push(orbitingBody);
+        }
+      }
+
+      const count = bodies.length;
+      const orbitRadius = new Float64Array(count);
+      const theta = new Float64Array(count);
+      const inclination = new Float64Array(count);
+      const node = new Float64Array(count);
+      const eccentricity = new Float64Array(count);
+      const periapsisArg = new Float64Array(count);
+      const meanMotion = new Float64Array(count);
+
+      for (let index = 0; index < count; index += 1) {
+        const orbitingBody = bodies[index];
+        orbitRadius[index] = orbitingBody.orbitRadius;
+        theta[index] = orbitingBody.theta;
+        inclination[index] = orbitingBody.inclination;
+        node[index] = orbitingBody.node;
+        eccentricity[index] = orbitingBody.eccentricity;
+        periapsisArg[index] = orbitingBody.periapsisArg;
+        meanMotion[index] = orbitingBody.meanMotion;
+      }
+
+      return {
+        count,
+        bodies,
+        orbitRadius,
+        theta,
+        inclination,
+        node,
+        eccentricity,
+        periapsisArg,
+        meanMotion,
+        meshes: new Array(count).fill(null)
+      };
+    }
+
+    createAsteroidBelt(beltConfig) {
+      const particleCount = beltConfig.count;
+      const orbitRadius = new Float64Array(particleCount);
+      const eccentricity = new Float64Array(particleCount);
+      const theta = new Float64Array(particleCount);
+      const inclination = new Float64Array(particleCount);
+      const node = new Float64Array(particleCount);
+      const periapsisArg = new Float64Array(particleCount);
+      const meanMotion = new Float64Array(particleCount);
+      const positions = new Float32Array(particleCount * 3);
+      const maxInclinationRad = this.math.degToRad(beltConfig.maxInclinationDeg);
+      const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
+
+      for (let index = 0; index < particleCount; index += 1) {
         const au =
           beltConfig.innerAu +
           this.random() * (beltConfig.outerAu - beltConfig.innerAu);
-        const eccentricity =
+        const particleEccentricity =
           beltConfig.eccentricityMin +
           this.random() * (beltConfig.eccentricityMax - beltConfig.eccentricityMin);
-        const inclination = maxInclinationRad * Math.pow(this.random(), 1.8);
+        const particleInclination = maxInclinationRad * Math.pow(this.random(), 1.8);
+        const particleTheta = this.random() * Math.PI * 2;
+        const particleNode = this.random() * Math.PI * 2;
+        const particlePeriapsisArg = this.random() * Math.PI * 2;
+        const particleMeanMotion =
+          (this.constants.EARTH_MEAN_MOTION / Math.pow(Math.max(au, 0.2), 1.5)) *
+          (beltConfig.timeScale || 1);
+        const positionOffset = index * 3;
 
-        particles.push({
+        orbitRadius[index] = au;
+        eccentricity[index] = particleEccentricity;
+        theta[index] = particleTheta;
+        inclination[index] = particleInclination;
+        node[index] = particleNode;
+        periapsisArg[index] = particlePeriapsisArg;
+        meanMotion[index] = particleMeanMotion;
+
+        this.math.orbitalPositionInto(
+          orbitalPositionScratch,
           au,
-          orbitRadius: au,
-          eccentricity,
-          theta: this.random() * Math.PI * 2,
-          inclination,
-          node: this.random() * Math.PI * 2,
-          periapsisArg: this.random() * Math.PI * 2,
-          meanMotion:
-            (this.constants.EARTH_MEAN_MOTION / Math.pow(Math.max(au, 0.2), 1.5)) *
-            (beltConfig.timeScale || 1)
-        });
+          particleTheta,
+          particleInclination,
+          particleNode,
+          0,
+          particleEccentricity,
+          particlePeriapsisArg
+        );
+
+        positions[positionOffset] = orbitalPositionScratch.x;
+        positions[positionOffset + 1] = orbitalPositionScratch.y;
+        positions[positionOffset + 2] = orbitalPositionScratch.z;
       }
 
       return {
         ...beltConfig,
-        particles
+        particleCount,
+        orbitRadius,
+        eccentricity,
+        theta,
+        inclination,
+        node,
+        periapsisArg,
+        meanMotion,
+        positions
       };
     }
 
     createOortCloud(cloudConfig) {
-      const particles = [];
+      const particleCount = cloudConfig.count;
+      const positions = new Float32Array(particleCount * 3);
       const innerCubed = Math.pow(cloudConfig.innerAu, 3);
       const outerCubed = Math.pow(cloudConfig.outerAu, 3);
 
-      for (let i = 0; i < cloudConfig.count; i += 1) {
+      for (let index = 0; index < particleCount; index += 1) {
         const radius = Math.cbrt(innerCubed + this.random() * (outerCubed - innerCubed));
         const theta = this.random() * Math.PI * 2;
         const yUnit = this.random() * 2 - 1;
         const radial = Math.sqrt(Math.max(0, 1 - yUnit * yUnit));
+        const positionOffset = index * 3;
 
-        particles.push({
-          x: radius * radial * Math.cos(theta),
-          y: radius * yUnit,
-          z: radius * radial * Math.sin(theta)
-        });
+        positions[positionOffset] = radius * radial * Math.cos(theta);
+        positions[positionOffset + 1] = radius * yUnit;
+        positions[positionOffset + 2] = radius * radial * Math.sin(theta);
       }
 
       return {
         ...cloudConfig,
-        particles
+        particleCount,
+        positions
       };
     }
 
     createStars(count) {
-      const starPositions = [];
-      for (let i = 0; i < count; i += 1) {
+      const positions = new Float32Array(count * 3);
+
+      for (let index = 0; index < count; index += 1) {
         const distance =
           this.beltCatalog.STAR_DISTANCE_MIN_AU +
           this.random() *
@@ -171,13 +252,16 @@
               this.beltCatalog.STAR_DISTANCE_MIN_AU);
         const theta = this.random() * Math.PI * 2;
         const phi = Math.acos(2 * this.random() - 1);
-        starPositions.push({
-          x: distance * Math.sin(phi) * Math.cos(theta),
-          y: distance * Math.cos(phi),
-          z: distance * Math.sin(phi) * Math.sin(theta)
-        });
+        const positionOffset = index * 3;
+        positions[positionOffset] = distance * Math.sin(phi) * Math.cos(theta);
+        positions[positionOffset + 1] = distance * Math.cos(phi);
+        positions[positionOffset + 2] = distance * Math.sin(phi) * Math.sin(theta);
       }
-      return starPositions;
+
+      return {
+        count,
+        positions
+      };
     }
 
     createOrbitOpacityCalculator(orbitingBodies) {
@@ -265,6 +349,10 @@
           orbitOpacityForBodyRadius
         );
       }
+      const orbitingBodyMotionState = this.createOrbitingBodyMotionState(
+        orbitRenderGroupConfigs,
+        orbitingBodiesByGroupKey
+      );
 
       const directionalMarkers = this.markerCatalog.DIRECTIONAL_MARKER_DEFINITIONS.map(
         (definition) =>
@@ -289,6 +377,7 @@
         planets,
         dwarfPlanets,
         comets,
+        orbitingBodyMotionState,
         orbitRenderGroupConfigs,
         orbitRenderGroups: orbitRenderGroupConfigs,
         voyagers: this.createVoyagerSceneBodies(this.rawDefinitions.VOYAGERS),

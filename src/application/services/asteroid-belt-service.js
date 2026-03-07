@@ -21,27 +21,74 @@
       const { math, orbitalPositionScratch } = this;
 
       for (const beltRuntime of this.beltRuntimes) {
-        const { belt, positions, geometry } = beltRuntime;
-        let offset = 0;
+        const {
+          belt,
+          count,
+          positions,
+          geometry,
+          orbitRadius,
+          theta,
+          inclination,
+          node,
+          eccentricity,
+          periapsisArg,
+          meanMotion
+        } = beltRuntime;
 
-        for (const particle of belt.particles) {
-          particle.theta = math.normalizeAngle(particle.theta + particle.meanMotion * motionStep);
+        if (
+          count > 0 &&
+          orbitRadius &&
+          theta &&
+          inclination &&
+          node &&
+          eccentricity &&
+          periapsisArg &&
+          meanMotion
+        ) {
+          for (let index = 0; index < count; index += 1) {
+            const nextTheta = math.normalizeAngle(theta[index] + meanMotion[index] * motionStep);
+            const positionOffset = index * 3;
+            theta[index] = nextTheta;
 
-          math.orbitalPositionInto(
-            orbitalPositionScratch,
-            particle.orbitRadius,
-            particle.theta,
-            particle.inclination,
-            particle.node,
-            0,
-            particle.eccentricity,
-            particle.periapsisArg
-          );
+            math.orbitalPositionInto(
+              orbitalPositionScratch,
+              orbitRadius[index],
+              nextTheta,
+              inclination[index],
+              node[index],
+              0,
+              eccentricity[index],
+              periapsisArg[index]
+            );
 
-          positions[offset] = orbitalPositionScratch.x;
-          positions[offset + 1] = orbitalPositionScratch.y;
-          positions[offset + 2] = orbitalPositionScratch.z;
-          offset += 3;
+            positions[positionOffset] = orbitalPositionScratch.x;
+            positions[positionOffset + 1] = orbitalPositionScratch.y;
+            positions[positionOffset + 2] = orbitalPositionScratch.z;
+          }
+        } else if (Array.isArray(belt?.particles)) {
+          let offset = 0;
+
+          for (const particle of belt.particles) {
+            particle.theta = math.normalizeAngle(
+              particle.theta + particle.meanMotion * motionStep
+            );
+
+            math.orbitalPositionInto(
+              orbitalPositionScratch,
+              particle.orbitRadius,
+              particle.theta,
+              particle.inclination,
+              particle.node,
+              0,
+              particle.eccentricity,
+              particle.periapsisArg
+            );
+
+            positions[offset] = orbitalPositionScratch.x;
+            positions[offset + 1] = orbitalPositionScratch.y;
+            positions[offset + 2] = orbitalPositionScratch.z;
+            offset += 3;
+          }
         }
 
         geometry.attributes.position.needsUpdate = true;

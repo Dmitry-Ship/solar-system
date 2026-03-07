@@ -182,7 +182,8 @@
       this.sceneObjectRuntimes = [];
       this.guideRuntimes = [];
       this.beltRuntimes = [];
-      this.orbitingBodies = [];
+      this.orbitingBodyMotionState = this.sceneData.orbitingBodyMotionState || null;
+      this.orbitingBodies = this.orbitingBodyMotionState?.bodies || [];
 
       // Preserve legacy property names for the compat facade.
       this.bodyRuntimes = this.sceneObjectRuntimes;
@@ -277,6 +278,7 @@
 
     initializeSimulationServices(THREE) {
       this.orbitPropagationService = new OrbitPropagationService({
+        orbitingBodyState: this.orbitingBodyMotionState,
         orbitingBodies: this.orbitingBodies,
         sceneObjectRuntimes: this.sceneObjectRuntimes,
         math: this.math,

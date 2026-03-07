@@ -6,6 +6,8 @@
 
   class OrbitPropagationService {
     constructor(options) {
+      this.orbitingBodyState =
+        options.orbitingBodyState || options.orbitalMotionState || null;
       this.orbitingBodies = options.orbitingBodies || options.orbitalSourceBodies || [];
       this.sceneObjectRuntimes = options.sceneObjectRuntimes || options.bodyRuntimes || [];
       this.math = options.math;
@@ -20,6 +22,52 @@
     update(deltaSeconds) {
       const motionStep = deltaSeconds * this.motionTimeScale;
       const { math, orbitalPositionScratch } = this;
+      const orbitingBodyState = this.orbitingBodyState;
+
+      if (orbitingBodyState?.count) {
+        const {
+          count,
+          bodies,
+          meshes,
+          orbitRadius,
+          theta,
+          inclination,
+          node,
+          eccentricity,
+          periapsisArg,
+          meanMotion
+        } = orbitingBodyState;
+
+        for (let index = 0; index < count; index += 1) {
+          const nextTheta = math.normalizeAngle(theta[index] + meanMotion[index] * motionStep);
+          theta[index] = nextTheta;
+
+          if (bodies[index]) {
+            bodies[index].theta = nextTheta;
+          }
+
+          const mesh = meshes[index];
+          if (!mesh) continue;
+
+          math.orbitalPositionInto(
+            orbitalPositionScratch,
+            orbitRadius[index],
+            nextTheta,
+            inclination[index],
+            node[index],
+            0,
+            eccentricity[index],
+            periapsisArg[index]
+          );
+
+          mesh.position.set(
+            orbitalPositionScratch.x,
+            orbitalPositionScratch.y,
+            orbitalPositionScratch.z
+          );
+        }
+        return;
+      }
 
       for (const orbitingBody of this.orbitingBodies) {
         orbitingBody.theta = math.normalizeAngle(

@@ -48,6 +48,9 @@
         labelElement: this.labelsLayer.createLabel(config.label || config.name, {
           objectType: config.objectType
         }),
+        orbitStateIndex: Number.isInteger(config.orbitStateIndex)
+          ? config.orbitStateIndex
+          : -1,
         renderRadius: config.renderRadius || 0,
         minPixelRadius: config.minPixelRadius || 1,
         orbitingBody: config.orbitingBody || config.orbitalSource || null,

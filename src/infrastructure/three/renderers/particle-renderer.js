@@ -9,6 +9,52 @@
     throw new Error("particle renderer bootstrap failed: missing three renderers namespace.");
   }
 
+  function buildPositionBufferFromPoints(points) {
+    if (!Array.isArray(points) || points.length === 0) {
+      return new Float32Array(0);
+    }
+
+    const positions = new Float32Array(points.length * 3);
+    let offset = 0;
+    for (const point of points) {
+      positions[offset] = point.x;
+      positions[offset + 1] = point.y;
+      positions[offset + 2] = point.z;
+      offset += 3;
+    }
+    return positions;
+  }
+
+  function resolvePointCloudPositions(pointCloud, fallbackPoints) {
+    if (pointCloud?.positions instanceof Float32Array) {
+      return pointCloud.positions;
+    }
+
+    return buildPositionBufferFromPoints(fallbackPoints);
+  }
+
+  function populateBeltPositionsFromParticles(positions, particles, math, orbitalPositionScratch) {
+    let offset = 0;
+
+    for (const particle of particles) {
+      math.orbitalPositionInto(
+        orbitalPositionScratch,
+        particle.orbitRadius,
+        particle.theta,
+        particle.inclination,
+        particle.node,
+        0,
+        particle.eccentricity,
+        particle.periapsisArg
+      );
+
+      positions[offset] = orbitalPositionScratch.x;
+      positions[offset + 1] = orbitalPositionScratch.y;
+      positions[offset + 2] = orbitalPositionScratch.z;
+      offset += 3;
+    }
+  }
+
   class ParticleRenderer {
     static clamp01(value) {
       return Math.min(1, Math.max(0, value));
@@ -33,14 +79,7 @@
         throw new Error("buildStarField: missing THREE.");
       }
 
-      const positions = new Float32Array(sceneData.stars.length * 3);
-      let offset = 0;
-      for (const star of sceneData.stars) {
-        positions[offset] = star.x;
-        positions[offset + 1] = star.y;
-        positions[offset + 2] = star.z;
-        offset += 3;
-      }
+      const positions = resolvePointCloudPositions(sceneData.stars, sceneData.stars);
 
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -66,33 +105,25 @@
         throw new Error("buildOortCloud: missing THREE.");
       }
 
-      const particles = sceneData.oortCloud.particles;
-      const positions = new Float32Array(particles.length * 3);
-      let offset = 0;
-
-      for (const particle of particles) {
-        positions[offset] = particle.x;
-        positions[offset + 1] = particle.y;
-        positions[offset + 2] = particle.z;
-        offset += 3;
-      }
+      const oortCloud = sceneData.oortCloud;
+      const positions = resolvePointCloudPositions(oortCloud, oortCloud?.particles);
 
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
-      const oortCloud = new THREE.Points(
+      const oortCloudPoints = new THREE.Points(
         geometry,
         new THREE.PointsMaterial({
-          color: sceneData.oortCloud.color,
+          color: oortCloud.color,
           size: 3,
           transparent: true,
-          opacity: Math.min(0.1, sceneData.oortCloud.alpha * 0.75),
+          opacity: Math.min(0.1, oortCloud.alpha * 0.75),
           sizeAttenuation: true,
           depthWrite: false
         })
       );
 
-      particleGroup.add(oortCloud);
+      particleGroup.add(oortCloudPoints);
     }
 
     buildAsteroidBelts(sceneData, particleGroup, beltRuntimes, math, orbitalPositionScratch) {
@@ -104,7 +135,15 @@
       const orbitalPosition = orbitalPositionScratch || { x: 0, y: 0, z: 0 };
 
       for (const belt of sceneData.asteroidBelts) {
-        const positions = new Float32Array(belt.particles.length * 3);
+        const particleCount =
+          belt.particleCount ??
+          belt.orbitRadius?.length ??
+          belt.particles?.length ??
+          0;
+        const positions =
+          belt.positions instanceof Float32Array
+            ? belt.positions
+            : new Float32Array(particleCount * 3);
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
         geometry.attributes.position.setUsage(THREE.DynamicDrawUsage);
@@ -128,32 +167,32 @@
         particleGroup.add(points);
         beltRuntimes.push({
           belt,
+          count: particleCount,
           geometry,
           positions,
           points,
+          orbitRadius: belt.orbitRadius || null,
+          theta: belt.theta || null,
+          inclination: belt.inclination || null,
+          node: belt.node || null,
+          eccentricity: belt.eccentricity || null,
+          periapsisArg: belt.periapsisArg || null,
+          meanMotion: belt.meanMotion || null,
+          innerAu: belt.innerAu,
+          outerAu: belt.outerAu,
           baseOpacity,
           minOpacityFactor: belt.minOpacityFactor ?? 0.12,
           fadeStartAngularRadius: belt.fadeStartAngularRadius ?? 0.08,
           fadeEndAngularRadius: belt.fadeEndAngularRadius ?? 0.02
         });
 
-        let offset = 0;
-        for (const particle of belt.particles) {
-          math.orbitalPositionInto(
-            orbitalPosition,
-            particle.orbitRadius,
-            particle.theta,
-            particle.inclination,
-            particle.node,
-            0,
-            particle.eccentricity,
-            particle.periapsisArg
+        if (!(belt.positions instanceof Float32Array) && Array.isArray(belt.particles)) {
+          populateBeltPositionsFromParticles(
+            positions,
+            belt.particles,
+            math,
+            orbitalPosition
           );
-
-          positions[offset] = orbitalPosition.x;
-          positions[offset + 1] = orbitalPosition.y;
-          positions[offset + 2] = orbitalPosition.z;
-          offset += 3;
         }
 
         geometry.attributes.position.needsUpdate = true;
@@ -169,18 +208,19 @@
 
       for (const beltRuntime of beltRuntimes) {
         const {
-          belt,
           points,
           baseOpacity,
           minOpacityFactor,
           fadeStartAngularRadius,
-          fadeEndAngularRadius
+          fadeEndAngularRadius,
+          innerAu,
+          outerAu
         } = beltRuntime;
         if (!points || !points.material) {
           continue;
         }
 
-        const beltRadius = ((belt.innerAu || 0) + (belt.outerAu || 0)) * 0.5;
+        const beltRadius = ((innerAu || 0) + (outerAu || 0)) * 0.5;
         const angularRadius = beltRadius / cameraDistance;
         const closeVisibility = ParticleRenderer.smoothstep(
           fadeEndAngularRadius,

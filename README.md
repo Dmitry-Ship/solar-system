@@ -23,6 +23,16 @@ The rewrite preserves the public global API:
 
 `index.html` now loads scripts by layer order (core -> domain -> application -> infrastructure -> compat -> runtime -> debug) while still using script tags and no bundler.
 
+## Data locality
+
+Runtime-critical scene data is now assembled into packed numeric stores where it matters:
+
+- orbiting body motion uses a shared `sceneData.orbitingBodyMotionState` store
+- asteroid belts keep packed orbital element arrays plus a shared position buffer
+- stars and the Oort cloud are emitted as point-cloud position buffers instead of object-per-point collections
+
+The legacy `window.SolarSystem` entry points remain intact, while renderers and simulation services consume the denser layouts directly.
+
 ## Smoke checks
 
 Open the app, then run in browser console:
