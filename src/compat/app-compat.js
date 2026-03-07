@@ -16,6 +16,7 @@
     namespace.infrastructure.three.controllers.setInitialCameraPlacement;
   const OrbitPropagationService = namespace.application.services.OrbitPropagationService;
   const AsteroidBeltService = namespace.application.services.AsteroidBeltService;
+  const VisibilityService = namespace.application.services.VisibilityService;
   const LabelProjectionService = namespace.application.services.LabelProjectionService;
   if (!applyInitialCameraPlacement) {
     throw new Error("app compatibility bootstrap failed: missing setInitialCameraPlacement helper.");
@@ -185,7 +186,8 @@
     guideLineGroup,
     guideRuntimes,
     labelsLayerElement,
-    sceneObjectRuntimes
+    sceneObjectRuntimes,
+    visibilityRuntimes
   ) {
     const renderer = new GuideRenderer({
       labelsLayer: createLabelAdapter(labelsLayerElement)
@@ -194,13 +196,17 @@
       sceneData,
       guideLineGroup,
       guideRuntimes,
-      sceneObjectRuntimes
+      sceneObjectRuntimes,
+      visibilityRuntimes
     );
   };
 
   app.applyGuideLineVisibility = function applyGuideLineVisibility(state, guideRuntimes) {
-    const renderer = new GuideRenderer({ labelsLayer: null });
-    renderer.applyGuideLineVisibility(state, guideRuntimes);
+    const service = new VisibilityService({
+      state,
+      visibilityRuntimes: guideRuntimes
+    });
+    service.apply();
   };
 
   app.applyOrbitVisibility = function applyOrbitVisibility(state, orbitGroup) {
@@ -220,11 +226,11 @@
       state,
       controls,
       orbitGroup,
-      guideRuntimes,
+      visibilityRuntimes: guideRuntimes,
       camera,
       math,
       onOrbitVisibilityChanged: app.applyOrbitVisibility,
-      onGuideVisibilityChanged: app.applyGuideLineVisibility
+      onVisibilityChanged: app.applyGuideLineVisibility
     });
     return controller.setup();
   };

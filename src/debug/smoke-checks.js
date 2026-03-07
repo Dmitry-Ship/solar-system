@@ -161,7 +161,7 @@
     const namesToggleButton = document.getElementById("names-toggle");
     const orbitsToggleButton = document.getElementById("orbits-toggle");
     const lightRayToggleButtons = Array.from(
-      document.querySelectorAll("#light-ray-controls [data-light-ray-key]")
+      document.querySelectorAll("#visibility-controls-root [data-visibility-key]")
     );
     const zoomToggleButton = document.getElementById("zoom-toggle");
     const expectedLightRayToggleCount = new Set(

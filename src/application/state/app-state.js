@@ -9,17 +9,62 @@
       this.showBodyNames = false;
       this.showOrbits = true;
       this.showLightRays = false;
-      this.lightRayVisibilityByKey = Object.create(null);
+      this.visibilityByKey = Object.create(null);
+      this.visibilityGroupByKey = Object.create(null);
+      this.lightRayVisibilityByKey = this.visibilityByKey;
       this.minCamera = constants.MIN_ZOOM_AU;
       this.maxCamera = constants.MAX_ZOOM_AU;
     }
 
-    registerLightRay(key, initialVisibility = false) {
+    registerVisibility(key, initialVisibility = false, groupKey = "") {
       if (typeof key !== "string" || !key) return;
-      if (!(key in this.lightRayVisibilityByKey)) {
-        this.lightRayVisibilityByKey[key] = Boolean(initialVisibility);
+      if (!(key in this.visibilityByKey)) {
+        this.visibilityByKey[key] = Boolean(initialVisibility);
       }
-      this.syncLightRayAggregateVisibility();
+
+      if (typeof groupKey === "string" && groupKey) {
+        this.visibilityGroupByKey[key] = groupKey;
+      } else if (!(key in this.visibilityGroupByKey)) {
+        this.visibilityGroupByKey[key] = "";
+      }
+
+      this.syncLegacyVisibilityAggregates();
+    }
+
+    isVisibilityEnabled(key, fallbackVisibility = true) {
+      if (typeof key !== "string" || !key) {
+        return Boolean(fallbackVisibility);
+      }
+
+      return key in this.visibilityByKey
+        ? Boolean(this.visibilityByKey[key])
+        : Boolean(fallbackVisibility);
+    }
+
+    setVisibility(key, isVisible) {
+      if (typeof key !== "string" || !key) return false;
+      this.visibilityByKey[key] = Boolean(isVisible);
+      this.syncLegacyVisibilityAggregates();
+      return this.visibilityByKey[key];
+    }
+
+    toggleVisibility(key, fallbackVisibility = false) {
+      return this.setVisibility(key, !this.isVisibilityEnabled(key, fallbackVisibility));
+    }
+
+    isAnyVisibilityEnabled(groupKey = "") {
+      return Object.keys(this.visibilityByKey).some(
+        (key) =>
+          this.visibilityGroupByKey[key] === groupKey && Boolean(this.visibilityByKey[key])
+      );
+    }
+
+    syncLegacyVisibilityAggregates() {
+      this.showLightRays = this.isAnyVisibilityEnabled("light-rays");
+    }
+
+    registerLightRay(key, initialVisibility = false) {
+      this.registerVisibility(key, initialVisibility, "light-rays");
     }
 
     isLightRayVisible(key) {
@@ -27,24 +72,15 @@
         return Boolean(this.showLightRays);
       }
 
-      return Boolean(this.lightRayVisibilityByKey[key]);
+      return this.isVisibilityEnabled(key, false);
     }
 
     setLightRayVisibility(key, isVisible) {
-      if (typeof key !== "string" || !key) return false;
-      this.lightRayVisibilityByKey[key] = Boolean(isVisible);
-      this.syncLightRayAggregateVisibility();
-      return this.lightRayVisibilityByKey[key];
+      return this.setVisibility(key, isVisible);
     }
 
     toggleLightRayVisibility(key) {
-      return this.setLightRayVisibility(key, !this.isLightRayVisible(key));
-    }
-
-    syncLightRayAggregateVisibility() {
-      this.showLightRays = Object.keys(this.lightRayVisibilityByKey).some((key) =>
-        Boolean(this.lightRayVisibilityByKey[key])
-      );
+      return this.toggleVisibility(key, false);
     }
   }
 

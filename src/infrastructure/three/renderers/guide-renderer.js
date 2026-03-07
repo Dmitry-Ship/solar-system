@@ -265,17 +265,6 @@
     };
   }
 
-  function isGuideLineVisible(state, visibilityKey) {
-    if (typeof visibilityKey === "string" && visibilityKey) {
-      if (typeof state?.isLightRayVisible === "function") {
-        return state.isLightRayVisible(visibilityKey);
-      }
-      return Boolean(state?.lightRayVisibilityByKey?.[visibilityKey]);
-    }
-
-    return Boolean(state?.showLightRays);
-  }
-
   class GuideRenderer {
     constructor(options) {
       this.labelsLayer = options.labelsLayer;
@@ -300,8 +289,9 @@
         }),
         renderRadius: 0,
         minPixelRadius: 0,
-        togglesWithLightRaysButton: true,
-        lightRayVisibilityKey: guideLine.visibilityKey,
+        togglesWithVisibilityControl: Boolean(guideLine.visibilityKey),
+        visibilityKey: guideLine.visibilityKey,
+        defaultVisible: guideLine.initialVisibility ?? true,
         labelAnchorPosition: anchorObject.position,
         labelAnchorRadius: 0,
         labelMarginPixels: Math.max(1, guideLine.labelMarginPixels || 8)
@@ -350,7 +340,8 @@
       sceneData,
       guideLineGroup,
       guideRuntimes,
-      sceneObjectRuntimes
+      sceneObjectRuntimes,
+      visibilityRuntimes
     ) {
       const THREE = window.THREE;
       if (!THREE) {
@@ -367,11 +358,20 @@
           const lightRayRuntime = this.createLightRay(guideLine, points);
           if (!lightRayRuntime) continue;
           guideLineGroup.add(lightRayRuntime.object);
-          guideRuntimes.push({
+          const runtime = {
             object: lightRayRuntime.object,
             visibilityKey: guideLine.visibilityKey,
-            visibilityLabel: guideLine.visibilityLabel
-          });
+            visibilityLabel: guideLine.visibilityLabel,
+            visibilityControlLabel: guideLine.visibilityControlLabel,
+            visibilityGroupKey: guideLine.visibilityGroupKey,
+            visibilityGroupLabel: guideLine.visibilityGroupLabel,
+            initialVisibility: guideLine.initialVisibility ?? false,
+            defaultVisible: guideLine.initialVisibility ?? false
+          };
+          guideRuntimes.push(runtime);
+          if (Array.isArray(visibilityRuntimes) && runtime.visibilityKey) {
+            visibilityRuntimes.push(runtime);
+          }
           if (Array.isArray(sceneObjectRuntimes)) {
             const labelRuntime = this.createGuideLineLabelRuntime(THREE, guideLine);
             if (labelRuntime) {
@@ -396,11 +396,20 @@
         line.frustumCulled = false;
 
         guideLineGroup.add(line);
-        guideRuntimes.push({
+        const runtime = {
           object: line,
           visibilityKey: guideLine.visibilityKey,
-          visibilityLabel: guideLine.visibilityLabel
-        });
+          visibilityLabel: guideLine.visibilityLabel,
+          visibilityControlLabel: guideLine.visibilityControlLabel,
+          visibilityGroupKey: guideLine.visibilityGroupKey,
+          visibilityGroupLabel: guideLine.visibilityGroupLabel,
+          initialVisibility: guideLine.initialVisibility ?? true,
+          defaultVisible: guideLine.initialVisibility ?? true
+        };
+        guideRuntimes.push(runtime);
+        if (Array.isArray(visibilityRuntimes) && runtime.visibilityKey) {
+          visibilityRuntimes.push(runtime);
+        }
         if (Array.isArray(sceneObjectRuntimes)) {
           const labelRuntime = this.createGuideLineLabelRuntime(THREE, guideLine);
           if (labelRuntime) {
@@ -410,11 +419,6 @@
       }
     }
 
-    applyGuideLineVisibility(state, guideRuntimes) {
-      for (const runtime of guideRuntimes) {
-        runtime.object.visible = isGuideLineVisible(state, runtime.visibilityKey);
-      }
-    }
   }
 
   namespace.infrastructure.three.renderers.GuideRenderer = GuideRenderer;

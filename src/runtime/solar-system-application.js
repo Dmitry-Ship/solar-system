@@ -7,6 +7,7 @@
   const AppState = namespace.application.state.AppState;
   const OrbitPropagationService = namespace.application.services.OrbitPropagationService;
   const AsteroidBeltService = namespace.application.services.AsteroidBeltService;
+  const VisibilityService = namespace.application.services.VisibilityService;
   const LabelProjectionService = namespace.application.services.LabelProjectionService;
   const SimulationSystem = namespace.application.systems.SimulationSystem;
 
@@ -181,6 +182,7 @@
       this.bodyGeometry = new THREE.SphereGeometry(1, 20, 12);
       this.sceneObjectRuntimes = [];
       this.guideRuntimes = [];
+      this.visibilityRuntimes = [];
       this.beltRuntimes = [];
       this.orbitingBodyMotionState = this.sceneData.orbitingBodyMotionState || null;
       this.orbitingBodies = this.orbitingBodyMotionState?.bodies || [];
@@ -198,6 +200,13 @@
       this.guideRenderer = new GuideRenderer({ labelsLayer: this.labelsLayer });
     }
 
+    initializeVisibilityService() {
+      this.visibilityService = new VisibilityService({
+        state: this.state,
+        visibilityRuntimes: this.visibilityRuntimes
+      });
+    }
+
     buildSceneContents() {
       this.particleRenderer.buildStarField(this.sceneData, this.particleGroup);
       this.particleRenderer.buildOortCloud(this.sceneData, this.particleGroup);
@@ -205,7 +214,8 @@
         this.sceneData,
         this.guideLineGroup,
         this.guideRuntimes,
-        this.sceneObjectRuntimes
+        this.sceneObjectRuntimes,
+        this.visibilityRuntimes
       );
       this.particleRenderer.buildAsteroidBelts(
         this.sceneData,
@@ -253,15 +263,13 @@
         state: this.state,
         controls: this.controls,
         orbitGroup: this.orbitGroup,
-        guideRuntimes: this.guideRuntimes,
+        visibilityRuntimes: this.visibilityRuntimes,
         camera: this.camera,
         math: this.math,
         onOrbitVisibilityChanged: this.orbitRenderer.applyOrbitVisibility.bind(
           this.orbitRenderer
         ),
-        onGuideVisibilityChanged: this.guideRenderer.applyGuideLineVisibility.bind(
-          this.guideRenderer
-        )
+        onVisibilityChanged: this.visibilityService.apply.bind(this.visibilityService)
       });
       this.hud = this.hudController.setup();
     }
@@ -308,6 +316,7 @@
         guideRenderer: this.guideRenderer,
         labelProjectionService: this.labelProjectionService,
         postprocessingRenderer: this.postprocessingRenderer,
+        visibilityService: this.visibilityService,
         guideRuntimes: this.guideRuntimes,
         camera: this.camera
       });
@@ -322,7 +331,7 @@
     applyInitialRenderState() {
       this.resize();
       this.orbitRenderer.applyOrbitVisibility(this.state, this.orbitGroup);
-      this.guideRenderer.applyGuideLineVisibility(this.state, this.guideRuntimes);
+      this.visibilityService.apply();
       this.particleRenderer.updateAsteroidBeltVisuals(this.beltRuntimes, this.camera);
     }
 
@@ -345,6 +354,7 @@
       this.initializeRuntimeCollections(THREE);
       this.initializeRenderers();
       this.buildSceneContents();
+      this.initializeVisibilityService();
       this.initializeHud();
       this.initializeCameraPlacement();
       this.initializeSimulationServices(THREE);

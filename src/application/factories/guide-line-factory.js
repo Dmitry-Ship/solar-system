@@ -143,6 +143,10 @@
       depthTest: options.depthTest,
       visibilityKey: options.visibilityKey || "",
       visibilityLabel: options.visibilityLabel || "",
+      visibilityControlLabel: options.visibilityControlLabel || "",
+      visibilityGroupKey: options.visibilityGroupKey || "",
+      visibilityGroupLabel: options.visibilityGroupLabel || "",
+      initialVisibility: options.initialVisibility ?? true,
       label: options.label || "",
       labelAnchorPoint: options.labelAnchorPoint ? clonePoint(options.labelAnchorPoint) : null,
       labelMarginPixels: options.labelMarginPixels
@@ -277,7 +281,11 @@
           lightRayOpacityProfile,
           lightRayLayerIndex: layerIndex,
           visibilityKey: buildLightRayVisibilityKey(sourceMarker.name),
-          visibilityLabel: sourceMarker.name
+          visibilityLabel: sourceMarker.name,
+          visibilityControlLabel: `${sourceMarker.name} Ray`,
+          visibilityGroupKey: "light-rays",
+          visibilityGroupLabel: "Light Rays",
+          initialVisibility: false
         },
         dependencies
       )

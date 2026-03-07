@@ -4,15 +4,16 @@
     throw new Error("label projection service bootstrap failed: missing application services namespace.");
   }
 
-  function areGuideLineLabelsVisible(state, visibilityKey) {
-    if (typeof visibilityKey === "string" && visibilityKey) {
-      if (typeof state?.isLightRayVisible === "function") {
-        return state.isLightRayVisible(visibilityKey);
+  function isVisibilityControlledRuntimeVisible(state, runtime) {
+    const defaultVisibility = runtime?.defaultVisible ?? true;
+    if (typeof runtime?.visibilityKey === "string" && runtime.visibilityKey) {
+      if (typeof state?.isVisibilityEnabled === "function") {
+        return state.isVisibilityEnabled(runtime.visibilityKey, defaultVisibility);
       }
-      return Boolean(state?.lightRayVisibilityByKey?.[visibilityKey]);
+      return Boolean(state?.lightRayVisibilityByKey?.[runtime.visibilityKey] ?? defaultVisibility);
     }
 
-    return Boolean(state?.showLightRays);
+    return Boolean(defaultVisibility);
   }
 
   class LabelProjectionService {
@@ -55,10 +56,8 @@
 
         if (
           (!this.state.showBodyNames && runtime.togglesWithNamesButton) ||
-          (
-            runtime.togglesWithLightRaysButton &&
-            !areGuideLineLabelsVisible(this.state, runtime.lightRayVisibilityKey)
-          )
+          (runtime.togglesWithVisibilityControl &&
+            !isVisibilityControlledRuntimeVisible(this.state, runtime))
         ) {
           runtime.labelElement.style.display = "none";
           continue;
