@@ -10,11 +10,9 @@
   }
 
   const LIGHT_RAY_MIN_AXIS_LENGTH = 1e-6;
-  const LIGHT_RAY_MIN_VISIBLE_RADIUS = 1e-8;
-  const EDGE_FALLBACK_EPSILON = 1e-12;
-  const LIGHT_RAY_RIM_SEGMENTS = 120;
-  const LIGHT_RAY_OPACITY_FALLOFF_POWER = 1.35;
-  const LIGHT_RAY_END_OPACITY_FACTOR = 0.22;
+  const LIGHT_RAY_MIN_VISIBLE_RADIUS = 1e-6;
+  const LIGHT_RAY_RADIAL_SEGMENTS = 40;
+  const LIGHT_RAY_RENDER_ORDER_BASE = 40;
 
   function hasDashPattern(pattern) {
     return Array.isArray(pattern) && pattern.length >= 2;
@@ -91,12 +89,8 @@
     return { radiusProfile, maxRadius };
   }
 
-  function buildLightRayOpacityProfile(guideLine, pointCount, opacityFallback = 0.7) {
-    const startOpacity = clampOpacity(guideLine.opacity, opacityFallback);
-    const endOpacityFactor = clampOpacity(
-      guideLine.lightRayEndOpacityFactor,
-      LIGHT_RAY_END_OPACITY_FACTOR
-    );
+  function buildLightRayOpacityProfile(guideLine, pointCount, opacityFallback = 0.08) {
+    const peakOpacity = clampOpacity(guideLine.opacity, opacityFallback);
     const rawOpacityProfile =
       Array.isArray(guideLine.lightRayOpacityProfile) &&
       guideLine.lightRayOpacityProfile.length === pointCount
@@ -105,10 +99,7 @@
     const opacityProfile = new Array(pointCount);
 
     for (let index = 0; index < pointCount; index += 1) {
-      const t = pointCount <= 1 ? 0 : index / (pointCount - 1);
-      const easedFade = Math.pow(1 - t, LIGHT_RAY_OPACITY_FALLOFF_POWER);
-      const fallbackOpacity =
-        startOpacity * (endOpacityFactor + (1 - endOpacityFactor) * easedFade);
+      const fallbackOpacity = peakOpacity;
       opacityProfile[index] = clampOpacity(rawOpacityProfile?.[index], fallbackOpacity);
     }
 
@@ -125,58 +116,43 @@
     return { basisA, basisB };
   }
 
-  function createLightRayMaterial(
-    THREE,
-    guideLine,
-    {
-      dashPattern = [],
-      dashScale = 1,
-      minDashSize = 4,
-      depthWrite
-    } = {}
-  ) {
-    const isDashed = hasDashPattern(dashPattern);
-    const dashSize = isDashed ? Math.max(minDashSize, dashPattern[0] * dashScale) : 0;
-    const gapSize = isDashed ? Math.max(minDashSize, dashPattern[1] * dashScale) : 0;
-    const material = new THREE.ShaderMaterial({
+  function createLightRayMaterial(THREE, guideLine) {
+    return new THREE.ShaderMaterial({
       transparent: true,
-      depthWrite: depthWrite ?? false,
+      depthWrite: false,
       depthTest: guideLine.depthTest !== false,
+      side: THREE.DoubleSide,
+      blending: THREE.NormalBlending,
+      toneMapped: false,
       uniforms: {
-        diffuse: { value: new THREE.Color(guideLine.color) },
-        dashEnabled: { value: isDashed ? 1 : 0 },
-        dashSize: { value: dashSize },
-        gapSize: { value: gapSize }
+        diffuse: { value: new THREE.Color(guideLine.color) }
       },
       vertexShader: `
-        attribute float lineDistance;
         attribute float vertexOpacity;
-        varying float vLineDistance;
         varying float vVertexOpacity;
+        varying vec3 vViewNormal;
+        varying vec3 vViewDirection;
 
         void main() {
-          vLineDistance = lineDistance;
+          vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
           vVertexOpacity = vertexOpacity;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          vViewNormal = normalize(normalMatrix * normal);
+          vViewDirection = normalize(-modelViewPosition.xyz);
+          gl_Position = projectionMatrix * modelViewPosition;
         }
       `,
       fragmentShader: `
         uniform vec3 diffuse;
-        uniform float dashEnabled;
-        uniform float dashSize;
-        uniform float gapSize;
-        varying float vLineDistance;
         varying float vVertexOpacity;
+        varying vec3 vViewNormal;
+        varying vec3 vViewDirection;
 
         void main() {
-          if (dashEnabled > 0.5) {
-            float dashCycle = dashSize + gapSize;
-            if (dashCycle > 0.0 && mod(vLineDistance, dashCycle) > dashSize) {
-              discard;
-            }
-          }
-
-          float alpha = vVertexOpacity;
+          float rim = pow(
+            1.0 - abs(dot(normalize(vViewNormal), normalize(vViewDirection))),
+            1.85
+          );
+          float alpha = vVertexOpacity * max(0.08, rim);
           if (alpha <= 0.0) {
             discard;
           }
@@ -185,97 +161,85 @@
         }
       `
     });
-
-    return { isDashed, material };
   }
 
-  function updateLineDistances(lineRuntime) {
-    const { positions, lineDistances, pointCount, geometry } = lineRuntime;
-    let cumulativeDistance = 0;
-    lineDistances[0] = 0;
+  function buildLightRayTubeGeometry(THREE, points, radiusProfile, opacityProfile) {
+    const pointCount = points.length;
+    if (pointCount < 2) return null;
 
-    for (let index = 1; index < pointCount; index += 1) {
-      const currentOffset = index * 3;
-      const previousOffset = currentOffset - 3;
-      const deltaX = positions[currentOffset] - positions[previousOffset];
-      const deltaY = positions[currentOffset + 1] - positions[previousOffset + 1];
-      const deltaZ = positions[currentOffset + 2] - positions[previousOffset + 2];
-      cumulativeDistance += Math.hypot(deltaX, deltaY, deltaZ);
-      lineDistances[index] = cumulativeDistance;
+    const axis = new THREE.Vector3().subVectors(points[pointCount - 1], points[0]);
+    const axisLength = axis.length();
+    if (axisLength <= LIGHT_RAY_MIN_AXIS_LENGTH) {
+      return null;
     }
 
-    geometry.attributes.lineDistance.needsUpdate = true;
-  }
+    const axisDirection = axis.clone().multiplyScalar(1 / axisLength);
+    const { basisA, basisB } = createLightRayBasis(THREE, axisDirection);
+    const ringVertexCount = LIGHT_RAY_RADIAL_SEGMENTS + 1;
+    const totalVertexCount = pointCount * ringVertexCount;
+    const positions = new Float32Array(totalVertexCount * 3);
+    const normals = new Float32Array(totalVertexCount * 3);
+    const vertexOpacities = new Float32Array(totalVertexCount);
+    const indexCount = (pointCount - 1) * LIGHT_RAY_RADIAL_SEGMENTS * 6;
+    const IndexArray = totalVertexCount > 65535 ? Uint32Array : Uint16Array;
+    const indices = new IndexArray(indexCount);
+    let positionOffset = 0;
+    let normalOffset = 0;
+    let opacityOffset = 0;
+    let indexOffset = 0;
 
-  function createLightRayRim(
-    THREE,
-    center,
-    radius,
-    basisA,
-    basisB,
-    material,
-    opacity
-  ) {
-    const fullTurn = Math.PI * 2;
-    const pointCount = LIGHT_RAY_RIM_SEGMENTS + 1;
-    const positions = new Float32Array(pointCount * 3);
-    const opacities = new Float32Array(pointCount);
-    const lineDistances = new Float32Array(pointCount);
-    let previousX = 0;
-    let previousY = 0;
-    let previousZ = 0;
-    let cumulativeDistance = 0;
+    for (let ringIndex = 0; ringIndex < pointCount; ringIndex += 1) {
+      const center = points[ringIndex];
+      const radius = Math.max(radiusProfile[ringIndex], LIGHT_RAY_MIN_VISIBLE_RADIUS);
+      const ringOpacity = clampOpacity(opacityProfile[ringIndex], 0);
 
-    for (let index = 0; index < pointCount; index += 1) {
-      const angle = (index / LIGHT_RAY_RIM_SEGMENTS) * fullTurn;
-      const x = center.x + basisA.x * Math.cos(angle) * radius + basisB.x * Math.sin(angle) * radius;
-      const y = center.y + basisA.y * Math.cos(angle) * radius + basisB.y * Math.sin(angle) * radius;
-      const z = center.z + basisA.z * Math.cos(angle) * radius + basisB.z * Math.sin(angle) * radius;
-      const offset = index * 3;
-      positions[offset] = x;
-      positions[offset + 1] = y;
-      positions[offset + 2] = z;
-      opacities[index] = opacity;
-
-      if (index > 0) {
-        cumulativeDistance += Math.hypot(x - previousX, y - previousY, z - previousZ);
-        lineDistances[index] = cumulativeDistance;
+      for (let segmentIndex = 0; segmentIndex <= LIGHT_RAY_RADIAL_SEGMENTS; segmentIndex += 1) {
+        const angle = (segmentIndex / LIGHT_RAY_RADIAL_SEGMENTS) * Math.PI * 2;
+        const cosAngle = Math.cos(angle);
+        const sinAngle = Math.sin(angle);
+        const normalX = basisA.x * cosAngle + basisB.x * sinAngle;
+        const normalY = basisA.y * cosAngle + basisB.y * sinAngle;
+        const normalZ = basisA.z * cosAngle + basisB.z * sinAngle;
+        positions[positionOffset] = center.x + normalX * radius;
+        positions[positionOffset + 1] = center.y + normalY * radius;
+        positions[positionOffset + 2] = center.z + normalZ * radius;
+        normals[normalOffset] = normalX;
+        normals[normalOffset + 1] = normalY;
+        normals[normalOffset + 2] = normalZ;
+        vertexOpacities[opacityOffset] = ringOpacity;
+        positionOffset += 3;
+        normalOffset += 3;
+        opacityOffset += 1;
       }
+    }
 
-      previousX = x;
-      previousY = y;
-      previousZ = z;
+    for (let ringIndex = 0; ringIndex < pointCount - 1; ringIndex += 1) {
+      const ringStart = ringIndex * ringVertexCount;
+      const nextRingStart = ringStart + ringVertexCount;
+
+      for (let segmentIndex = 0; segmentIndex < LIGHT_RAY_RADIAL_SEGMENTS; segmentIndex += 1) {
+        const current = ringStart + segmentIndex;
+        const currentNext = current + 1;
+        const next = nextRingStart + segmentIndex;
+        const nextNext = next + 1;
+
+        indices[indexOffset] = current;
+        indices[indexOffset + 1] = next;
+        indices[indexOffset + 2] = currentNext;
+        indices[indexOffset + 3] = currentNext;
+        indices[indexOffset + 4] = next;
+        indices[indexOffset + 5] = nextNext;
+        indexOffset += 6;
+      }
     }
 
     const geometry = new THREE.BufferGeometry();
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute("vertexOpacity", new THREE.BufferAttribute(opacities, 1));
-    geometry.setAttribute("lineDistance", new THREE.BufferAttribute(lineDistances, 1));
-
-    const rim = new THREE.Line(geometry, material);
-    rim.frustumCulled = false;
-    return rim;
-  }
-
-  function createDynamicLine(THREE, pointCount, material, opacityProfile) {
-    const positions = new Float32Array(pointCount * 3);
-    const lineDistances = new Float32Array(pointCount);
-    const opacities = new Float32Array(pointCount);
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute("vertexOpacity", new THREE.BufferAttribute(opacities, 1));
-    geometry.setAttribute("lineDistance", new THREE.BufferAttribute(lineDistances, 1));
-    geometry.attributes.position.setUsage(THREE.DynamicDrawUsage);
-    geometry.attributes.lineDistance.setUsage(THREE.DynamicDrawUsage);
-
-    for (let index = 0; index < pointCount; index += 1) {
-      opacities[index] = clampOpacity(opacityProfile?.[index], 1);
-    }
-
-    const line = new THREE.Line(geometry, material);
-    line.frustumCulled = false;
-
-    return { positions, lineDistances, geometry, line, pointCount };
+    geometry.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+    geometry.setAttribute("vertexOpacity", new THREE.BufferAttribute(vertexOpacities, 1));
+    geometry.computeBoundingSphere();
+    return geometry;
   }
 
   function resolveGuideLineLabelAnchorPoint(guideLine) {
@@ -345,119 +309,24 @@
       const pointCount = points.length;
       if (pointCount < 2) return null;
 
-      const start = points[0].clone();
-      const end = points[pointCount - 1].clone();
-      const axis = new THREE.Vector3().subVectors(end, start);
-      const axisLength = axis.length();
       const { radiusProfile, maxRadius } = buildLightRayRadiusProfile(guideLine, pointCount);
-      const opacityProfile = buildLightRayOpacityProfile(guideLine, pointCount);
-      if (axisLength <= LIGHT_RAY_MIN_AXIS_LENGTH || maxRadius <= LIGHT_RAY_MIN_AXIS_LENGTH) {
+      if (maxRadius <= LIGHT_RAY_MIN_VISIBLE_RADIUS) {
         return null;
       }
 
-      const axisDirection = axis.clone().multiplyScalar(1 / axisLength);
-      const { basisA, basisB } = createLightRayBasis(THREE, axisDirection);
-      const { material, isDashed } = createLightRayMaterial(THREE, guideLine, {
-        dashPattern: guideLine.lightRayDashPattern,
-        depthWrite: false
-      });
-
-      const lightRayGroup = new THREE.Group();
-
-      const showStartRim = guideLine.showStartRim !== false;
-      const showEndRim = guideLine.showEndRim !== false;
-      const profileStartRadius = radiusProfile[0] || 0;
-      const profileEndRadius = radiusProfile[pointCount - 1] || 0;
-      if (showStartRim && profileStartRadius > LIGHT_RAY_MIN_VISIBLE_RADIUS) {
-        const startRim = createLightRayRim(
-          THREE,
-          start,
-          profileStartRadius,
-          basisA,
-          basisB,
-          material,
-          opacityProfile[0] || 0
-        );
-        lightRayGroup.add(startRim);
-      }
-      if (showEndRim && profileEndRadius > LIGHT_RAY_MIN_VISIBLE_RADIUS) {
-        const endRim = createLightRayRim(
-          THREE,
-          end,
-          profileEndRadius,
-          basisA,
-          basisB,
-          material,
-          opacityProfile[pointCount - 1] || 0
-        );
-        lightRayGroup.add(endRim);
+      const opacityProfile = buildLightRayOpacityProfile(guideLine, pointCount);
+      const geometry = buildLightRayTubeGeometry(THREE, points, radiusProfile, opacityProfile);
+      if (!geometry) {
+        return null;
       }
 
-      const sideRuntimeA = createDynamicLine(THREE, pointCount, material, opacityProfile);
-      const sideRuntimeB = createDynamicLine(THREE, pointCount, material, opacityProfile);
-      lightRayGroup.add(sideRuntimeA.line);
-      lightRayGroup.add(sideRuntimeB.line);
+      const mesh = new THREE.Mesh(geometry, createLightRayMaterial(THREE, guideLine));
+      mesh.frustumCulled = false;
+      mesh.renderOrder =
+        LIGHT_RAY_RENDER_ORDER_BASE + Math.max(0, guideLine.lightRayLayerIndex || 0);
 
-      const center = new THREE.Vector3();
-      for (const point of points) {
-        center.add(point);
-      }
-      center.multiplyScalar(1 / pointCount);
-
-      const viewDirection = new THREE.Vector3();
-      const viewDirectionPerpendicular = new THREE.Vector3();
-      const edgeDirection = new THREE.Vector3();
-      const edgeOffset = new THREE.Vector3();
-      const sidePoint = new THREE.Vector3();
-
-      function update(camera) {
-        viewDirection.subVectors(camera.position, center);
-        const viewAxisDot = viewDirection.dot(axisDirection);
-        viewDirectionPerpendicular.copy(axisDirection).multiplyScalar(viewAxisDot);
-        viewDirectionPerpendicular.subVectors(viewDirection, viewDirectionPerpendicular);
-
-        if (viewDirectionPerpendicular.lengthSq() <= EDGE_FALLBACK_EPSILON) {
-          edgeDirection.copy(basisA);
-        } else {
-          viewDirectionPerpendicular.normalize();
-          edgeDirection.crossVectors(axisDirection, viewDirectionPerpendicular);
-          if (edgeDirection.lengthSq() <= EDGE_FALLBACK_EPSILON) {
-            edgeDirection.copy(basisA);
-          } else {
-            edgeDirection.normalize();
-          }
-        }
-
-        for (let i = 0; i < pointCount; i += 1) {
-          const radius = radiusProfile[i];
-          const baseIndex = i * 3;
-          const point = points[i];
-
-          edgeOffset.copy(edgeDirection).multiplyScalar(radius);
-          sidePoint.copy(point).add(edgeOffset);
-          sideRuntimeA.positions[baseIndex] = sidePoint.x;
-          sideRuntimeA.positions[baseIndex + 1] = sidePoint.y;
-          sideRuntimeA.positions[baseIndex + 2] = sidePoint.z;
-
-          sidePoint.copy(point).sub(edgeOffset);
-          sideRuntimeB.positions[baseIndex] = sidePoint.x;
-          sideRuntimeB.positions[baseIndex + 1] = sidePoint.y;
-          sideRuntimeB.positions[baseIndex + 2] = sidePoint.z;
-        }
-
-        sideRuntimeA.geometry.attributes.position.needsUpdate = true;
-        sideRuntimeB.geometry.attributes.position.needsUpdate = true;
-
-        if (isDashed) {
-          updateLineDistances(sideRuntimeA);
-          updateLineDistances(sideRuntimeB);
-        }
-      }
-
-      lightRayGroup.frustumCulled = false;
       return {
-        object: lightRayGroup,
-        update
+        object: mesh
       };
     }
 
@@ -491,8 +360,7 @@
           if (!lightRayRuntime) continue;
           guideLineGroup.add(lightRayRuntime.object);
           guideRuntimes.push({
-            object: lightRayRuntime.object,
-            update: lightRayRuntime.update
+            object: lightRayRuntime.object
           });
           if (Array.isArray(sceneObjectRuntimes)) {
             const labelRuntime = this.createGuideLineLabelRuntime(THREE, guideLine);
