@@ -6,7 +6,7 @@
 
   class AppState {
     constructor(constants) {
-      this.showBodyNames = true;
+      this.showBodyNames = false;
       this.showOrbits = true;
       this.showLightRays = false;
       this.minCamera = constants.MIN_ZOOM_AU;

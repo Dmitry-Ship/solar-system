@@ -14,10 +14,10 @@
       this.labelsLayer = options.labelsLayer;
     }
 
-    createBodyRuntime(config, bodyGroup, bodyGeometry) {
+    createBodyMaterial(config) {
       const THREE = window.THREE;
       if (!THREE) {
-        throw new Error("createBodyRuntime: missing THREE.");
+        throw new Error("createBodyMaterial: missing THREE.");
       }
 
       const useLitMaterial = !config.emissive && config.lit !== false;
@@ -29,18 +29,106 @@
             color: config.color,
             toneMapped: false
           });
+
       if (!useLitMaterial && config.emissive) {
         material.transparent = true;
         material.opacity = 0.95;
       }
 
-      const mesh = new THREE.Mesh(bodyGeometry, material);
+      return material;
+    }
+
+    createSpacecraftMesh(config, material) {
+      const THREE = window.THREE;
+      if (!THREE) {
+        throw new Error("createSpacecraftMesh: missing THREE.");
+      }
+
+      const group = new THREE.Group();
+      const baseMaterial = material;
+      const busMaterial = new THREE.MeshLambertMaterial({ color: "#c6ccd7" });
+      const boomMaterial = new THREE.MeshLambertMaterial({ color: "#8b93a1" });
+
+      const antenna = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.52, 0.38, 0.08, 20),
+        baseMaterial
+      );
+      antenna.rotation.z = Math.PI * 0.5;
+      antenna.position.x = -0.34;
+      group.add(antenna);
+
+      const antennaMast = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.045, 0.045, 0.42, 10),
+        boomMaterial
+      );
+      antennaMast.rotation.z = Math.PI * 0.5;
+      antennaMast.position.x = -0.02;
+      group.add(antennaMast);
+
+      const bus = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.18), busMaterial);
+      bus.position.x = 0.26;
+      group.add(bus);
+
+      const longBoom = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.018, 0.018, 1.15, 8),
+        boomMaterial
+      );
+      longBoom.rotation.z = Math.PI * 0.5;
+      longBoom.position.x = 0.1;
+      group.add(longBoom);
+
+      const rtgBoom = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.014, 0.014, 0.72, 8),
+        boomMaterial
+      );
+      rtgBoom.position.set(0.08, -0.26, 0);
+      rtgBoom.rotation.z = Math.PI * 0.32;
+      group.add(rtgBoom);
+
+      const rtg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.04, 0.22, 10),
+        busMaterial
+      );
+      rtg.position.set(0.18, -0.56, 0);
+      rtg.rotation.z = Math.PI * 0.32;
+      group.add(rtg);
+
+      return group;
+    }
+
+    createRenderableMesh(config, bodyGeometry, material) {
+      const THREE = window.THREE;
+      if (!THREE) {
+        throw new Error("createRenderableMesh: missing THREE.");
+      }
+
+      if (config.objectType === "spacecraft") {
+        return this.createSpacecraftMesh(config, material);
+      }
+
+      return new THREE.Mesh(bodyGeometry, material);
+    }
+
+    disableFrustumCulling(object3D) {
+      object3D.traverse((child) => {
+        child.frustumCulled = false;
+      });
+    }
+
+    createBodyRuntime(config, bodyGroup, bodyGeometry) {
+      const THREE = window.THREE;
+      if (!THREE) {
+        throw new Error("createBodyRuntime: missing THREE.");
+      }
+
+      const material = this.createBodyMaterial(config);
+      const mesh = this.createRenderableMesh(config, bodyGeometry, material);
       mesh.position.set(
         config.fixedPosition?.x || 0,
         config.fixedPosition?.y || 0,
         config.fixedPosition?.z || 0
       );
-      mesh.frustumCulled = false;
+      this.disableFrustumCulling(mesh);
       bodyGroup.add(mesh);
 
       return {
@@ -111,7 +199,7 @@
             name: voyager.name,
             color: voyager.color,
             renderRadius: voyager.renderRadius,
-            minPixelRadius: voyager.minPixelRadius || 2.1,
+            minPixelRadius: voyager.minPixelRadius || 1.6,
             objectType: "spacecraft",
             fixedPosition: voyager.position,
             togglesWithNamesButton: true
