@@ -55,9 +55,7 @@
     }
 
     return distances.map((distance) => {
-      const normalizedDistance = clamp01(
-        (distance - minDistanceFromSource) / Math.max(distanceRange, 1e-6)
-      );
+      const normalizedDistance = clamp01((distance - minDistanceFromSource) / distanceRange);
       return 1 - Math.pow(normalizedDistance, LIGHT_RAY_DISTANCE_FADE_POWER);
     });
   }
@@ -69,24 +67,6 @@
     }
 
     return `light-ray:${normalizedName.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`;
-  }
-
-  function resolveGuideLinePoints(marker, options, dependencies) {
-    const { constants, math } = dependencies;
-    const fallbackStartPoint =
-      options.startPoint ||
-      math.pointOnRadiusAlongDirection(marker, -constants.SOLAR_GRAVITATIONAL_LENS_AU);
-    const fallbackEndPoint = options.endPoint || {
-      x: marker.x,
-      y: marker.y,
-      z: marker.z
-    };
-
-    if (Array.isArray(options.points) && options.points.length >= 2) {
-      return options.points.map((point) => clonePoint(point));
-    }
-
-    return [fallbackStartPoint, fallbackEndPoint];
   }
 
   function buildLightRayRadiusProfile(
@@ -111,8 +91,8 @@
 
     return {
       lightRayRadiusProfileAu,
-      lightRayStartRadiusAu: lightRayRadiusProfileAu[0] || 0,
-      lightRayEndRadiusAu: lightRayRadiusProfileAu[lightRayRadiusProfileAu.length - 1] || 0
+      lightRayStartRadiusAu: lightRayRadiusProfileAu[0] ?? 0,
+      lightRayEndRadiusAu: lightRayRadiusProfileAu[lightRayRadiusProfileAu.length - 1] ?? 0
     };
   }
 
@@ -148,13 +128,13 @@
     });
   }
 
-  function buildDirectionalGuideLine(marker, color, options = {}, dependencies) {
+  function buildDirectionalGuideLine(marker, color, options = {}) {
     if (!marker) return null;
 
     const lightRayRadiusAu = options.lightRayRadiusAu ?? 0;
     const fallbackStartRadiusAu = options.lightRayStartRadiusAu ?? lightRayRadiusAu;
     const fallbackEndRadiusAu = options.lightRayEndRadiusAu ?? lightRayRadiusAu;
-    const points = resolveGuideLinePoints(marker, options, dependencies);
+    const points = options.points.map((point) => clonePoint(point));
     const opacity = options.opacity ?? 0.96;
     const {
       lightRayRadiusProfileAu,
@@ -173,8 +153,6 @@
       color,
       renderStyle: options.renderStyle || "line",
       opacity,
-      showStartRim: options.showStartRim ?? true,
-      showEndRim: options.showEndRim ?? true,
       lightRayRadiusAu,
       lightRayStartRadiusAu,
       lightRayEndRadiusAu,
@@ -183,7 +161,6 @@
       lightRayLayerIndex: Number.isFinite(options.lightRayLayerIndex)
         ? Math.max(0, Math.floor(options.lightRayLayerIndex))
         : 0,
-      lightRayDashPattern: options.lightRayDashPattern || [],
       dashPattern: options.dashPattern || [],
       depthTest: options.depthTest,
       visibilityKey: options.visibilityKey || "",
@@ -211,47 +188,41 @@
     const lightRayRadiusProfileAu = [];
     const lightRayOpacityProfile = [];
     const sourceDistanceAu = pointMagnitude(sourceMarker);
-    const focalPointRadiusAu = 0;
     const focusSlopeAuPerAu = sunCrossingRadiusAu / Math.max(focusDistanceAu, 1e-6);
 
     for (let step = 0; step <= MATRYOSHKA_SEGMENT_POINT_COUNT; step += 1) {
-      const t = MATRYOSHKA_SEGMENT_POINT_COUNT <= 0 ? 1 : step / MATRYOSHKA_SEGMENT_POINT_COUNT;
+      const t = step / MATRYOSHKA_SEGMENT_POINT_COUNT;
       const distanceAu = sourceDistanceAu * (1 - t);
       const radiusAu = lerp(
         sourceRadiusAu,
         sunCrossingRadiusAu,
         Math.pow(t, MATRYOSHKA_PRE_SUN_EXPANSION_POWER)
       );
-      const opacity = peakOpacity;
       points.push(
         step === 0
           ? clonePoint(sourceMarker)
           : math.pointOnRadiusAlongDirection(sourceMarker, distanceAu)
       );
       lightRayRadiusProfileAu.push(radiusAu);
-      lightRayOpacityProfile.push(opacity);
+      lightRayOpacityProfile.push(peakOpacity);
     }
 
     for (let step = 1; step <= MATRYOSHKA_SEGMENT_POINT_COUNT; step += 1) {
-      const t =
-        MATRYOSHKA_SEGMENT_POINT_COUNT <= 0 ? 1 : step / MATRYOSHKA_SEGMENT_POINT_COUNT;
+      const t = step / MATRYOSHKA_SEGMENT_POINT_COUNT;
       const distanceAu = focusDistanceAu * t;
-      const radiusAu = lerp(sunCrossingRadiusAu, focalPointRadiusAu, t);
-      const opacity = peakOpacity;
+      const radiusAu = lerp(sunCrossingRadiusAu, 0, t);
       points.push(math.pointOnRadiusAlongDirection(sourceMarker, -distanceAu));
       lightRayRadiusProfileAu.push(radiusAu);
-      lightRayOpacityProfile.push(opacity);
+      lightRayOpacityProfile.push(peakOpacity);
     }
 
     for (let step = 1; step <= MATRYOSHKA_SEGMENT_POINT_COUNT; step += 1) {
-      const t =
-        MATRYOSHKA_SEGMENT_POINT_COUNT <= 0 ? 1 : step / MATRYOSHKA_SEGMENT_POINT_COUNT;
+      const t = step / MATRYOSHKA_SEGMENT_POINT_COUNT;
       const distanceAu = lerp(focusDistanceAu, postFocusEndDistanceAu, t);
       const radiusAu = focusSlopeAuPerAu * Math.max(0, distanceAu - focusDistanceAu);
-      const opacity = peakOpacity;
       points.push(math.pointOnRadiusAlongDirection(sourceMarker, -distanceAu));
       lightRayRadiusProfileAu.push(radiusAu);
-      lightRayOpacityProfile.push(opacity);
+      lightRayOpacityProfile.push(peakOpacity);
     }
 
     return { points, lightRayRadiusProfileAu, lightRayOpacityProfile };
@@ -315,8 +286,7 @@
           visibilityGroupKey: "light-rays",
           visibilityGroupLabel: "Light Rays",
           initialVisibility: false
-        },
-        dependencies
+        }
       )
     ].filter(Boolean);
   }
@@ -353,8 +323,7 @@
         visibilityGroupLabel: "Light Rays",
         initialVisibility: false,
         label: "focal line"
-      },
-      dependencies
+      }
     );
   }
 

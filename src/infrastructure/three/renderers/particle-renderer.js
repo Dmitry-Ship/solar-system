@@ -9,30 +9,6 @@
     throw new Error("particle renderer bootstrap failed: missing three renderers namespace.");
   }
 
-  function buildPositionBufferFromPoints(points) {
-    if (!Array.isArray(points) || points.length === 0) {
-      return new Float32Array(0);
-    }
-
-    const positions = new Float32Array(points.length * 3);
-    let offset = 0;
-    for (const point of points) {
-      positions[offset] = point.x;
-      positions[offset + 1] = point.y;
-      positions[offset + 2] = point.z;
-      offset += 3;
-    }
-    return positions;
-  }
-
-  function resolvePointCloudPositions(pointCloud, fallbackPoints) {
-    if (pointCloud?.positions instanceof Float32Array) {
-      return pointCloud.positions;
-    }
-
-    return buildPositionBufferFromPoints(fallbackPoints);
-  }
-
   class ParticleRenderer {
     static clamp01(value) {
       return Math.min(1, Math.max(0, value));
@@ -57,7 +33,7 @@
         throw new Error("buildStarField: missing THREE.");
       }
 
-      const positions = resolvePointCloudPositions(sceneData.stars, sceneData.stars);
+      const positions = sceneData.stars.positions;
 
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -84,7 +60,7 @@
       }
 
       const oortCloud = sceneData.oortCloud;
-      const positions = resolvePointCloudPositions(oortCloud, oortCloud?.particles);
+      const positions = oortCloud.positions;
 
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -111,15 +87,7 @@
       }
 
       for (const belt of sceneData.asteroidBelts) {
-        const particleCount =
-          belt.particleCount ??
-          belt.orbitRadius?.length ??
-          belt.particles?.length ??
-          0;
-        const positions =
-          belt.positions instanceof Float32Array
-            ? belt.positions
-            : new Float32Array(particleCount * 3);
+        const positions = belt.positions;
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
         const baseOpacity = Math.min(

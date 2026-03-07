@@ -60,13 +60,11 @@
     try {
       sceneData = namespace.data.createSceneData();
       const hasStars =
-        (Array.isArray(sceneData.stars) && sceneData.stars.length > 0) ||
-        (sceneData.stars?.positions instanceof Float32Array && sceneData.stars.count > 0);
+        sceneData.stars?.positions instanceof Float32Array && sceneData.stars.count > 0;
       const hasOortCloud =
         !!sceneData.oortCloud &&
-        (Array.isArray(sceneData.oortCloud.particles) ||
-          sceneData.oortCloud.positions instanceof Float32Array) &&
-        ((sceneData.oortCloud.particleCount || sceneData.oortCloud.particles?.length || 0) > 0);
+        sceneData.oortCloud.positions instanceof Float32Array &&
+        sceneData.oortCloud.particleCount > 0;
       const validSceneData =
         Array.isArray(sceneData.planets) &&
         sceneData.planets.length > 0 &&

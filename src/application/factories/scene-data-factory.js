@@ -24,23 +24,19 @@
       this.rawDefinitions = options.rawDefinitions;
     }
 
-    createOrbitingBody(bodyDefinition, defaultOrbitColor) {
-      const orbitRadius = Math.max(bodyDefinition.au || 1, 1e-6);
+    createOrbitingBody(bodyDefinition) {
       return {
         ...bodyDefinition,
         theta: this.random() * Math.PI * 2,
         inclination: this.math.degToRad(bodyDefinition.inclinationDeg || 0),
         node: this.math.degToRad(bodyDefinition.nodeDeg || 0),
         periapsisArg: this.math.degToRad(bodyDefinition.periapsisArgDeg || 0),
-        eccentricity: this.math.clamp(bodyDefinition.eccentricity || 0, 0, 0.999),
-        orbitColor: bodyDefinition.orbitColor || defaultOrbitColor
+        eccentricity: this.math.clamp(bodyDefinition.eccentricity || 0, 0, 0.999)
       };
     }
 
-    createOrbitingBodies(definitions, defaultOrbitColor) {
-      return definitions.map((definition) =>
-        this.createOrbitingBody(definition, defaultOrbitColor)
-      );
+    createOrbitingBodies(definitions) {
+      return definitions.map((definition) => this.createOrbitingBody(definition));
     }
 
     markerOnSphereFromRaDec(
@@ -248,18 +244,11 @@
     }
 
     createSceneData() {
-      const planets = this.createOrbitingBodies(
-        this.planetCatalog.PLANET_DEFINITIONS,
-        DEFAULT_ORBIT_COLOR
-      );
+      const planets = this.createOrbitingBodies(this.planetCatalog.PLANET_DEFINITIONS);
       const dwarfPlanets = this.createOrbitingBodies(
-        this.dwarfPlanetCatalog.DWARF_PLANET_DEFINITIONS,
-        DEFAULT_ORBIT_COLOR
+        this.dwarfPlanetCatalog.DWARF_PLANET_DEFINITIONS
       );
-      const comets = this.createOrbitingBodies(
-        this.cometCatalog.COMET_DEFINITIONS,
-        DEFAULT_ORBIT_COLOR
-      );
+      const comets = this.createOrbitingBodies(this.cometCatalog.COMET_DEFINITIONS);
 
       const orbitOpacityBodies = [...planets, ...dwarfPlanets];
       const orbitOpacityForBodyRadius = this.createOrbitOpacityCalculator(orbitOpacityBodies);

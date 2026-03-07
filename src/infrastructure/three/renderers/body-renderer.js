@@ -38,7 +38,7 @@
       return material;
     }
 
-    createSpacecraftMesh(config, material) {
+    createSpacecraftMesh(material) {
       const THREE = window.THREE;
       if (!THREE) {
         throw new Error("createSpacecraftMesh: missing THREE.");
@@ -103,7 +103,7 @@
       }
 
       if (config.objectType === "spacecraft") {
-        return this.createSpacecraftMesh(config, material);
+        return this.createSpacecraftMesh(material);
       }
 
       return new THREE.Mesh(bodyGeometry, material);
@@ -136,9 +136,6 @@
         labelElement: this.labelsLayer.createLabel(config.label || config.name, {
           objectType: config.objectType
         }),
-        orbitStateIndex: Number.isInteger(config.orbitStateIndex)
-          ? config.orbitStateIndex
-          : -1,
         renderRadius: config.renderRadius || 0,
         minPixelRadius: config.minPixelRadius || 1,
         orbitingBody: config.orbitingBody || config.orbitalSource || null,
@@ -243,7 +240,6 @@
         );
         sceneObjectRuntimes.push(runtime);
       }
-
     }
   }
 

@@ -30,8 +30,7 @@
       dashScale = 1,
       minDashSize = 4,
       solidOpacityFallback = 0.8,
-      dashedOpacityFallback = 0.7,
-      depthWrite
+      dashedOpacityFallback = 0.7
     } = {}
   ) {
     const isDashed = hasDashPattern(dashPattern);
@@ -44,9 +43,6 @@
     };
     if (guideLine.depthTest === false) {
       materialOptions.depthTest = false;
-    }
-    if (depthWrite !== undefined) {
-      materialOptions.depthWrite = depthWrite;
     }
 
     if (isDashed) {
@@ -99,8 +95,7 @@
     const opacityProfile = new Array(pointCount);
 
     for (let index = 0; index < pointCount; index += 1) {
-      const fallbackOpacity = peakOpacity;
-      opacityProfile[index] = clampOpacity(rawOpacityProfile?.[index], fallbackOpacity);
+      opacityProfile[index] = clampOpacity(rawOpacityProfile?.[index], peakOpacity);
     }
 
     return opacityProfile;
