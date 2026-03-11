@@ -5,8 +5,10 @@
   }
 
   const AppState = namespace.application.state.AppState;
+  const SceneRuntimeSystem = namespace.application.systems.SceneRuntimeSystem;
   const VisibilityService = namespace.application.services.VisibilityService;
   const LabelProjectionService = namespace.application.services.LabelProjectionService;
+  const RuntimeVisibilityService = namespace.application.services.RuntimeVisibilityService;
 
   const LabelsLayer = namespace.infrastructure.dom.LabelsLayer;
   const HudController = namespace.infrastructure.dom.HudController;
@@ -21,6 +23,11 @@
   if (!setInitialCameraPlacement) {
     throw new Error(
       "runtime bootstrap failed: missing setInitialCameraPlacement helper."
+    );
+  }
+  if (!SceneRuntimeSystem || !RuntimeVisibilityService) {
+    throw new Error(
+      "runtime bootstrap failed: missing scene runtime system or runtime visibility service."
     );
   }
 
@@ -159,23 +166,6 @@
       return controls;
     }
 
-    createSceneGroups() {
-      const { THREE } = this;
-      return {
-        orbitGroup: new THREE.Group(),
-        guideLineGroup: new THREE.Group(),
-        particleGroup: new THREE.Group(),
-        bodyGroup: new THREE.Group()
-      };
-    }
-
-    attachSceneGroups() {
-      this.scene.add(this.orbitGroup);
-      this.scene.add(this.guideLineGroup);
-      this.scene.add(this.particleGroup);
-      this.scene.add(this.bodyGroup);
-    }
-
     initializeState() {
       this.sceneData = this.sceneDataApi.createSceneData();
       this.state = new AppState();
@@ -187,20 +177,17 @@
     }
 
     initializeRuntimeCollections() {
-      const { THREE } = this;
-      Object.assign(this, this.createSceneGroups());
-      this.attachSceneGroups();
-
-      this.bodyGeometry = new THREE.SphereGeometry(1, 20, 12);
-      this.sceneObjectRuntimes = [];
-      this.guideRuntimes = [];
-      this.visibilityRuntimes = [];
-      this.beltRuntimes = [];
-      this.orbitingBodies = [];
-
-      this.bodyRuntimes = this.sceneObjectRuntimes;
-      this.guideLineRuntimes = this.guideRuntimes;
-      this.orbitalSourceBodies = this.orbitingBodies;
+      this.sceneRuntime = new SceneRuntimeSystem({
+        scene: this.scene,
+        constants: this.constants,
+        math: this.math,
+        bodyRenderer: this.bodyRenderer,
+        orbitRenderer: this.orbitRenderer,
+        particleRenderer: this.particleRenderer,
+        guideRenderer: this.guideRenderer,
+        postprocessingRenderer: this.postprocessingRenderer,
+        THREE: this.THREE
+      }).initialize();
     }
 
     initializeRenderers() {
@@ -220,69 +207,24 @@
     }
 
     initializeVisibilityService() {
+      this.runtimeVisibility = new RuntimeVisibilityService({ state: this.state });
       this.visibilityService = new VisibilityService({
         state: this.state,
-        visibilityRuntimes: this.visibilityRuntimes
+        visibilityRuntimes: this.sceneRuntime.visibilityRuntimes,
+        runtimeVisibility: this.runtimeVisibility
       });
     }
 
     buildSceneContents() {
-      this.particleRenderer.buildStarField(this.sceneData, this.particleGroup);
-      this.particleRenderer.buildOortCloud(this.sceneData, this.particleGroup);
-      this.guideRenderer.buildGuideLines(
-        this.sceneData,
-        this.guideLineGroup,
-        this.guideRuntimes,
-        this.sceneObjectRuntimes,
-        this.visibilityRuntimes
-      );
-      this.particleRenderer.buildAsteroidBelts(
-        this.sceneData,
-        this.particleGroup,
-        this.beltRuntimes,
-        this.math
-      );
-      this.orbitRenderer.buildOrbitingBodies(
-        this.sceneData,
-        this.orbitGroup,
-        this.bodyGroup,
-        this.bodyGeometry,
-        this.sceneObjectRuntimes,
-        this.orbitingBodies,
-        this.math
-      );
-      this.bodyRenderer.buildFixedBodies(
-        this.sceneData,
-        this.bodyGroup,
-        this.bodyGeometry,
-        this.sceneObjectRuntimes
-      );
-      this.createSunRuntime();
-    }
-
-    createSunRuntime() {
-      const sunRuntime = this.bodyRenderer.createBodyRuntime(
-        {
-          name: "Sun",
-          color: "#ffce6b",
-          renderRadius: this.constants.SUN_RADIUS_KM / this.constants.KM_PER_AU,
-          minPixelRadius: 2.6,
-          fixedPosition: { x: 0, y: 0, z: 0 },
-          emissive: true
-        },
-        this.bodyGroup,
-        this.bodyGeometry
-      );
-      this.sceneObjectRuntimes.push(sunRuntime);
-      this.postprocessingRenderer.markBloomObject(sunRuntime.mesh);
+      this.sceneRuntime.build(this.sceneData);
     }
 
     initializeHud() {
       this.hudController = new HudController({
         state: this.state,
         controls: this.controls,
-        orbitGroup: this.orbitGroup,
-        visibilityRuntimes: this.visibilityRuntimes,
+        orbitGroup: this.sceneRuntime.orbitGroup,
+        visibilityRuntimes: this.sceneRuntime.visibilityRuntimes,
         camera: this.camera,
         math: this.math,
         onOrbitVisibilityChanged: this.orbitRenderer.applyOrbitVisibility.bind(
@@ -309,9 +251,10 @@
       this.labelProjectionService = new LabelProjectionService({
         renderer: this.renderer,
         camera: this.camera,
-        sceneObjectRuntimes: this.sceneObjectRuntimes,
+        sceneObjectRuntimes: this.sceneRuntime.sceneObjectRuntimes,
         state: this.state,
         projectionScratch: new THREE.Vector3(),
+        runtimeVisibility: this.runtimeVisibility,
         THREE: this.THREE
       });
     }
@@ -326,9 +269,12 @@
     renderScene() {
       if (!this.renderer || !this.camera) return;
 
-      this.orbitRenderer.applyOrbitVisibility(this.state, this.orbitGroup);
+      this.orbitRenderer.applyOrbitVisibility(this.state, this.sceneRuntime.orbitGroup);
       this.visibilityService.apply();
-      this.particleRenderer.updateAsteroidBeltVisuals(this.beltRuntimes, this.camera);
+      this.particleRenderer.updateAsteroidBeltVisuals(
+        this.sceneRuntime.beltRuntimes,
+        this.camera
+      );
       this.labelProjectionService.update();
       this.postprocessingRenderer.render();
     }
@@ -348,8 +294,8 @@
       this.controls = this.createControls();
 
       this.initializeLabelsLayer();
-      this.initializeRuntimeCollections();
       this.initializeRenderers();
+      this.initializeRuntimeCollections();
       this.buildSceneContents();
       this.initializeVisibilityService();
       this.initializeHud();

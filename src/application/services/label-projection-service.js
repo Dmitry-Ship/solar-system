@@ -3,17 +3,11 @@
   if (!namespace || !namespace.application || !namespace.application.services) {
     throw new Error("label projection service bootstrap failed: missing application services namespace.");
   }
-
-  function isVisibilityControlledRuntimeVisible(state, runtime) {
-    const defaultVisibility = runtime?.defaultVisible ?? true;
-    if (typeof runtime?.visibilityKey === "string" && runtime.visibilityKey) {
-      if (typeof state?.isVisibilityEnabled === "function") {
-        return state.isVisibilityEnabled(runtime.visibilityKey, defaultVisibility);
-      }
-      return Boolean(state?.lightRayVisibilityByKey?.[runtime.visibilityKey] ?? defaultVisibility);
-    }
-
-    return Boolean(defaultVisibility);
+  const RuntimeVisibilityService = namespace.application.services.RuntimeVisibilityService;
+  if (!RuntimeVisibilityService) {
+    throw new Error(
+      "label projection service bootstrap failed: missing runtime visibility service."
+    );
   }
 
   class LabelProjectionService {
@@ -29,6 +23,8 @@
       this.sceneObjectRuntimes = options.sceneObjectRuntimes || options.bodyRuntimes || [];
       this.state = options.state;
       this.projectionScratch = options.projectionScratch || new THREE.Vector3();
+      this.runtimeVisibility =
+        options.runtimeVisibility || new RuntimeVisibilityService({ state: this.state });
     }
 
     update() {
@@ -57,7 +53,7 @@
         if (
           (!this.state.showBodyNames && runtime.togglesWithNamesButton) ||
           (runtime.togglesWithVisibilityControl &&
-            !isVisibilityControlledRuntimeVisible(this.state, runtime))
+            !this.runtimeVisibility.isRuntimeVisible(runtime))
         ) {
           runtime.labelElement.style.display = "none";
           continue;
