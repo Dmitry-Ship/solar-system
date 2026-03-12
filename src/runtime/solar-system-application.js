@@ -40,6 +40,31 @@
     bloomThreshold: 0.72
   });
 
+  function pointMagnitude(point) {
+    if (!point) {
+      return 0;
+    }
+
+    return Math.hypot(point.x || 0, point.y || 0, point.z || 0);
+  }
+
+  function resolveCameraFarDistance(sceneData, constants) {
+    const defaultFarDistance =
+      constants.SCENE_OUTER_AU * RUNTIME_RENDER_CONFIG.cameraFarDistanceMultiplier;
+    if (!sceneData) {
+      return defaultFarDistance;
+    }
+
+    const farthestFixedObjectDistance = Math.max(
+      0,
+      ...(sceneData.directionalMarkers || []).map(pointMagnitude),
+      ...(sceneData.voyagers || []).map((voyager) => pointMagnitude(voyager.position)),
+      ...(sceneData.driftingBodies || []).map(pointMagnitude)
+    );
+
+    return Math.max(defaultFarDistance, farthestFixedObjectDistance * 1.2);
+  }
+
   class SolarSystemApplication {
     constructor(options = {}) {
       this.canvasId = options.canvasId || "scene";
@@ -134,7 +159,7 @@
         48,
         width / height,
         RUNTIME_RENDER_CONFIG.nearClip,
-        this.constants.SCENE_OUTER_AU * RUNTIME_RENDER_CONFIG.cameraFarDistanceMultiplier
+        resolveCameraFarDistance(this.sceneData, this.constants)
       );
     }
 
