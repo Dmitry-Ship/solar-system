@@ -10,7 +10,7 @@
   const MATRYOSHKA_INNER_SOURCE_RADIUS_FACTOR = 0.018;
   const MATRYOSHKA_SOURCE_RADIUS_MIN_MULTIPLIER = 18;
   const LIGHT_RAY_DISTANCE_FADE_POWER = 2.2;
-  const TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT = 18;
+  const TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT = 64;
 
   function clamp01(value) {
     return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
@@ -36,24 +36,12 @@
     return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
   }
 
-  function addPoint(a, b) {
-    return {
-      x: a.x + b.x,
-      y: a.y + b.y,
-      z: a.z + b.z
-    };
-  }
-
   function scalePoint(point, scalar) {
     return {
       x: point.x * scalar,
       y: point.y * scalar,
       z: point.z * scalar
     };
-  }
-
-  function dotProduct(a, b) {
-    return a.x * b.x + a.y * b.y + a.z * b.z;
   }
 
   function normalizePoint(point) {
@@ -439,48 +427,29 @@
     );
   }
 
-  function appendDirectionalArcPoints(
+  function appendHyperbolicAssistPoints(
     points,
     startDirection,
     endDirection,
-    radiusAu,
-    segmentCount
+    periapsisDistanceAu,
+    endpointDistanceAu,
+    segmentCount,
+    math
   ) {
-    const clampedDot = clamp01((dotProduct(startDirection, endDirection) + 1) * 0.5) * 2 - 1;
-    const angle = Math.acos(clampedDot);
-
-    if (angle <= 1e-6) {
-      appendUniquePoint(points, scalePoint(startDirection, radiusAu));
-      appendUniquePoint(points, scalePoint(endDirection, radiusAu));
+    const hyperbolaPoints = math.hyperbolicBranchPoints(
+      startDirection,
+      endDirection,
+      periapsisDistanceAu,
+      endpointDistanceAu,
+      segmentCount
+    );
+    if (!Array.isArray(hyperbolaPoints) || hyperbolaPoints.length === 0) {
       return;
     }
 
-    const sinAngle = Math.sin(angle);
-    for (let step = 0; step <= segmentCount; step += 1) {
-      const t = step / segmentCount;
-      const startWeight = Math.sin((1 - t) * angle) / sinAngle;
-      const endWeight = Math.sin(t * angle) / sinAngle;
-      const direction = normalizePoint(
-        addPoint(scalePoint(startDirection, startWeight), scalePoint(endDirection, endWeight))
-      );
-      appendUniquePoint(points, scalePoint(direction, radiusAu));
+    for (const hyperbolaPoint of hyperbolaPoints) {
+      appendUniquePoint(points, hyperbolaPoint);
     }
-  }
-
-  function buildSolarAssistApexDirection(startDirection, endDirection) {
-    return normalizePoint({
-      x: startDirection.x + endDirection.x,
-      y: Math.abs(startDirection.y) + Math.abs(endDirection.y) + 2,
-      z: startDirection.z + endDirection.z
-    });
-  }
-
-  function liftSolarAssistDirection(direction) {
-    return normalizePoint({
-      x: direction.x,
-      y: Math.abs(direction.y) + 0.9,
-      z: direction.z
-    });
   }
 
   function createTrajectoryGuideLine(trajectoryDefinition, sourceMarkers, dependencies) {
@@ -511,39 +480,23 @@
     const focalMidDistanceAu = (focalLineMinDistanceAu + focalLineMaxDistanceAu) * 0.5;
     const firstFocalMidpoint = scalePoint(firstFocalDirection, focalMidDistanceAu);
     const secondFocalEndPoint = scalePoint(secondFocalDirection, focalLineMaxDistanceAu);
-    const solarAssistEntryDirection = liftSolarAssistDirection(firstFocalDirection);
-    const solarAssistExitDirection = liftSolarAssistDirection(secondFocalDirection);
-    const solarAssistApexDirection = buildSolarAssistApexDirection(
-      solarAssistEntryDirection,
-      solarAssistExitDirection
-    );
-    const solarAssistRadiusAu = Math.max(
-      0.02,
+    const solarAssistRadiusAu = 
       Number.isFinite(trajectoryDefinition.solarAssistRadiusAu)
         ? trajectoryDefinition.solarAssistRadiusAu
         : 0.25
-    );
     const points = [];
 
     appendUniquePoint(points, launchMarker);
     appendUniquePoint(points, firstFocalMidpoint);
-    appendUniquePoint(points, scalePoint(firstFocalDirection, focalLineMinDistanceAu));
-    appendUniquePoint(points, scalePoint(solarAssistEntryDirection, solarAssistRadiusAu));
-    appendDirectionalArcPoints(
+    appendHyperbolicAssistPoints(
       points,
-      solarAssistEntryDirection,
-      solarAssistApexDirection,
+      firstFocalDirection,
+      secondFocalDirection,
       solarAssistRadiusAu,
-      Math.max(2, Math.floor(TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT * 0.5))
+      focalLineMinDistanceAu,
+      TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT,
+      dependencies.math
     );
-    appendDirectionalArcPoints(
-      points,
-      solarAssistApexDirection,
-      solarAssistExitDirection,
-      solarAssistRadiusAu,
-      Math.max(2, Math.ceil(TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT * 0.5))
-    );
-    appendUniquePoint(points, scalePoint(secondFocalDirection, focalLineMinDistanceAu));
     appendUniquePoint(points, secondFocalEndPoint);
 
     return buildDirectionalGuideLine(launchMarker, trajectoryDefinition.color || "#ffd36e", {

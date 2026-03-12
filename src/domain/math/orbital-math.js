@@ -42,6 +42,52 @@
       };
     }
 
+    static vectorMagnitude(vector) {
+      return Math.hypot(vector.x, vector.y, vector.z);
+    }
+
+    static scaleVector(vector, scalar) {
+      return {
+        x: vector.x * scalar,
+        y: vector.y * scalar,
+        z: vector.z * scalar
+      };
+    }
+
+    static addVectors(a, b) {
+      return {
+        x: a.x + b.x,
+        y: a.y + b.y,
+        z: a.z + b.z
+      };
+    }
+
+    static dotProduct(a, b) {
+      return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+
+    static crossProduct(a, b) {
+      return {
+        x: a.y * b.z - a.z * b.y,
+        y: a.z * b.x - a.x * b.z,
+        z: a.x * b.y - a.y * b.x
+      };
+    }
+
+    static orthogonalUnitVector(vector) {
+      const normalizedVector = OrbitalMath.normalizeVector(vector);
+      const axisSeed =
+        Math.abs(normalizedVector.x) <= Math.abs(normalizedVector.y) &&
+        Math.abs(normalizedVector.x) <= Math.abs(normalizedVector.z)
+          ? { x: 1, y: 0, z: 0 }
+          : Math.abs(normalizedVector.y) <= Math.abs(normalizedVector.z)
+            ? { x: 0, y: 1, z: 0 }
+            : { x: 0, y: 0, z: 1 };
+      return OrbitalMath.normalizeVector(
+        OrbitalMath.crossProduct(normalizedVector, axisSeed)
+      );
+    }
+
     static randomUnitVector3D(random = Math.random) {
       const theta = random() * Math.PI * 2;
       const y = random() * 2 - 1;
@@ -85,6 +131,169 @@
         y: direction.y * radius,
         z: direction.z * radius
       };
+    }
+
+    static hyperbolicBranchPoints(
+      startDirection,
+      endDirection,
+      periapsisDistance,
+      endpointDistance,
+      segments
+    ) {
+      const startUnit = OrbitalMath.normalizeVector(startDirection);
+      const endUnit = OrbitalMath.normalizeVector(endDirection);
+      const safePeriapsisDistance = Math.max(
+        1e-6,
+        Number.isFinite(periapsisDistance) ? periapsisDistance : 0
+      );
+      const safeEndpointDistance = Math.max(
+        safePeriapsisDistance + 1e-6,
+        Number.isFinite(endpointDistance) ? endpointDistance : 0
+      );
+      const segmentCount = Math.max(2, Math.floor(Number.isFinite(segments) ? segments : 0));
+      const startPoint = OrbitalMath.pointOnRadiusAlongDirection(startUnit, safeEndpointDistance);
+      const endPoint = OrbitalMath.pointOnRadiusAlongDirection(endUnit, safeEndpointDistance);
+
+      if (
+        OrbitalMath.vectorMagnitude(startUnit) < 1e-9 ||
+        OrbitalMath.vectorMagnitude(endUnit) < 1e-9
+      ) {
+        return [startPoint, endPoint];
+      }
+
+      let planeNormal = OrbitalMath.crossProduct(startUnit, endUnit);
+      if (OrbitalMath.vectorMagnitude(planeNormal) < 1e-9) {
+        planeNormal = OrbitalMath.orthogonalUnitVector(startUnit);
+      } else {
+        planeNormal = OrbitalMath.normalizeVector(planeNormal);
+      }
+
+      const radiusRatio = safeEndpointDistance / safePeriapsisDistance;
+      const summedDirections = OrbitalMath.addVectors(startUnit, endUnit);
+      const candidatePeriapsisDirections = [];
+
+      if (OrbitalMath.vectorMagnitude(summedDirections) >= 1e-9) {
+        const bisectorDirection = OrbitalMath.normalizeVector(summedDirections);
+        candidatePeriapsisDirections.push(bisectorDirection);
+        candidatePeriapsisDirections.push(OrbitalMath.scaleVector(bisectorDirection, -1));
+      } else {
+        const perpendicularDirection = OrbitalMath.normalizeVector(
+          OrbitalMath.crossProduct(planeNormal, startUnit)
+        );
+        candidatePeriapsisDirections.push(perpendicularDirection);
+        candidatePeriapsisDirections.push(
+          OrbitalMath.scaleVector(perpendicularDirection, -1)
+        );
+      }
+
+      const evaluateCandidate = (periapsisDirection) => {
+        const startProjection = OrbitalMath.dotProduct(startUnit, periapsisDirection);
+        const endProjection = OrbitalMath.dotProduct(endUnit, periapsisDirection);
+        const symmetryError = Math.abs(startProjection - endProjection);
+        const cosTrueAnomaly = OrbitalMath.clamp(
+          (startProjection + endProjection) * 0.5,
+          -0.999999,
+          0.999999
+        );
+        const denominator = 1 - radiusRatio * cosTrueAnomaly;
+        if (denominator <= 1e-9) {
+          return null;
+        }
+
+        const eccentricity = (radiusRatio - 1) / denominator;
+        if (!(eccentricity > 1 + 1e-6) || !Number.isFinite(eccentricity)) {
+          return null;
+        }
+
+        let transverseDirection = OrbitalMath.normalizeVector(
+          OrbitalMath.crossProduct(planeNormal, periapsisDirection)
+        );
+        if (OrbitalMath.vectorMagnitude(transverseDirection) < 1e-9) {
+          transverseDirection = OrbitalMath.orthogonalUnitVector(periapsisDirection);
+        }
+
+        let startTrueAnomaly = Math.atan2(
+          OrbitalMath.dotProduct(startUnit, transverseDirection),
+          OrbitalMath.dotProduct(startUnit, periapsisDirection)
+        );
+        let endTrueAnomaly = Math.atan2(
+          OrbitalMath.dotProduct(endUnit, transverseDirection),
+          OrbitalMath.dotProduct(endUnit, periapsisDirection)
+        );
+
+        if (startTrueAnomaly > endTrueAnomaly) {
+          transverseDirection = OrbitalMath.scaleVector(transverseDirection, -1);
+          startTrueAnomaly = -startTrueAnomaly;
+          endTrueAnomaly = -endTrueAnomaly;
+        }
+
+        if (!(startTrueAnomaly < 0 && endTrueAnomaly > 0)) {
+          return null;
+        }
+
+        return {
+          eccentricity,
+          endTrueAnomaly,
+          periapsisDirection,
+          startTrueAnomaly,
+          symmetryError,
+          transverseDirection
+        };
+      };
+
+      let selectedCandidate = null;
+      for (const periapsisDirection of candidatePeriapsisDirections) {
+        const candidate = evaluateCandidate(periapsisDirection);
+        if (!candidate) {
+          continue;
+        }
+
+        if (
+          !selectedCandidate ||
+          candidate.symmetryError < selectedCandidate.symmetryError
+        ) {
+          selectedCandidate = candidate;
+        }
+      }
+
+      if (!selectedCandidate) {
+        return [startPoint, endPoint];
+      }
+
+      const semiLatusRectum =
+        safePeriapsisDistance * (1 + selectedCandidate.eccentricity);
+      const branchPoints = [];
+
+      for (let index = 0; index <= segmentCount; index += 1) {
+        const t = segmentCount <= 0 ? 0 : index / segmentCount;
+        const trueAnomaly =
+          selectedCandidate.startTrueAnomaly +
+          (selectedCandidate.endTrueAnomaly - selectedCandidate.startTrueAnomaly) * t;
+        const denominator = Math.max(
+          1e-6,
+          1 + selectedCandidate.eccentricity * Math.cos(trueAnomaly)
+        );
+        const radius = semiLatusRectum / denominator;
+        const cosTrueAnomaly = Math.cos(trueAnomaly);
+        const sinTrueAnomaly = Math.sin(trueAnomaly);
+        const direction = {
+          x:
+            selectedCandidate.periapsisDirection.x * cosTrueAnomaly +
+            selectedCandidate.transverseDirection.x * sinTrueAnomaly,
+          y:
+            selectedCandidate.periapsisDirection.y * cosTrueAnomaly +
+            selectedCandidate.transverseDirection.y * sinTrueAnomaly,
+          z:
+            selectedCandidate.periapsisDirection.z * cosTrueAnomaly +
+            selectedCandidate.transverseDirection.z * sinTrueAnomaly
+        };
+
+        branchPoints.push(OrbitalMath.scaleVector(direction, radius));
+      }
+
+      branchPoints[0] = startPoint;
+      branchPoints[branchPoints.length - 1] = endPoint;
+      return branchPoints;
     }
 
     static solveEccentricAnomaly(meanAnomaly, eccentricity) {

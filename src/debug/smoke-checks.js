@@ -12,6 +12,10 @@
     return Math.abs(a - b) <= tolerance;
   }
 
+  function pointMagnitude(point) {
+    return Math.hypot(point.x, point.y, point.z);
+  }
+
   function referenceSolveEccentricAnomaly(meanAnomaly, eccentricity) {
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
     const normalizeAngleSigned = (value) => {
@@ -125,6 +129,45 @@
           "Math Parity (orbitPoints)",
           orbitPointsParity,
           orbitPointsParity ? "Orbit path deterministic output verified." : "Orbit points mismatch."
+        )
+      );
+
+      const branchA = namespace.math.hyperbolicBranchPoints(
+        { x: -0.5678143101438957, y: 0.2415277395028577, z: -0.7869251935517452 },
+        { x: 0.5088777817497282, y: -0.5681616041774725, z: 0.6467115236177233 },
+        0.05,
+        550,
+        48
+      );
+      const branchB = namespace.math.hyperbolicBranchPoints(
+        { x: -0.5678143101438957, y: 0.2415277395028577, z: -0.7869251935517452 },
+        { x: 0.5088777817497282, y: -0.5681616041774725, z: 0.6467115236177233 },
+        0.05,
+        550,
+        48
+      );
+      const branchMinRadius = branchA.reduce(
+        (minRadius, point) => Math.min(minRadius, pointMagnitude(point)),
+        Number.POSITIVE_INFINITY
+      );
+      const hyperbolaParity =
+        branchA.length === branchB.length &&
+        branchA.every(
+          (point, index) =>
+            approxEqual(point.x, branchB[index].x) &&
+            approxEqual(point.y, branchB[index].y) &&
+            approxEqual(point.z, branchB[index].z)
+        ) &&
+        approxEqual(pointMagnitude(branchA[0]), 550, 1e-6) &&
+        approxEqual(pointMagnitude(branchA[branchA.length - 1]), 550, 1e-6) &&
+        branchMinRadius <= 0.051;
+      results.push(
+        createResult(
+          "Math Parity (hyperbolicBranchPoints)",
+          hyperbolaParity,
+          hyperbolaParity
+            ? "Hyperbolic branch deterministic output verified."
+            : "Hyperbolic branch points are unstable or miss the periapsis constraint."
         )
       );
     } catch (error) {

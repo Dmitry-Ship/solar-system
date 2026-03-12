@@ -9,6 +9,7 @@
     clamp: OrbitalMath.clamp,
     degToRad: OrbitalMath.degToRad,
     equatorialToEcliptic: OrbitalMath.equatorialToEcliptic,
+    hyperbolicBranchPoints: OrbitalMath.hyperbolicBranchPoints,
     normalizeAngle: OrbitalMath.normalizeAngle,
     normalizeVector: OrbitalMath.normalizeVector,
     orbitPlanePointInto: OrbitalMath.orbitPlanePointInto,

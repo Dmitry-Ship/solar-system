@@ -496,7 +496,7 @@
       launchMarkerName: "61 Cygni",
       firstFocalMarkerName: "Gliese 300",
       secondFocalMarkerName: "61 Cygni",
-      solarAssistRadiusAu: 0.05,
+      solarAssistRadiusAu: 0.01,
       color: "#ffd36e"
     }
   ];
