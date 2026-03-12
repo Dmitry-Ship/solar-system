@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import type { LabelLayerLike, LabelOptions } from "../../types/solar-system";
 
 export class LabelsLayer implements LabelLayerLike {
@@ -32,5 +31,3 @@ export class LabelsLayer implements LabelLayerLike {
     return label;
   }
 }
-
-namespace.infrastructure.dom.LabelsLayer = LabelsLayer;

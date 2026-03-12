@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import type {
   DirectionalMarkerDefinition,
   DriftingBodyDefinition,
@@ -515,5 +514,3 @@ export const rawDefinitions: RawDefinitions = Object.freeze({
     DIRECTIONAL_MARKER_DEFINITIONS,
     TRAJECTORY_DEFINITIONS
 });
-
-namespace.domain.catalogs.rawDefinitions = rawDefinitions;

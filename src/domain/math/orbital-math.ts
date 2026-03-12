@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import type { MathApi, OrbitPlanePoint, Point3 } from "../../types/solar-system";
 
 const EARTH_OBLIQUITY_DEG_J2000 = 23.4392911;
@@ -453,5 +452,3 @@ export class OrbitalMath {
   }
 
 const mathContract: MathApi = OrbitalMath;
-
-namespace.domain.math.OrbitalMath = OrbitalMath;

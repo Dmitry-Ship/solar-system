@@ -1,5 +1,5 @@
 import type { BufferGeometry, Group, PerspectiveCamera, Points, PointsMaterial } from "three";
-import { namespace } from "../../../core/namespace";
+import { RuntimeThree } from "../../../runtime/three-globals";
 import type {
   BeltRuntime,
   RuntimeThreeModule,
@@ -16,7 +16,7 @@ export class ParticleRenderer {
   private readonly THREE: RuntimeThreeModule;
 
   constructor(options: ParticleRendererOptions) {
-    const THREE = options.THREE || namespace.runtime.THREE;
+    const THREE = options.THREE || RuntimeThree;
     if (!THREE) {
       throw new Error("ParticleRenderer: THREE is required.");
     }
@@ -137,5 +137,3 @@ export class ParticleRenderer {
     }
   }
 }
-
-namespace.infrastructure.three.renderers.ParticleRenderer = ParticleRenderer;

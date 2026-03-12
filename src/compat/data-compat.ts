@@ -1,4 +1,3 @@
-import { namespace } from "../core/namespace";
 import { SIMULATION_CONSTANTS } from "../domain/constants/simulation-constants";
 import { OrbitalMath } from "../domain/math/orbital-math";
 import { rawDefinitions } from "../domain/catalogs/raw-definitions";
@@ -26,6 +25,3 @@ export const data = {
     return sceneDataFactory.createSceneData();
   }
 };
-
-namespace.compat.sceneDataFactory = sceneDataFactory;
-namespace.data = data;

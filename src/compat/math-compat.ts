@@ -1,4 +1,3 @@
-import { namespace } from "../core/namespace";
 import { OrbitalMath } from "../domain/math/orbital-math";
 
 export const math = Object.freeze({
@@ -18,5 +17,3 @@ export const math = Object.freeze({
   solveEccentricAnomaly: OrbitalMath.solveEccentricAnomaly,
   unitVectorFromEquatorialRaDec: OrbitalMath.unitVectorFromEquatorialRaDec
 });
-
-namespace.math = math;

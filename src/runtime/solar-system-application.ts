@@ -1,11 +1,13 @@
 import type { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { namespace } from "../core/namespace";
 import { AppState } from "../application/state/app-state";
 import { SceneRuntimeSystem } from "../application/systems/scene-runtime-system";
 import { VisibilityService } from "../application/services/visibility-service";
 import { LabelProjectionService } from "../application/services/label-projection-service";
 import { RuntimeVisibilityService } from "../application/services/runtime-visibility-service";
+import { constants as defaultConstants } from "../compat/constants-compat";
+import { data as defaultData } from "../compat/data-compat";
+import { math as defaultMath } from "../compat/math-compat";
 import { LabelsLayer } from "../infrastructure/dom/labels-layer";
 import { HudController } from "../infrastructure/dom/hud-controller";
 import { BodyRenderer } from "../infrastructure/three/renderers/body-renderer";
@@ -79,9 +81,9 @@ export class SolarSystemApplication {
   private readonly handlePointerUp: () => void;
 
   constructor(options: SolarSystemApplicationOptions = {}) {
-    const constants = options.constants || namespace.constants;
-    const sceneDataApi = options.data || namespace.data;
-    const math = options.math || namespace.math;
+    const constants = options.constants || defaultConstants;
+    const sceneDataApi = options.data || defaultData;
+    const math = options.math || defaultMath;
     const THREE = options.THREE || RuntimeThree;
     if (!constants) {
       throw new Error("SolarSystemApplication: missing constants.");
@@ -507,5 +509,3 @@ export class SolarSystemApplication {
     this.initialized = false;
   }
 }
-
-namespace.runtime.SolarSystemApplication = SolarSystemApplication;

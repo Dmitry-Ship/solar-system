@@ -7,7 +7,6 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 import { LuminosityHighPassShader } from "three/examples/jsm/shaders/LuminosityHighPassShader.js";
-import { namespace } from "../core/namespace";
 import type { RuntimeThreeModule } from "../types/solar-system";
 
 const runtimeThree: RuntimeThreeModule = {
@@ -21,7 +20,5 @@ const runtimeThree: RuntimeThreeModule = {
   CopyShader,
   LuminosityHighPassShader
 };
-
-namespace.runtime.THREE = runtimeThree;
 
 export { runtimeThree as RuntimeThree };

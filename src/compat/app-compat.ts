@@ -1,6 +1,5 @@
 import type { Group, PerspectiveCamera, SphereGeometry, Vector3 } from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { namespace } from "../core/namespace";
 import { RuntimeThree } from "../runtime/three-globals";
 import { BodyRenderer } from "../infrastructure/three/renderers/body-renderer";
 import { OrbitRenderer } from "../infrastructure/three/renderers/orbit-renderer";
@@ -49,11 +48,8 @@ function createLabelAdapter(layer: HTMLElement): LabelLayerLike {
   };
 }
 
-const app = (namespace.app ??= {});
-
 function createLabelsLayer(): HTMLDivElement {
   const labelsLayer = new LabelsLayer();
-  namespace.compat.labelsLayer = labelsLayer;
   return labelsLayer.createLayer();
 }
 
@@ -268,23 +264,23 @@ function createSelectiveBloomRenderer(
   return new PostprocessingRenderer({ ...config, THREE });
 }
 
-app.createLabelsLayer = createLabelsLayer;
-app.createLabelElement = createLabelElement;
-app.createBodyRuntime = createBodyRuntime;
-app.createLabelAnchorRuntime = createLabelAnchorRuntime;
-app.buildOrbitLine = buildOrbitLine;
-app.buildOrbitingBodies = buildOrbitingBodies;
-app.buildFixedBodies = buildFixedBodies;
-app.buildStarField = buildStarField;
-app.buildAsteroidBelts = buildAsteroidBelts;
-app.updateAsteroidBeltVisuals = updateAsteroidBeltVisuals;
-app.createLightRay = createLightRay;
-app.buildGuideLines = buildGuideLines;
-app.applyGuideLineVisibility = applyGuideLineVisibility;
-app.applyOrbitVisibility = applyOrbitVisibility;
-app.setupHudControls = setupHudControls;
-app.setInitialCameraPlacement = setInitialCameraPlacement;
-app.createBodyVisualScaleAndLabelsUpdater = createBodyVisualScaleAndLabelsUpdater;
-app.createSelectiveBloomRenderer = createSelectiveBloomRenderer;
-
-export { app };
+export const app = Object.freeze({
+  createLabelsLayer,
+  createLabelElement,
+  createBodyRuntime,
+  createLabelAnchorRuntime,
+  buildOrbitLine,
+  buildOrbitingBodies,
+  buildFixedBodies,
+  buildStarField,
+  buildAsteroidBelts,
+  updateAsteroidBeltVisuals,
+  createLightRay,
+  buildGuideLines,
+  applyGuideLineVisibility,
+  applyOrbitVisibility,
+  setupHudControls,
+  setInitialCameraPlacement,
+  createBodyVisualScaleAndLabelsUpdater,
+  createSelectiveBloomRenderer
+});

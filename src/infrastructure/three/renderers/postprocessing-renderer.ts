@@ -1,5 +1,5 @@
 import type { Layers, Object3D } from "three";
-import { namespace } from "../../../core/namespace";
+import { RuntimeThree } from "../../../runtime/three-globals";
 import type {
   ComposerLike,
   PostprocessingConfig,
@@ -17,7 +17,7 @@ export class PostprocessingRenderer {
   private readonly finalComposer: ComposerLike;
 
   constructor(config: PostprocessingConfig) {
-    const THREE = config.THREE || namespace.runtime.THREE;
+    const THREE = config.THREE || RuntimeThree;
     if (!THREE) {
       throw new Error("PostprocessingRenderer: missing THREE.");
     }
@@ -123,5 +123,3 @@ export class PostprocessingRenderer {
     }
   }
 }
-
-namespace.infrastructure.three.renderers.PostprocessingRenderer = PostprocessingRenderer;

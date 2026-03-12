@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import { buildDirectionalGuideLines } from "./guide-line-factory";
 import type {
   AsteroidBelt,
@@ -319,5 +318,3 @@ export class SceneDataFactory {
     };
   }
 }
-
-namespace.application.factories.SceneDataFactory = SceneDataFactory;

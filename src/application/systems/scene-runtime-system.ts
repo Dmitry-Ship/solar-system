@@ -1,5 +1,5 @@
-import { namespace } from "../../core/namespace";
 import type { Group, Scene, SphereGeometry } from "three";
+import { RuntimeThree } from "../../runtime/three-globals";
 import type {
   BeltRuntime,
   BodyRenderConfig,
@@ -53,7 +53,7 @@ export class SceneRuntimeSystem {
     orbitingBodies: OrbitingBody[];
 
     constructor(options: SceneRuntimeSystemOptions) {
-      const THREE = options.THREE || namespace.runtime.THREE;
+      const THREE = options.THREE || RuntimeThree;
       if (!THREE) {
         throw new Error("SceneRuntimeSystem: THREE is required.");
       }
@@ -169,5 +169,3 @@ export class SceneRuntimeSystem {
       this.postprocessingRenderer.markBloomObject(sunRuntime.mesh);
     }
   }
-
-namespace.application.systems.SceneRuntimeSystem = SceneRuntimeSystem;

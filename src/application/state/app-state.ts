@@ -1,5 +1,3 @@
-import { namespace } from "../../core/namespace";
-
 const MIN_CAMERA_DISTANCE_AU = 0.1;
 const MAX_CAMERA_DISTANCE_AU = 6000;
 
@@ -91,5 +89,3 @@ export class AppState {
       return this.toggleVisibility(key, false);
     }
   }
-
-namespace.application.state.AppState = AppState;

@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import { rawDefinitions as raw } from "./raw-definitions";
 import { SIMULATION_CONSTANTS as constants } from "../constants/simulation-constants";
 import type { MarkerCatalog, MatryoshkaConeLayerDefinition } from "../../types/solar-system";
@@ -130,5 +129,3 @@ export const markerCatalog: MarkerCatalog = Object.freeze({
     MATRYOSHKA_CONE_ALPHA,
     MATRYOSHKA_CONE_LAYER_DEFINITIONS
 });
-
-namespace.domain.catalogs.markerCatalog = markerCatalog;

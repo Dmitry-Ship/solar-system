@@ -1,6 +1,5 @@
 import type { Group, PerspectiveCamera } from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { namespace } from "../../core/namespace";
 import { VisibilityControlGroupFactory } from "../../application/factories/visibility-control-group-factory";
 import { HudView } from "./hud-view";
 import type {
@@ -187,5 +186,3 @@ export class HudController {
     };
   }
 }
-
-namespace.infrastructure.dom.HudController = HudController;

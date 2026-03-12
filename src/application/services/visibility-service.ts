@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import { RuntimeVisibilityService } from "./runtime-visibility-service";
 import type { VisibilityRuntime, VisibilityStateLike } from "../../types/solar-system";
 
@@ -26,5 +25,3 @@ export class VisibilityService {
     }
   }
 }
-
-namespace.application.services.VisibilityService = VisibilityService;

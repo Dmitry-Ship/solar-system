@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import type {
   DirectionalGuideLine,
   DirectionalMarker,
@@ -621,5 +620,3 @@ export function buildDirectionalGuideLines(
 
   return guideLines;
 }
-
-namespace.application.factories.buildDirectionalGuideLines = buildDirectionalGuideLines;

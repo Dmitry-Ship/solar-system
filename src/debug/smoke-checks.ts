@@ -1,4 +1,8 @@
-import { namespace } from "../core/namespace";
+import { app } from "../compat/app-compat";
+import { constants } from "../compat/constants-compat";
+import { data } from "../compat/data-compat";
+import { math } from "../compat/math-compat";
+import { getAppInstance } from "../runtime/app-runtime";
 import type { MathApi, Point3, SceneData } from "../types/solar-system";
 
 interface SmokeCheckResult {
@@ -56,25 +60,24 @@ function getErrorMessage(error: unknown): string {
 
 export function runSmokeChecks() {
   const results: SmokeCheckResult[] = [];
-  const dataApi = namespace.data;
-  const mathApi = namespace.math;
+  const dataApi = data;
+  const mathApi = math;
 
-  const hasNamespaceContract =
-    namespace && namespace.constants && namespace.math && namespace.data && namespace.app;
+  const hasPublicExports = constants && math && data && app;
   results.push(
     createResult(
-      "Namespace Contract",
-      Boolean(hasNamespaceContract),
-      hasNamespaceContract
-        ? "Required public namespaces exist."
-        : "Missing a required public namespace."
+      "Public API",
+      Boolean(hasPublicExports),
+      hasPublicExports
+        ? "Required public exports exist."
+        : "Missing a required public export."
     )
   );
 
   let sceneData: SceneData | null = null;
   try {
     if (!dataApi) {
-      throw new Error("Namespace data API missing.");
+      throw new Error("Scene data API missing.");
     }
 
     sceneData = dataApi.createSceneData();
@@ -103,7 +106,7 @@ export function runSmokeChecks() {
 
   try {
     if (!mathApi) {
-      throw new Error("Namespace math API missing.");
+      throw new Error("Math API missing.");
     }
 
     const refValue = referenceSolveEccentricAnomaly(1.23456789, 0.42);
@@ -195,7 +198,7 @@ export function runSmokeChecks() {
     results.push(createResult("Math Parity", false, `Math check failed: ${getErrorMessage(error)}`));
   }
 
-  const appInstance = namespace.runtime?.appInstance;
+  const appInstance = getAppInstance();
   const lifecycleOk =
     !!appInstance &&
     typeof appInstance.start === "function" &&
@@ -253,5 +256,3 @@ export function runSmokeChecks() {
     results
   };
 }
-
-namespace.debug.runSmokeChecks = runSmokeChecks;

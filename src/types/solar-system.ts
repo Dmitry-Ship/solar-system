@@ -480,39 +480,3 @@ export interface SceneRuntimeSnapshot {
   beltRuntimes: BeltRuntime[];
   orbitingBodies: OrbitingBody[];
 }
-
-export interface NamespaceBucket {
-  [key: string]: unknown;
-}
-
-export interface NamespaceRoot extends NamespaceBucket {
-  core: NamespaceBucket;
-  domain: NamespaceBucket & {
-    constants: NamespaceBucket;
-    math: NamespaceBucket;
-    catalogs: NamespaceBucket;
-  };
-  application: NamespaceBucket & {
-    state: NamespaceBucket;
-    factories: NamespaceBucket;
-    services: NamespaceBucket;
-    systems: NamespaceBucket;
-  };
-  infrastructure: NamespaceBucket & {
-    three: NamespaceBucket & {
-      renderers: NamespaceBucket;
-      controllers: NamespaceBucket;
-    };
-    dom: NamespaceBucket;
-  };
-  runtime: NamespaceBucket & {
-    THREE?: RuntimeThreeModule;
-    appInstance?: AppRuntimeLike | null;
-  };
-  compat: NamespaceBucket;
-  debug: NamespaceBucket;
-  constants?: SimulationConstants;
-  math?: MathApi;
-  data?: SceneDataApi;
-  app?: NamespaceBucket;
-}

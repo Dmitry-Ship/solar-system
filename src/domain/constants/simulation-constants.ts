@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import type { SimulationConstants } from "../../types/solar-system";
 
 export const SIMULATION_CONSTANTS: SimulationConstants = Object.freeze({
@@ -7,5 +6,3 @@ export const SIMULATION_CONSTANTS: SimulationConstants = Object.freeze({
   SUN_RADIUS_KM: 696340,
   KM_PER_AU: 149597870.7
 });
-
-namespace.domain.constants.SIMULATION_CONSTANTS = SIMULATION_CONSTANTS;

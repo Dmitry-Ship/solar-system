@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import type {
   VisibilityControl,
   VisibilityControlGroup,
@@ -63,6 +62,3 @@ export class VisibilityControlGroupFactory {
       }));
     }
   }
-
-namespace.application.factories.VisibilityControlGroupFactory =
-  VisibilityControlGroupFactory;

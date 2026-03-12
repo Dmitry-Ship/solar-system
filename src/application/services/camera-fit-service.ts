@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import type { MathApi, SimulationConstants, VisibilityStateLike } from "../../types/solar-system";
 import type { PerspectiveCamera } from "three";
 
@@ -34,5 +33,3 @@ export function computeInitialCameraDistance({
       state.maxCamera
     );
 }
-
-namespace.application.services.computeInitialCameraDistance = computeInitialCameraDistance;

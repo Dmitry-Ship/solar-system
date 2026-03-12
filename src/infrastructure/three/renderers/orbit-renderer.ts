@@ -1,5 +1,5 @@
 import type { Group, SphereGeometry } from "three";
-import { namespace } from "../../../core/namespace";
+import { RuntimeThree } from "../../../runtime/three-globals";
 import type { BodyRenderer } from "./body-renderer";
 import type {
   MathApi,
@@ -34,7 +34,7 @@ export class OrbitRenderer {
 
   constructor(options: OrbitRendererOptions) {
     this.bodyRenderer = options.bodyRenderer;
-    const THREE = options.THREE || namespace.runtime.THREE;
+    const THREE = options.THREE || RuntimeThree;
     if (!THREE) {
       throw new Error("OrbitRenderer: THREE is required.");
     }
@@ -132,5 +132,3 @@ export class OrbitRenderer {
     orbitGroup.visible = state.showOrbits;
   }
 }
-
-namespace.infrastructure.three.renderers.OrbitRenderer = OrbitRenderer;

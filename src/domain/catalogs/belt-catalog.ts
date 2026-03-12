@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import { SIMULATION_CONSTANTS } from "../constants/simulation-constants";
 import type { AsteroidBeltConfig, BeltCatalog, OrbitRenderGroupConfig } from "../../types/solar-system";
 
@@ -56,5 +55,3 @@ export const beltCatalog: BeltCatalog = Object.freeze({
   ASTEROID_BELT_CONFIGS,
   ORBIT_RENDER_GROUPS
 });
-
-namespace.domain.catalogs.beltCatalog = beltCatalog;

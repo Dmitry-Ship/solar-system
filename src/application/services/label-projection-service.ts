@@ -1,5 +1,5 @@
 import type { PerspectiveCamera, Vector3, WebGLRenderer } from "three";
-import { namespace } from "../../core/namespace";
+import { RuntimeThree } from "../../runtime/three-globals";
 import { RuntimeVisibilityService } from "./runtime-visibility-service";
 import type {
   RuntimeThreeModule,
@@ -27,7 +27,7 @@ export class LabelProjectionService {
   private readonly runtimeVisibility: RuntimeVisibilityService;
 
   constructor(options: LabelProjectionServiceOptions) {
-    const THREE = options.THREE || namespace.runtime.THREE;
+    const THREE = options.THREE || RuntimeThree;
     if (!THREE) {
       throw new Error("LabelProjectionService: missing THREE.");
     }
@@ -110,5 +110,3 @@ export class LabelProjectionService {
     }
   }
 }
-
-namespace.application.services.LabelProjectionService = LabelProjectionService;

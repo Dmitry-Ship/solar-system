@@ -7,7 +7,7 @@ import type {
   Object3D,
   SphereGeometry
 } from "three";
-import { namespace } from "../../../core/namespace";
+import { RuntimeThree } from "../../../runtime/three-globals";
 import type {
   BodyRenderConfig,
   LabelLayerLike,
@@ -27,7 +27,7 @@ export class BodyRenderer {
 
   constructor(options: BodyRendererOptions) {
     this.labelsLayer = options.labelsLayer;
-    const THREE = options.THREE || namespace.runtime.THREE;
+    const THREE = options.THREE || RuntimeThree;
     if (!THREE) {
       throw new Error("BodyRenderer: THREE is required.");
     }
@@ -255,5 +255,3 @@ export class BodyRenderer {
     }
   }
 }
-
-namespace.infrastructure.three.renderers.BodyRenderer = BodyRenderer;

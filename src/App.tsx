@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { namespace } from "./core/namespace";
-import { SolarSystemApplication } from "./runtime/load-solar-system";
+import { SolarSystemApplication } from "./runtime/solar-system-application";
+import { setAppInstance } from "./runtime/app-runtime";
 
 function reportRuntimeError(error: unknown) {
   console.error(error);
@@ -23,7 +23,7 @@ export default function App() {
 
     try {
       app = new SolarSystemApplication();
-      namespace.runtime.appInstance = app;
+      setAppInstance(app);
       app.start();
     } catch (error) {
       reportRuntimeError(error);
@@ -31,8 +31,8 @@ export default function App() {
     }
 
     return () => {
-      if (namespace.runtime?.appInstance === app) {
-        namespace.runtime.appInstance = null;
+      if (app) {
+        setAppInstance(null);
       }
       app?.dispose();
     };

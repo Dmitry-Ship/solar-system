@@ -1,4 +1,3 @@
-import { namespace } from "../../../core/namespace";
 import { computeInitialCameraDistance } from "../../../application/services/camera-fit-service";
 import type { PerspectiveCamera } from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -39,6 +38,3 @@ export function setInitialCameraPlacement({
     camera.lookAt(controls.target);
     controls.update();
   }
-
-namespace.infrastructure.three.controllers.setInitialCameraPlacement =
-  setInitialCameraPlacement;

@@ -7,7 +7,7 @@ import type {
   ShaderMaterial,
   Vector3
 } from "three";
-import { namespace } from "../../../core/namespace";
+import { RuntimeThree } from "../../../runtime/three-globals";
 import type {
   DirectionalGuideLine,
   GuideRuntime,
@@ -320,7 +320,7 @@ export class GuideRenderer {
 
   constructor(options: GuideRendererOptions) {
     this.labelsLayer = options.labelsLayer;
-    const THREE = options.THREE || namespace.runtime.THREE;
+    const THREE = options.THREE || RuntimeThree;
     if (!THREE) {
       throw new Error("GuideRenderer: THREE is required.");
     }
@@ -462,5 +462,3 @@ export class GuideRenderer {
     }
   }
 }
-
-namespace.infrastructure.three.renderers.GuideRenderer = GuideRenderer;

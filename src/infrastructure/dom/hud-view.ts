@@ -1,4 +1,3 @@
-import { namespace } from "../../core/namespace";
 import type {
   HudElements,
   VisibilityControlGroup,
@@ -112,5 +111,3 @@ export class HudView {
     }
   }
 }
-
-namespace.infrastructure.dom.HudView = HudView;
