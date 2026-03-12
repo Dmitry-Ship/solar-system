@@ -63,12 +63,6 @@
       };
     }
 
-    resolveDirectionalMarkerDistanceAu(markerDefinition, defaultDistanceAu) {
-      return Number.isFinite(markerDefinition?.distanceAu)
-        ? markerDefinition.distanceAu
-        : defaultDistanceAu;
-    }
-
     createDriftingBodies(definitions) {
       return definitions.map((bodyDefinition) => {
         if (bodyDefinition.position) {
@@ -253,10 +247,7 @@
         (definition) =>
           this.markerOnSphereFromRaDec(
             definition.name,
-            this.resolveDirectionalMarkerDistanceAu(
-              definition,
-              directionalMarkerDistanceAu
-            ),
+            directionalMarkerDistanceAu,
             definition.raHours,
             definition.decDeg,
             definition.color,
