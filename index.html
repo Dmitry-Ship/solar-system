@@ -1,75 +1,12 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Solar System</title>
-  <link rel="stylesheet" href="styles.css" />
-
-  <script defer src="src/core/dependency-container.js"></script>
-  <script defer src="src/core/module-registry.js"></script>
-  <script defer src="src/core/namespace.js"></script>
-
-  <script defer src="src/domain/constants/simulation-constants.js"></script>
-  <script defer src="src/domain/math/orbital-math.js"></script>
-  <script defer src="src/domain/catalogs/raw-definitions.js"></script>
-  <script defer src="src/domain/catalogs/planet-catalog.js"></script>
-  <script defer src="src/domain/catalogs/dwarf-planet-catalog.js"></script>
-  <script defer src="src/domain/catalogs/comet-catalog.js"></script>
-  <script defer src="src/domain/catalogs/marker-catalog.js"></script>
-  <script defer src="src/domain/catalogs/belt-catalog.js"></script>
-
-  <script defer src="src/application/state/app-state.js"></script>
-  <script defer src="src/application/factories/guide-line-factory.js"></script>
-  <script defer src="src/application/factories/visibility-control-group-factory.js"></script>
-  <script defer src="src/application/factories/scene-data-factory.js"></script>
-  <script defer src="src/application/services/runtime-visibility-service.js"></script>
-  <script defer src="src/application/services/visibility-service.js"></script>
-  <script defer src="src/application/services/label-projection-service.js"></script>
-  <script defer src="src/application/services/camera-fit-service.js"></script>
-  <script defer src="src/application/systems/scene-runtime-system.js"></script>
-
-  <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/Pass.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-
-  <script defer src="src/infrastructure/dom/labels-layer.js"></script>
-  <script defer src="src/infrastructure/dom/hud-view.js"></script>
-  <script defer src="src/infrastructure/dom/hud-controller.js"></script>
-  <script defer src="src/infrastructure/three/renderers/body-renderer.js"></script>
-  <script defer src="src/infrastructure/three/renderers/orbit-renderer.js"></script>
-  <script defer src="src/infrastructure/three/renderers/particle-renderer.js"></script>
-  <script defer src="src/infrastructure/three/renderers/guide-renderer.js"></script>
-  <script defer src="src/infrastructure/three/renderers/postprocessing-renderer.js"></script>
-  <script defer src="src/infrastructure/three/controllers/camera-controller.js"></script>
-
-  <script defer src="src/compat/constants-compat.js"></script>
-  <script defer src="src/compat/math-compat.js"></script>
-  <script defer src="src/compat/data-compat.js"></script>
-  <script defer src="src/compat/app-compat.js"></script>
-
-  <script defer src="src/runtime/solar-system-application.js"></script>
-  <script defer src="src/debug/smoke-checks.js"></script>
 </head>
-
 <body>
-  <canvas id="scene" aria-label="3D solar system model"></canvas>
-
-  <section class="hud" aria-label="Instructions">
-    <div class="hud-controls">
-      <button id="zoom-toggle" class="zoom-button" type="button">Switch to Minimum Zoom</button>
-      <button id="names-toggle" class="zoom-button" type="button" aria-pressed="true">Hide Body Names</button>
-      <button id="orbits-toggle" class="zoom-button" type="button" aria-pressed="true">Hide Orbits</button>
-    </div>
-    <div id="visibility-controls-root" aria-label="Visibility controls"></div>
-  </section>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
-
 </html>
