@@ -8,8 +8,9 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 import { LuminosityHighPassShader } from "three/examples/jsm/shaders/LuminosityHighPassShader.js";
 import { namespace } from "../core/namespace";
+import type { RuntimeThreeModule } from "../types/solar-system";
 
-const runtimeThree = {
+const runtimeThree: RuntimeThreeModule = {
   ...THREE,
   OrbitControls,
   Pass,

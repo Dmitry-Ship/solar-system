@@ -1,9 +1,58 @@
 import { namespace } from "../../core/namespace";
+import type { Group, Scene, SphereGeometry } from "three";
+import type {
+  BeltRuntime,
+  BodyRenderConfig,
+  GuideRuntime,
+  MathApi,
+  OrbitingBody,
+  RuntimeThreeModule,
+  SceneData,
+  SceneObjectRuntime,
+  SceneRuntimeSnapshot,
+  SimulationConstants,
+  VisibilityRuntime
+} from "../../types/solar-system";
+import type { BodyRenderer } from "../../infrastructure/three/renderers/body-renderer";
+import type { GuideRenderer } from "../../infrastructure/three/renderers/guide-renderer";
+import type { OrbitRenderer } from "../../infrastructure/three/renderers/orbit-renderer";
+import type { ParticleRenderer } from "../../infrastructure/three/renderers/particle-renderer";
+import type { PostprocessingRenderer } from "../../infrastructure/three/renderers/postprocessing-renderer";
+
+interface SceneRuntimeSystemOptions {
+  scene: Scene;
+  constants: SimulationConstants;
+  math: MathApi;
+  bodyRenderer: BodyRenderer;
+  orbitRenderer: OrbitRenderer;
+  particleRenderer: ParticleRenderer;
+  guideRenderer: GuideRenderer;
+  postprocessingRenderer: PostprocessingRenderer;
+  THREE?: RuntimeThreeModule;
+}
 
 export class SceneRuntimeSystem {
-    [key: string]: any;
+    private readonly THREE: RuntimeThreeModule;
+    private readonly scene: Scene;
+    private readonly constants: SimulationConstants;
+    private readonly math: MathApi;
+    private readonly bodyRenderer: BodyRenderer;
+    private readonly orbitRenderer: OrbitRenderer;
+    private readonly particleRenderer: ParticleRenderer;
+    private readonly guideRenderer: GuideRenderer;
+    private readonly postprocessingRenderer: PostprocessingRenderer;
+    orbitGroup: Group | null;
+    guideLineGroup: Group | null;
+    particleGroup: Group | null;
+    bodyGroup: Group | null;
+    bodyGeometry: SphereGeometry | null;
+    sceneObjectRuntimes: SceneObjectRuntime[];
+    guideRuntimes: GuideRuntime[];
+    visibilityRuntimes: VisibilityRuntime[];
+    beltRuntimes: BeltRuntime[];
+    orbitingBodies: OrbitingBody[];
 
-    constructor(options: any = {}) {
+    constructor(options: SceneRuntimeSystemOptions) {
       const THREE = options.THREE || namespace.runtime.THREE;
       if (!THREE) {
         throw new Error("SceneRuntimeSystem: THREE is required.");
@@ -31,7 +80,10 @@ export class SceneRuntimeSystem {
       this.orbitingBodies = [];
     }
 
-    createSceneGroups() {
+    createSceneGroups(): Pick<
+      SceneRuntimeSnapshot,
+      "orbitGroup" | "guideLineGroup" | "particleGroup" | "bodyGroup"
+    > {
       const { THREE } = this;
       return {
         orbitGroup: new THREE.Group(),
@@ -41,8 +93,11 @@ export class SceneRuntimeSystem {
       };
     }
 
-    initialize() {
+    initialize(): this {
       Object.assign(this, this.createSceneGroups());
+      if (!this.orbitGroup || !this.guideLineGroup || !this.particleGroup || !this.bodyGroup) {
+        throw new Error("SceneRuntimeSystem: failed to initialize scene groups.");
+      }
       this.scene.add(this.orbitGroup);
       this.scene.add(this.guideLineGroup);
       this.scene.add(this.particleGroup);
@@ -57,7 +112,10 @@ export class SceneRuntimeSystem {
       return this;
     }
 
-    build(sceneData) {
+    build(sceneData: SceneData): this {
+      if (!this.particleGroup || !this.guideLineGroup || !this.bodyGroup || !this.orbitGroup || !this.bodyGeometry) {
+        throw new Error("SceneRuntimeSystem: initialize() must be called before build().");
+      }
       this.particleRenderer.buildStarField(sceneData, this.particleGroup);
       this.guideRenderer.buildGuideLines(
         sceneData,
@@ -91,9 +149,12 @@ export class SceneRuntimeSystem {
       return this;
     }
 
-    createSunRuntime() {
+    createSunRuntime(): void {
+      if (!this.bodyGroup || !this.bodyGeometry) {
+        throw new Error("SceneRuntimeSystem: initialize() must be called before createSunRuntime().");
+      }
       const sunRuntime = this.bodyRenderer.createBodyRuntime(
-        {
+        <BodyRenderConfig>{
           name: "Sun",
           color: "#ffce6b",
           renderRadius: this.constants.SUN_RADIUS_KM / this.constants.KM_PER_AU,

@@ -1,6 +1,8 @@
 import { container } from "./dependency-container";
+import type { DependencyContainer } from "./dependency-container";
+import type { NamespaceRoot } from "../types/solar-system";
 
-export const namespace: any = {
+export const namespace: NamespaceRoot = {
   core: {
     container
   },
@@ -27,19 +29,15 @@ export const namespace: any = {
   debug: {}
 };
 
-export function registerService(key, Factory) {
-  if (container) {
-    container.register(key, (c) => new Factory(c));
-  }
+type ConstructableService<T> = new (container: DependencyContainer) => T;
 
-  namespace[key] = Factory;
+export function registerService<T>(key: string, Factory: ConstructableService<T>): void {
+  container.register(key, (serviceContainer) => new Factory(serviceContainer));
+  namespace.core[key] = Factory;
 }
 
-export function registerInstance(key, instance) {
-  if (container) {
-    container.registerInstance(key, instance);
-  }
-
+export function registerInstance<T>(key: string, instance: T): void {
+  container.registerInstance(key, instance);
   namespace[key] = instance;
 }
 

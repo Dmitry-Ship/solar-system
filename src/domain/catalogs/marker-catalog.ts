@@ -1,6 +1,7 @@
 import { namespace } from "../../core/namespace";
 import { rawDefinitions as raw } from "./raw-definitions";
 import { SIMULATION_CONSTANTS as constants } from "../constants/simulation-constants";
+import type { MarkerCatalog, MatryoshkaConeLayerDefinition } from "../../types/solar-system";
 
   const DIRECTIONAL_CONE_MAX_WIDTH_AU = 100;
   const DIRECTIONAL_CONE_TIP_RADIUS_AU =
@@ -17,15 +18,15 @@ import { SIMULATION_CONSTANTS as constants } from "../constants/simulation-const
   const MATRYOSHKA_OUTER_LAYER_TIP_RADIUS_SCALE = 1.05;
   const MATRYOSHKA_CONE_ALPHA = 0.055;
 
-  function lerp(start, end, t) {
+  function lerp(start: number, end: number, t: number): number {
     return start + (end - start) * t;
   }
 
-  function normalizeMatryoshkaConeCount(coneCount) {
+  function normalizeMatryoshkaConeCount(coneCount: number): number {
     return Math.max(1, Math.floor(Number.isFinite(coneCount) ? coneCount : 0));
   }
 
-  function minimumMatryoshkaStructureWidthAu(coneCount) {
+  function minimumMatryoshkaStructureWidthAu(coneCount: number): number {
     return (
       DIRECTIONAL_CONE_MAX_WIDTH_AU *
       MATRYOSHKA_MIN_LAYER_WIDTH_SCALE *
@@ -33,11 +34,11 @@ import { SIMULATION_CONSTANTS as constants } from "../constants/simulation-const
     );
   }
 
-  function incomingRadiusForWidthScale(maxWidthScale) {
+  function incomingRadiusForWidthScale(maxWidthScale: number): number {
     return DIRECTIONAL_CONE_MAX_WIDTH_AU * maxWidthScale * 0.5;
   }
 
-  function focalRadiusForTipScale(tipRadiusScale) {
+  function focalRadiusForTipScale(tipRadiusScale: number): number {
     return DIRECTIONAL_CONE_TIP_RADIUS_AU * tipRadiusScale;
   }
 
@@ -46,7 +47,7 @@ import { SIMULATION_CONSTANTS as constants } from "../constants/simulation-const
       focalRadiusForTipScale(MATRYOSHKA_REFERENCE_INNER_LAYER_TIP_RADIUS_SCALE)) /
     constants.SOLAR_GRAVITATIONAL_LENS_AU;
 
-  function focalOffsetForMaxWidthScale(maxWidthScale, tipRadiusScale) {
+  function focalOffsetForMaxWidthScale(maxWidthScale: number, tipRadiusScale: number): number {
     const incomingRadiusAu = incomingRadiusForWidthScale(maxWidthScale);
     const focalRadiusAu = focalRadiusForTipScale(tipRadiusScale);
     const focalDistanceAu =
@@ -58,7 +59,11 @@ import { SIMULATION_CONSTANTS as constants } from "../constants/simulation-const
     maxWidthAu,
     tipRadiusScale,
     pinchesAtLensSphereEdge = false
-  }) {
+  }: {
+    maxWidthAu: number;
+    tipRadiusScale: number;
+    pinchesAtLensSphereEdge?: boolean;
+  }): MatryoshkaConeLayerDefinition {
     const normalizedMaxWidthScale = Math.max(
       MATRYOSHKA_MIN_LAYER_WIDTH_SCALE,
       (Number.isFinite(maxWidthAu) ? maxWidthAu : 0) / DIRECTIONAL_CONE_MAX_WIDTH_AU
@@ -78,7 +83,10 @@ import { SIMULATION_CONSTANTS as constants } from "../constants/simulation-const
     };
   }
 
-  function createMatryoshkaConeLayerDefinitions(maxStructureWidthAu, coneCount) {
+  function createMatryoshkaConeLayerDefinitions(
+    maxStructureWidthAu: number,
+    coneCount: number
+  ): MatryoshkaConeLayerDefinition[] {
     const normalizedConeCount = normalizeMatryoshkaConeCount(coneCount);
     const normalizedMaxStructureWidthAu = Math.max(
       minimumMatryoshkaStructureWidthAu(normalizedConeCount),
@@ -110,7 +118,7 @@ import { SIMULATION_CONSTANTS as constants } from "../constants/simulation-const
     MATRYOSHKA_CONE_COUNT
   );
 
-export const markerCatalog = Object.freeze({
+export const markerCatalog: MarkerCatalog = Object.freeze({
     DIRECTIONAL_MARKER_DEFINITIONS: raw.DIRECTIONAL_MARKER_DEFINITIONS,
     TRAJECTORY_DEFINITIONS: raw.TRAJECTORY_DEFINITIONS || [],
     DIRECTIONAL_CONE_MAX_WIDTH_AU,

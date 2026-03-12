@@ -1,18 +1,19 @@
 import { namespace } from "../../core/namespace";
+import type { MathApi, OrbitPlanePoint, Point3 } from "../../types/solar-system";
 
-  const EARTH_OBLIQUITY_DEG_J2000 = 23.4392911;
-  const orbitPlaneScratch = { x: 0, z: 0 };
+const EARTH_OBLIQUITY_DEG_J2000 = 23.4392911;
+const orbitPlaneScratch: OrbitPlanePoint = { x: 0, z: 0 };
 
 export class OrbitalMath {
-    static degToRad(deg) {
+    static degToRad(deg: number): number {
       return (deg * Math.PI) / 180;
     }
 
-    static clamp(value, min, max) {
+    static clamp(value: number, min: number, max: number): number {
       return Math.max(min, Math.min(max, value));
     }
 
-    static normalizeAngleSigned(value) {
+    static normalizeAngleSigned(value: number): number {
       const turn = Math.PI * 2;
       let result = value % turn;
       if (result <= -Math.PI) result += turn;
@@ -20,14 +21,14 @@ export class OrbitalMath {
       return result;
     }
 
-    static normalizeAngle(value) {
+    static normalizeAngle(value: number): number {
       const turn = Math.PI * 2;
       let result = value % turn;
       if (result < 0) result += turn;
       return result;
     }
 
-    static normalizeVector(vector) {
+    static normalizeVector(vector: Point3): Point3 {
       const length = Math.hypot(vector.x, vector.y, vector.z);
       if (length < 1e-9) return { x: 0, y: 0, z: 0 };
       const invLength = 1 / length;
@@ -38,11 +39,11 @@ export class OrbitalMath {
       };
     }
 
-    static vectorMagnitude(vector) {
+    static vectorMagnitude(vector: Point3): number {
       return Math.hypot(vector.x, vector.y, vector.z);
     }
 
-    static scaleVector(vector, scalar) {
+    static scaleVector(vector: Point3, scalar: number): Point3 {
       return {
         x: vector.x * scalar,
         y: vector.y * scalar,
@@ -50,7 +51,7 @@ export class OrbitalMath {
       };
     }
 
-    static addVectors(a, b) {
+    static addVectors(a: Point3, b: Point3): Point3 {
       return {
         x: a.x + b.x,
         y: a.y + b.y,
@@ -58,11 +59,11 @@ export class OrbitalMath {
       };
     }
 
-    static dotProduct(a, b) {
+    static dotProduct(a: Point3, b: Point3): number {
       return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
-    static crossProduct(a, b) {
+    static crossProduct(a: Point3, b: Point3): Point3 {
       return {
         x: a.y * b.z - a.z * b.y,
         y: a.z * b.x - a.x * b.z,
@@ -70,7 +71,7 @@ export class OrbitalMath {
       };
     }
 
-    static orthogonalUnitVector(vector) {
+    static orthogonalUnitVector(vector: Point3): Point3 {
       const normalizedVector = OrbitalMath.normalizeVector(vector);
       const axisSeed =
         Math.abs(normalizedVector.x) <= Math.abs(normalizedVector.y) &&
@@ -84,7 +85,7 @@ export class OrbitalMath {
       );
     }
 
-    static randomUnitVector3D(random = Math.random) {
+    static randomUnitVector3D(random: () => number = Math.random): Point3 {
       const theta = random() * Math.PI * 2;
       const y = random() * 2 - 1;
       const radial = Math.sqrt(Math.max(0, 1 - y * y));
@@ -95,7 +96,7 @@ export class OrbitalMath {
       };
     }
 
-    static unitVectorFromEquatorialRaDec(raHours, decDeg) {
+    static unitVectorFromEquatorialRaDec(raHours: number, decDeg: number): Point3 {
       const ra = OrbitalMath.degToRad(raHours * 15);
       const dec = OrbitalMath.degToRad(decDeg);
       const cosDec = Math.cos(dec);
@@ -107,9 +108,9 @@ export class OrbitalMath {
     }
 
     static equatorialToEcliptic(
-      vector,
+      vector: Point3,
       obliquityDeg = EARTH_OBLIQUITY_DEG_J2000
-    ) {
+    ): Point3 {
       const epsilon = OrbitalMath.degToRad(obliquityDeg);
       const cosEpsilon = Math.cos(epsilon);
       const sinEpsilon = Math.sin(epsilon);
@@ -120,7 +121,7 @@ export class OrbitalMath {
       };
     }
 
-    static pointOnRadiusAlongDirection(directionSource, radius) {
+    static pointOnRadiusAlongDirection(directionSource: Point3, radius: number): Point3 {
       const direction = OrbitalMath.normalizeVector(directionSource);
       return {
         x: direction.x * radius,
@@ -130,12 +131,12 @@ export class OrbitalMath {
     }
 
     static hyperbolicBranchPoints(
-      startDirection,
-      endDirection,
-      periapsisDistance,
-      endpointDistance,
-      segments
-    ) {
+      startDirection: Point3,
+      endDirection: Point3,
+      periapsisDistance: number,
+      endpointDistance: number,
+      segments: number
+    ): Point3[] {
       const startUnit = OrbitalMath.normalizeVector(startDirection);
       const endUnit = OrbitalMath.normalizeVector(endDirection);
       const safePeriapsisDistance = Math.max(
@@ -182,7 +183,7 @@ export class OrbitalMath {
         );
       }
 
-      const evaluateCandidate = (periapsisDirection) => {
+      const evaluateCandidate = (periapsisDirection: Point3) => {
         const startProjection = OrbitalMath.dotProduct(startUnit, periapsisDirection);
         const endProjection = OrbitalMath.dotProduct(endUnit, periapsisDirection);
         const symmetryError = Math.abs(startProjection - endProjection);
@@ -237,7 +238,14 @@ export class OrbitalMath {
         };
       };
 
-      let selectedCandidate = null;
+      let selectedCandidate: {
+        eccentricity: number;
+        endTrueAnomaly: number;
+        periapsisDirection: Point3;
+        startTrueAnomaly: number;
+        symmetryError: number;
+        transverseDirection: Point3;
+      } | null = null;
       for (const periapsisDirection of candidatePeriapsisDirections) {
         const candidate = evaluateCandidate(periapsisDirection);
         if (!candidate) {
@@ -292,7 +300,7 @@ export class OrbitalMath {
       return branchPoints;
     }
 
-    static solveEccentricAnomaly(meanAnomaly, eccentricity) {
+    static solveEccentricAnomaly(meanAnomaly: number, eccentricity: number): number {
       const e = OrbitalMath.clamp(eccentricity, 0, 0.999);
       if (e < 1e-6) return meanAnomaly;
 
@@ -317,12 +325,12 @@ export class OrbitalMath {
     }
 
     static orbitPlanePointInto(
-      out,
-      semiMajorAxis,
-      angle,
+      out: OrbitPlanePoint,
+      semiMajorAxis: number,
+      angle: number,
       eccentricity = 0,
       angleIsEccentricAnomaly = false
-    ) {
+    ): OrbitPlanePoint {
       const e = OrbitalMath.clamp(eccentricity, 0, 0.999);
       if (e < 1e-6) {
         out.x = Math.cos(angle) * semiMajorAxis;
@@ -338,7 +346,14 @@ export class OrbitalMath {
       return out;
     }
 
-    static rotateOrbitFrame(x, z, inclination, node, periapsisArg, height = 0) {
+    static rotateOrbitFrame(
+      x: number,
+      z: number,
+      inclination: number,
+      node: number,
+      periapsisArg: number,
+      height = 0
+    ): Point3 {
       return OrbitalMath.rotateOrbitFrameInto(
         { x: 0, y: 0, z: 0 },
         x,
@@ -351,14 +366,14 @@ export class OrbitalMath {
     }
 
     static rotateOrbitFrameInto(
-      out,
-      x,
-      z,
-      inclination,
-      node,
-      periapsisArg,
+      out: Point3,
+      x: number,
+      z: number,
+      inclination: number,
+      node: number,
+      periapsisArg: number,
       height = 0
-    ) {
+    ): Point3 {
       const cosW = Math.cos(periapsisArg);
       const sinW = Math.sin(periapsisArg);
       const xw = x * cosW - z * sinW;
@@ -378,15 +393,15 @@ export class OrbitalMath {
     }
 
     static orbitalPositionInto(
-      out,
-      semiMajorAxis,
-      theta,
-      inclination,
-      node,
+      out: Point3,
+      semiMajorAxis: number,
+      theta: number,
+      inclination: number,
+      node: number,
       height = 0,
       eccentricity = 0,
       periapsisArg = 0
-    ) {
+    ): Point3 {
       OrbitalMath.orbitPlanePointInto(
         orbitPlaneScratch,
         semiMajorAxis,
@@ -406,14 +421,14 @@ export class OrbitalMath {
     }
 
     static orbitPoints(
-      semiMajorAxis,
-      inclination,
-      node,
-      segments,
+      semiMajorAxis: number,
+      inclination: number,
+      node: number,
+      segments: number,
       eccentricity = 0,
       periapsisArg = 0
-    ) {
-      const points = [];
+    ): Point3[] {
+      const points: Point3[] = [];
       for (let i = 0; i <= segments; i += 1) {
         const eccentricAnomaly = (i / segments) * Math.PI * 2;
         const point = OrbitalMath.orbitPlanePointInto(
@@ -436,5 +451,7 @@ export class OrbitalMath {
       return points;
     }
   }
+
+const mathContract: MathApi = OrbitalMath;
 
 namespace.domain.math.OrbitalMath = OrbitalMath;

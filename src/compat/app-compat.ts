@@ -1,3 +1,5 @@
+import type { Group, PerspectiveCamera, SphereGeometry, Vector3 } from "three";
+import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { namespace } from "../core/namespace";
 import { RuntimeThree } from "../runtime/three-globals";
 import { BodyRenderer } from "../infrastructure/three/renderers/body-renderer";
@@ -10,230 +12,279 @@ import { HudController } from "../infrastructure/dom/hud-controller";
 import { setInitialCameraPlacement as applyInitialCameraPlacement } from "../infrastructure/three/controllers/camera-controller";
 import { VisibilityService } from "../application/services/visibility-service";
 import { LabelProjectionService } from "../application/services/label-projection-service";
+import type {
+  BeltRuntime,
+  BodyRenderConfig,
+  DirectionalGuideLine,
+  GuideRuntime,
+  HudHandle,
+  LabelLayerLike,
+  LabelOptions,
+  MathApi,
+  PostprocessingConfig,
+  RuntimeThreeModule,
+  SceneData,
+  SceneObjectRuntime,
+  SimulationConstants,
+  VisibilityRuntime,
+  VisibilityStateLike
+} from "../types/solar-system";
 
-const THREE = RuntimeThree;
+const THREE: RuntimeThreeModule = RuntimeThree;
 
-function createLabelAdapter(layer) {
-    return {
-      createLabel(text, options: any = {}) {
-        const label = document.createElement("div");
-        label.className = "body-label";
-        label.textContent = text;
-        const objectType =
-          typeof options.objectType === "string" ? options.objectType.trim() : "";
-        if (objectType) {
-          label.dataset.objectType = objectType;
-        }
-        layer.appendChild(label);
-        return label;
+function createLabelAdapter(layer: HTMLElement): LabelLayerLike {
+  return {
+    createLabel(text: string, options: LabelOptions = {}) {
+      const label = document.createElement("div");
+      label.className = "body-label";
+      label.textContent = text;
+      const objectType =
+        typeof options.objectType === "string" ? options.objectType.trim() : "";
+      if (objectType) {
+        label.dataset.objectType = objectType;
       }
-    };
-  }
-
-export const app = (namespace.app = namespace.app || {});
-
-  app.createLabelsLayer = function createLabelsLayer() {
-    const labelsLayer = new LabelsLayer();
-    namespace.compat.labelsLayer = labelsLayer;
-    return labelsLayer.createLayer();
+      layer.appendChild(label);
+      return label;
+    }
   };
+}
 
-  app.createLabelElement = function createLabelElement(layer, text, options = {}) {
-    return createLabelAdapter(layer).createLabel(text, options);
-  };
+const app = (namespace.app ??= {});
 
-  app.createBodyRuntime = function createBodyRuntime(
-    config,
-    bodyGroup,
-    bodyGeometry,
-    labelsLayerElement
-  ) {
-    const renderer = new BodyRenderer({
-      labelsLayer: createLabelAdapter(labelsLayerElement),
-      THREE
-    });
-    return renderer.createBodyRuntime(config, bodyGroup, bodyGeometry);
-  };
+function createLabelsLayer(): HTMLDivElement {
+  const labelsLayer = new LabelsLayer();
+  namespace.compat.labelsLayer = labelsLayer;
+  return labelsLayer.createLayer();
+}
 
-  app.createLabelAnchorRuntime = function createLabelAnchorRuntime(config, labelsLayerElement) {
-    const renderer = new BodyRenderer({
-      labelsLayer: createLabelAdapter(labelsLayerElement),
-      THREE
-    });
-    return renderer.createLabelAnchorRuntime(config);
-  };
+function createLabelElement(
+  layer: HTMLElement,
+  text: string,
+  options: LabelOptions = {}
+): HTMLDivElement | null {
+  return createLabelAdapter(layer).createLabel(text, options);
+}
 
-  app.buildOrbitLine = function buildOrbitLine(points, color, opacity) {
-    const renderer = new OrbitRenderer({ bodyRenderer: null, THREE });
-    return renderer.buildOrbitLine(points, color, opacity);
-  };
+function createBodyRuntime(
+  config: BodyRenderConfig,
+  bodyGroup: Group,
+  bodyGeometry: SphereGeometry,
+  labelsLayerElement: HTMLElement
+): SceneObjectRuntime {
+  const renderer = new BodyRenderer({
+    labelsLayer: createLabelAdapter(labelsLayerElement),
+    THREE
+  });
+  return renderer.createBodyRuntime(config, bodyGroup, bodyGeometry);
+}
 
-  app.buildOrbitingBodies = function buildOrbitingBodies(
+function createLabelAnchorRuntime(
+  config: BodyRenderConfig,
+  labelsLayerElement: HTMLElement
+): SceneObjectRuntime {
+  const renderer = new BodyRenderer({
+    labelsLayer: createLabelAdapter(labelsLayerElement),
+    THREE
+  });
+  return renderer.createLabelAnchorRuntime(config);
+}
+
+function buildOrbitLine(points: { x: number; y: number; z: number }[], color: string, opacity: number) {
+  const renderer = new OrbitRenderer({ bodyRenderer: null, THREE });
+  return renderer.buildOrbitLine(points, color, opacity);
+}
+
+function buildOrbitingBodies(
+  sceneData: SceneData,
+  orbitGroup: Group,
+  bodyGroup: Group,
+  bodyGeometry: SphereGeometry,
+  sceneObjectRuntimes: SceneObjectRuntime[],
+  orbitingBodies: SceneData["planets"],
+  labelsLayerElement: HTMLElement,
+  math: MathApi
+): void {
+  const bodyRenderer = new BodyRenderer({
+    labelsLayer: createLabelAdapter(labelsLayerElement),
+    THREE
+  });
+  const orbitRenderer = new OrbitRenderer({ bodyRenderer, THREE });
+  orbitRenderer.buildOrbitingBodies(
     sceneData,
     orbitGroup,
     bodyGroup,
     bodyGeometry,
     sceneObjectRuntimes,
     orbitingBodies,
-    labelsLayerElement,
     math
-  ) {
-    const bodyRenderer = new BodyRenderer({
-      labelsLayer: createLabelAdapter(labelsLayerElement),
-      THREE
-    });
-    const orbitRenderer = new OrbitRenderer({ bodyRenderer, THREE });
-    orbitRenderer.buildOrbitingBodies(
-      sceneData,
-      orbitGroup,
-      bodyGroup,
-      bodyGeometry,
-      sceneObjectRuntimes,
-      orbitingBodies,
-      math
-    );
-  };
+  );
+}
 
-  app.buildFixedBodies = function buildFixedBodies(
-    sceneData,
-    bodyGroup,
-    bodyGeometry,
-    sceneObjectRuntimes,
-    labelsLayerElement
-  ) {
-    const bodyRenderer = new BodyRenderer({
-      labelsLayer: createLabelAdapter(labelsLayerElement),
-      THREE
-    });
-    bodyRenderer.buildFixedBodies(
-      sceneData,
-      bodyGroup,
-      bodyGeometry,
-      sceneObjectRuntimes
-    );
-  };
+function buildFixedBodies(
+  sceneData: SceneData,
+  bodyGroup: Group,
+  bodyGeometry: SphereGeometry,
+  sceneObjectRuntimes: SceneObjectRuntime[],
+  labelsLayerElement: HTMLElement
+): void {
+  const bodyRenderer = new BodyRenderer({
+    labelsLayer: createLabelAdapter(labelsLayerElement),
+    THREE
+  });
+  bodyRenderer.buildFixedBodies(sceneData, bodyGroup, bodyGeometry, sceneObjectRuntimes);
+}
 
-  app.buildStarField = function buildStarField(sceneData, particleGroup) {
-    const renderer = new ParticleRenderer({ THREE });
-    renderer.buildStarField(sceneData, particleGroup);
-  };
+function buildStarField(sceneData: SceneData, particleGroup: Group): void {
+  const renderer = new ParticleRenderer({ THREE });
+  renderer.buildStarField(sceneData, particleGroup);
+}
 
-  app.buildAsteroidBelts = function buildAsteroidBelts(
+function buildAsteroidBelts(
+  sceneData: SceneData,
+  particleGroup: Group,
+  beltRuntimes: BeltRuntime[],
+  math?: MathApi,
+  orbitalPositionScratch?: { x: number; y: number; z: number }
+): void {
+  const renderer = new ParticleRenderer({ THREE });
+  renderer.buildAsteroidBelts(
     sceneData,
     particleGroup,
     beltRuntimes,
     math,
     orbitalPositionScratch
-  ) {
-    const renderer = new ParticleRenderer({ THREE });
-    renderer.buildAsteroidBelts(
-      sceneData,
-      particleGroup,
-      beltRuntimes,
-      math,
-      orbitalPositionScratch
-    );
-  };
+  );
+}
 
-  app.updateAsteroidBeltVisuals = function updateAsteroidBeltVisuals(
-    beltRuntimes,
-    camera
-  ) {
-    const renderer = new ParticleRenderer({ THREE });
-    renderer.updateAsteroidBeltVisuals(beltRuntimes, camera);
-  };
+function updateAsteroidBeltVisuals(
+  beltRuntimes: BeltRuntime[],
+  camera: PerspectiveCamera | null
+): void {
+  const renderer = new ParticleRenderer({ THREE });
+  renderer.updateAsteroidBeltVisuals(beltRuntimes, camera);
+}
 
-  app.createLightRay = function createLightRay(guideLine, points) {
-    const renderer = new GuideRenderer({
-      labelsLayer: {
-        createLabel() {
-          return null;
-        }
-      },
-      THREE
-    });
-    return renderer.createLightRay(guideLine, points);
-  };
+function createLightRay(guideLine: DirectionalGuideLine, points: Vector3[]): GuideRuntime | null {
+  const renderer = new GuideRenderer({
+    labelsLayer: {
+      createLabel() {
+        return null;
+      }
+    },
+    THREE
+  });
+  return renderer.createLightRay(guideLine, points);
+}
 
-  app.buildGuideLines = function buildGuideLines(
+function buildGuideLines(
+  sceneData: SceneData,
+  guideLineGroup: Group,
+  guideRuntimes: GuideRuntime[],
+  labelsLayerElement: HTMLElement,
+  sceneObjectRuntimes: SceneObjectRuntime[],
+  visibilityRuntimes: VisibilityRuntime[]
+): void {
+  const renderer = new GuideRenderer({
+    labelsLayer: createLabelAdapter(labelsLayerElement),
+    THREE
+  });
+  renderer.buildGuideLines(
     sceneData,
     guideLineGroup,
     guideRuntimes,
-    labelsLayerElement,
     sceneObjectRuntimes,
     visibilityRuntimes
-  ) {
-    const renderer = new GuideRenderer({
-      labelsLayer: createLabelAdapter(labelsLayerElement),
-      THREE
-    });
-    renderer.buildGuideLines(
-      sceneData,
-      guideLineGroup,
-      guideRuntimes,
-      sceneObjectRuntimes,
-      visibilityRuntimes
-    );
-  };
+  );
+}
 
-  app.applyGuideLineVisibility = function applyGuideLineVisibility(state, guideRuntimes) {
-    const service = new VisibilityService({
-      state,
-      visibilityRuntimes: guideRuntimes
-    });
-    service.apply();
-  };
+function applyGuideLineVisibility(
+  state: VisibilityStateLike,
+  guideRuntimes: VisibilityRuntime[]
+): void {
+  const service = new VisibilityService({
+    state,
+    visibilityRuntimes: guideRuntimes
+  });
+  service.apply();
+}
 
-  app.applyOrbitVisibility = function applyOrbitVisibility(state, orbitGroup) {
-    const renderer = new OrbitRenderer({ bodyRenderer: null, THREE });
-    renderer.applyOrbitVisibility(state, orbitGroup);
-  };
+function applyOrbitVisibility(
+  state: Pick<VisibilityStateLike, "showOrbits">,
+  orbitGroup: Group | null
+): void {
+  const renderer = new OrbitRenderer({ bodyRenderer: null, THREE });
+  renderer.applyOrbitVisibility(state, orbitGroup);
+}
 
-  app.setupHudControls = function setupHudControls(
+function setupHudControls(
+  state: VisibilityStateLike,
+  controls: OrbitControls,
+  guideRuntimes: VisibilityRuntime[],
+  camera: PerspectiveCamera,
+  math: Pick<MathApi, "clamp">,
+  orbitGroup: Group | null,
+  requestRender?: () => void
+): HudHandle {
+  const controller = new HudController({
     state,
     controls,
-    guideRuntimes,
+    orbitGroup,
+    visibilityRuntimes: guideRuntimes,
     camera,
     math,
-    orbitGroup,
+    onOrbitVisibilityChanged: applyOrbitVisibility,
+    onVisibilityChanged: applyGuideLineVisibility,
     requestRender
-  ) {
-    const controller = new HudController({
-      state,
-      controls,
-      orbitGroup,
-      visibilityRuntimes: guideRuntimes,
-      camera,
-      math,
-      onOrbitVisibilityChanged: app.applyOrbitVisibility,
-      onVisibilityChanged: app.applyGuideLineVisibility,
-      requestRender
-    });
-    return controller.setup();
-  };
+  });
+  return controller.setup();
+}
 
-  app.setInitialCameraPlacement = function setInitialCameraPlacement(
+function setInitialCameraPlacement(
+  camera: PerspectiveCamera,
+  controls: OrbitControls,
+  constants: SimulationConstants,
+  state: Pick<VisibilityStateLike, "minCamera" | "maxCamera">,
+  math?: Pick<MathApi, "clamp">
+): void {
+  applyInitialCameraPlacement({
     camera,
     controls,
-    constants,
     state,
+    constants,
     math
-  ) {
-    applyInitialCameraPlacement({
-      camera,
-      controls,
-      state,
-      constants,
-      math
-    });
-  };
+  });
+}
 
-  app.createBodyVisualScaleAndLabelsUpdater =
-    function createBodyVisualScaleAndLabelsUpdater(options) {
-      const service = new LabelProjectionService({ ...options, THREE });
-      return service.update.bind(service);
-    };
+function createBodyVisualScaleAndLabelsUpdater(
+  options: ConstructorParameters<typeof LabelProjectionService>[0]
+) {
+  const service = new LabelProjectionService({ ...options, THREE });
+  return service.update.bind(service);
+}
 
-  app.createSelectiveBloomRenderer = function createSelectiveBloomRenderer(config) {
-    return new PostprocessingRenderer({ ...config, THREE });
-  };
+function createSelectiveBloomRenderer(
+  config: Omit<PostprocessingConfig, "THREE">
+): PostprocessingRenderer {
+  return new PostprocessingRenderer({ ...config, THREE });
+}
+
+app.createLabelsLayer = createLabelsLayer;
+app.createLabelElement = createLabelElement;
+app.createBodyRuntime = createBodyRuntime;
+app.createLabelAnchorRuntime = createLabelAnchorRuntime;
+app.buildOrbitLine = buildOrbitLine;
+app.buildOrbitingBodies = buildOrbitingBodies;
+app.buildFixedBodies = buildFixedBodies;
+app.buildStarField = buildStarField;
+app.buildAsteroidBelts = buildAsteroidBelts;
+app.updateAsteroidBeltVisuals = updateAsteroidBeltVisuals;
+app.createLightRay = createLightRay;
+app.buildGuideLines = buildGuideLines;
+app.applyGuideLineVisibility = applyGuideLineVisibility;
+app.applyOrbitVisibility = applyOrbitVisibility;
+app.setupHudControls = setupHudControls;
+app.setInitialCameraPlacement = setInitialCameraPlacement;
+app.createBodyVisualScaleAndLabelsUpdater = createBodyVisualScaleAndLabelsUpdater;
+app.createSelectiveBloomRenderer = createSelectiveBloomRenderer;
+
+export { app };

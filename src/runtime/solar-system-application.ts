@@ -1,3 +1,5 @@
+import type { PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { namespace } from "../core/namespace";
 import { AppState } from "../application/state/app-state";
 import { SceneRuntimeSystem } from "../application/systems/scene-runtime-system";
@@ -13,6 +15,14 @@ import { GuideRenderer } from "../infrastructure/three/renderers/guide-renderer"
 import { PostprocessingRenderer } from "../infrastructure/three/renderers/postprocessing-renderer";
 import { setInitialCameraPlacement } from "../infrastructure/three/controllers/camera-controller";
 import { RuntimeThree } from "./three-globals";
+import type {
+  HudHandle,
+  MathApi,
+  RuntimeThreeModule,
+  SceneData,
+  SceneDataApi,
+  SimulationConstants
+} from "../types/solar-system";
 
 const RUNTIME_RENDER_CONFIG = Object.freeze({
   backgroundColor: "#000000",
@@ -23,22 +33,74 @@ const RUNTIME_RENDER_CONFIG = Object.freeze({
   bloomThreshold: 0.72
 });
 
-export class SolarSystemApplication {
-  [key: string]: any;
+interface SolarSystemApplicationOptions {
+  canvasId?: string;
+  document?: Document;
+  window?: Window | null;
+  constants?: SimulationConstants;
+  data?: SceneDataApi;
+  math?: MathApi;
+  THREE?: RuntimeThreeModule;
+}
 
-  constructor(options: any = {}) {
+export class SolarSystemApplication {
+  readonly data: SceneDataApi;
+  private readonly canvasId: string;
+  private readonly document: Document;
+  private readonly hostWindow: Window | null;
+  private readonly constants: SimulationConstants;
+  private readonly sceneDataApi: SceneDataApi;
+  private readonly math: MathApi;
+  private readonly THREE: RuntimeThreeModule;
+  private initialized = false;
+  private canvas: HTMLCanvasElement | null = null;
+  private labelsLayerElement: HTMLDivElement | null = null;
+  private sceneData: SceneData | null = null;
+  private state: AppState | null = null;
+  private renderer: WebGLRenderer | null = null;
+  private scene: Scene | null = null;
+  private camera: PerspectiveCamera | null = null;
+  private controls: OrbitControls | null = null;
+  private labelsLayer: LabelsLayer | null = null;
+  private bodyRenderer: BodyRenderer | null = null;
+  private orbitRenderer: OrbitRenderer | null = null;
+  private particleRenderer: ParticleRenderer | null = null;
+  private guideRenderer: GuideRenderer | null = null;
+  private postprocessingRenderer: PostprocessingRenderer | null = null;
+  private sceneRuntime: SceneRuntimeSystem | null = null;
+  private runtimeVisibility: RuntimeVisibilityService | null = null;
+  private visibilityService: VisibilityService | null = null;
+  private hudController: HudController | null = null;
+  private hud: HudHandle | null = null;
+  private labelProjectionService: LabelProjectionService | null = null;
+  private readonly handleResize: () => void;
+  private readonly handleControlsChange: () => void;
+  private readonly handlePointerDown: () => void;
+  private readonly handlePointerUp: () => void;
+
+  constructor(options: SolarSystemApplicationOptions = {}) {
+    const constants = options.constants || namespace.constants;
+    const sceneDataApi = options.data || namespace.data;
+    const math = options.math || namespace.math;
+    const THREE = options.THREE || RuntimeThree;
+    if (!constants) {
+      throw new Error("SolarSystemApplication: missing constants.");
+    }
+    if (!sceneDataApi) {
+      throw new Error("SolarSystemApplication: missing scene data API.");
+    }
+    if (!math) {
+      throw new Error("SolarSystemApplication: missing math API.");
+    }
+
     this.canvasId = options.canvasId || "scene";
     this.document = options.document || document;
     this.hostWindow = options.window || this.document.defaultView;
-    this.constants = options.constants || namespace.constants;
-    this.sceneDataApi = options.data || namespace.data;
+    this.constants = constants;
+    this.sceneDataApi = sceneDataApi;
     this.data = this.sceneDataApi;
-    this.math = options.math || namespace.math;
-    this.THREE = options.THREE || RuntimeThree;
-
-    this.initialized = false;
-    this.canvas = null;
-    this.labelsLayerElement = null;
+    this.math = math;
+    this.THREE = THREE;
 
     this.handleResize = this.resize.bind(this);
     this.handleControlsChange = this.renderScene.bind(this);
@@ -46,10 +108,9 @@ export class SolarSystemApplication {
     this.handlePointerUp = this.onPointerUp.bind(this);
   }
 
-  assertThreeDependencies() {
+  assertThreeDependencies(): void {
     const { THREE } = this;
     if (
-      !THREE ||
       !THREE.OrbitControls ||
       !THREE.ShaderPass ||
       !THREE.CopyShader ||
@@ -64,7 +125,7 @@ export class SolarSystemApplication {
     }
   }
 
-  getViewportSize() {
+  getViewportSize(): { width: number; height: number } {
     const viewportWidth =
       this.hostWindow?.innerWidth ||
       this.document.documentElement?.clientWidth ||
@@ -82,11 +143,11 @@ export class SolarSystemApplication {
     };
   }
 
-  getPixelRatio() {
+  getPixelRatio(): number {
     return Math.min(this.hostWindow?.devicePixelRatio || 1, 2);
   }
 
-  createCanvas() {
+  createCanvas(): HTMLCanvasElement {
     const canvas = this.document.getElementById(this.canvasId);
     if (!(canvas instanceof HTMLCanvasElement)) {
       throw new Error(`Expected canvas element with id "${this.canvasId}".`);
@@ -96,11 +157,16 @@ export class SolarSystemApplication {
     return canvas;
   }
 
-  createRenderer() {
+  createRenderer(): WebGLRenderer {
     const { THREE } = this;
+    const canvas = this.canvas;
+    if (!canvas) {
+      throw new Error("SolarSystemApplication: canvas must be created before renderer.");
+    }
+
     const { width, height } = this.getViewportSize();
     const renderer = new THREE.WebGLRenderer({
-      canvas: this.canvas,
+      canvas,
       antialias: true,
       powerPreference: "high-performance"
     });
@@ -109,15 +175,21 @@ export class SolarSystemApplication {
     renderer.setSize(width, height, false);
     if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) {
       renderer.outputColorSpace = THREE.SRGBColorSpace;
-    } else if ("outputEncoding" in renderer && THREE.sRGBEncoding !== undefined) {
-      renderer.outputEncoding = THREE.sRGBEncoding;
+    } else {
+      const legacyEncoding =
+        "sRGBEncoding" in THREE && typeof THREE.sRGBEncoding === "number"
+          ? THREE.sRGBEncoding
+          : undefined;
+      if (legacyEncoding !== undefined) {
+        (renderer as WebGLRenderer & { outputEncoding?: number }).outputEncoding = legacyEncoding;
+      }
     }
     renderer.setClearColor(RUNTIME_RENDER_CONFIG.backgroundColor, 1);
 
     return renderer;
   }
 
-  createScene() {
+  createScene(): Scene {
     const { THREE } = this;
     const scene = new THREE.Scene();
     scene.add(new THREE.AmbientLight("#ffffff", 0.5));
@@ -125,7 +197,7 @@ export class SolarSystemApplication {
     return scene;
   }
 
-  createCamera() {
+  createCamera(): PerspectiveCamera {
     const { THREE } = this;
     const { width, height } = this.getViewportSize();
     return new THREE.PerspectiveCamera(
@@ -136,7 +208,11 @@ export class SolarSystemApplication {
     );
   }
 
-  createPostprocessingRenderer() {
+  createPostprocessingRenderer(): PostprocessingRenderer {
+    if (!this.renderer || !this.scene || !this.camera) {
+      throw new Error("SolarSystemApplication: renderer, scene, and camera must exist.");
+    }
+
     const { width, height } = this.getViewportSize();
     return new PostprocessingRenderer({
       renderer: this.renderer,
@@ -150,8 +226,12 @@ export class SolarSystemApplication {
     });
   }
 
-  createControls() {
+  createControls(): OrbitControls {
     const { THREE } = this;
+    if (!this.camera || !this.renderer || !this.state) {
+      throw new Error("SolarSystemApplication: camera, renderer, and state must exist.");
+    }
+
     const controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
     controls.enableDamping = false;
     controls.enablePan = false;
@@ -163,17 +243,28 @@ export class SolarSystemApplication {
     return controls;
   }
 
-  initializeState() {
+  initializeState(): void {
     this.sceneData = this.sceneDataApi.createSceneData();
     this.state = new AppState();
   }
 
-  initializeLabelsLayer() {
+  initializeLabelsLayer(): void {
     this.labelsLayer = new LabelsLayer();
     this.labelsLayerElement = this.labelsLayer.createLayer();
   }
 
-  initializeRuntimeCollections() {
+  initializeRuntimeCollections(): void {
+    if (
+      !this.scene ||
+      !this.bodyRenderer ||
+      !this.orbitRenderer ||
+      !this.particleRenderer ||
+      !this.guideRenderer ||
+      !this.postprocessingRenderer
+    ) {
+      throw new Error("SolarSystemApplication: renderers and scene must be initialized.");
+    }
+
     this.sceneRuntime = new SceneRuntimeSystem({
       scene: this.scene,
       constants: this.constants,
@@ -187,7 +278,11 @@ export class SolarSystemApplication {
     }).initialize();
   }
 
-  initializeRenderers() {
+  initializeRenderers(): void {
+    if (!this.labelsLayer) {
+      throw new Error("SolarSystemApplication: labels layer must be initialized.");
+    }
+
     this.bodyRenderer = new BodyRenderer({
       labelsLayer: this.labelsLayer,
       THREE: this.THREE
@@ -203,7 +298,11 @@ export class SolarSystemApplication {
     });
   }
 
-  initializeVisibilityService() {
+  initializeVisibilityService(): void {
+    if (!this.state || !this.sceneRuntime) {
+      throw new Error("SolarSystemApplication: state and runtime collections must exist.");
+    }
+
     this.runtimeVisibility = new RuntimeVisibilityService({ state: this.state });
     this.visibilityService = new VisibilityService({
       state: this.state,
@@ -212,11 +311,27 @@ export class SolarSystemApplication {
     });
   }
 
-  buildSceneContents() {
+  buildSceneContents(): void {
+    if (!this.sceneRuntime || !this.sceneData) {
+      throw new Error("SolarSystemApplication: scene runtime and scene data must exist.");
+    }
+
     this.sceneRuntime.build(this.sceneData);
   }
 
-  initializeHud() {
+  initializeHud(): void {
+    if (
+      !this.state ||
+      !this.controls ||
+      !this.sceneRuntime ||
+      !this.camera ||
+      !this.math ||
+      !this.orbitRenderer ||
+      !this.visibilityService
+    ) {
+      throw new Error("SolarSystemApplication: HUD dependencies are missing.");
+    }
+
     this.hudController = new HudController({
       state: this.state,
       controls: this.controls,
@@ -231,7 +346,11 @@ export class SolarSystemApplication {
     this.hud = this.hudController.setup();
   }
 
-  initializeCameraPlacement() {
+  initializeCameraPlacement(): void {
+    if (!this.camera || !this.controls || !this.state) {
+      throw new Error("SolarSystemApplication: camera placement dependencies are missing.");
+    }
+
     setInitialCameraPlacement({
       camera: this.camera,
       controls: this.controls,
@@ -241,8 +360,12 @@ export class SolarSystemApplication {
     });
   }
 
-  initializeViewServices() {
+  initializeViewServices(): void {
     const { THREE } = this;
+    if (!this.renderer || !this.camera || !this.sceneRuntime || !this.state || !this.runtimeVisibility) {
+      throw new Error("SolarSystemApplication: view service dependencies are missing.");
+    }
+
     this.labelProjectionService = new LabelProjectionService({
       renderer: this.renderer,
       camera: this.camera,
@@ -254,15 +377,29 @@ export class SolarSystemApplication {
     });
   }
 
-  registerEvents() {
+  registerEvents(): void {
+    if (!this.canvas || !this.controls) {
+      throw new Error("SolarSystemApplication: canvas and controls must exist before events.");
+    }
+
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.hostWindow?.addEventListener("pointerup", this.handlePointerUp);
     this.hostWindow?.addEventListener("resize", this.handleResize);
     this.controls.addEventListener("change", this.handleControlsChange);
   }
 
-  renderScene() {
-    if (!this.renderer || !this.camera) {
+  renderScene(): void {
+    if (
+      !this.renderer ||
+      !this.camera ||
+      !this.sceneRuntime ||
+      !this.orbitRenderer ||
+      !this.visibilityService ||
+      !this.particleRenderer ||
+      !this.labelProjectionService ||
+      !this.postprocessingRenderer ||
+      !this.state
+    ) {
       return;
     }
 
@@ -273,13 +410,12 @@ export class SolarSystemApplication {
     this.postprocessingRenderer.render();
   }
 
-  initialize() {
+  initialize(): void {
     if (this.initialized) {
       return;
     }
 
     this.assertThreeDependencies();
-
     this.createCanvas();
     this.initializeState();
 
@@ -298,25 +434,27 @@ export class SolarSystemApplication {
     this.initializeCameraPlacement();
     this.initializeViewServices();
     this.registerEvents();
-    this.resize();
 
     this.initialized = true;
+    this.resize();
   }
 
-  onPointerDown() {
-    if (this.canvas) {
-      this.canvas.classList.add("dragging");
-    }
+  onPointerDown(): void {
+    this.canvas?.classList.add("dragging");
   }
 
-  onPointerUp() {
-    if (this.canvas) {
-      this.canvas.classList.remove("dragging");
-    }
+  onPointerUp(): void {
+    this.canvas?.classList.remove("dragging");
   }
 
-  resize() {
-    if (!this.initialized && !this.renderer) {
+  resize(): void {
+    if (
+      !this.renderer ||
+      !this.postprocessingRenderer ||
+      !this.camera ||
+      !this.controls ||
+      !this.state
+    ) {
       return;
     }
 
@@ -332,25 +470,23 @@ export class SolarSystemApplication {
 
     this.controls.minDistance = this.state.minCamera;
     this.controls.maxDistance = this.state.maxCamera;
-    if (this.hud && typeof this.hud.updateZoomToggleLabel === "function") {
-      this.hud.updateZoomToggleLabel();
-    }
+    this.hud?.updateZoomToggleLabel();
 
     if (this.initialized) {
       this.renderScene();
     }
   }
 
-  start() {
+  start(): void {
     if (!this.initialized) {
       this.initialize();
     }
     this.renderScene();
   }
 
-  stop() {}
+  stop(): void {}
 
-  dispose() {
+  dispose(): void {
     this.stop();
     this.hostWindow?.removeEventListener("resize", this.handleResize);
     this.hostWindow?.removeEventListener("pointerup", this.handlePointerUp);

@@ -1,6 +1,14 @@
 import { namespace } from "../../core/namespace";
+import type {
+  DirectionalMarkerDefinition,
+  DriftingBodyDefinition,
+  OrbitingBodyDefinition,
+  RawDefinitions,
+  TrajectoryDefinition,
+  VoyagerDefinition
+} from "../../types/solar-system";
 
-  const PLANET_DEFINITIONS = [
+  const PLANET_DEFINITIONS: OrbitingBodyDefinition[] = [
     {
       name: "Mercury",
       au: 0.387098,
@@ -95,7 +103,7 @@ import { namespace } from "../../core/namespace";
     }
   ];
 
-  const DWARF_PLANET_DEFINITIONS = [
+  const DWARF_PLANET_DEFINITIONS: OrbitingBodyDefinition[] = [
     {
       name: "Ceres",
       au: 2.765616,
@@ -288,7 +296,7 @@ import { namespace } from "../../core/namespace";
     }
   ];
 
-  const COMET_DEFINITIONS = [
+  const COMET_DEFINITIONS: OrbitingBodyDefinition[] = [
     {
       name: "1P/Halley",
       au: 17.834,
@@ -447,7 +455,7 @@ import { namespace } from "../../core/namespace";
     }
   ];
 
-  const VOYAGERS = [
+  const VOYAGERS: VoyagerDefinition[] = [
     {
       name: "Voyager 1",
       color: "#ffb36a",
@@ -464,9 +472,9 @@ import { namespace } from "../../core/namespace";
     }
   ];
 
-  const DRIFTING_BODIES = [];
+  const DRIFTING_BODIES: DriftingBodyDefinition[] = [];
 
-  const DIRECTIONAL_MARKER_DEFINITIONS = [
+  const DIRECTIONAL_MARKER_DEFINITIONS: DirectionalMarkerDefinition[] = [
     {
       name: "61 Cygni",
       label: "61 Cygni (11.4 light-years)",
@@ -485,7 +493,7 @@ import { namespace } from "../../core/namespace";
     }
   ];
 
-  const TRAJECTORY_DEFINITIONS = [
+  const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
     {
       name: "61 Cygni Transfer",
       label: "",
@@ -498,10 +506,10 @@ import { namespace } from "../../core/namespace";
     }
   ];
 
-export const rawDefinitions = Object.freeze({
-    PLANET_DEFINITIONS,
-    DWARF_PLANET_DEFINITIONS,
-    COMET_DEFINITIONS,
+export const rawDefinitions: RawDefinitions = Object.freeze({
+  PLANET_DEFINITIONS,
+  DWARF_PLANET_DEFINITIONS,
+  COMET_DEFINITIONS,
     VOYAGERS,
     DRIFTING_BODIES,
     DIRECTIONAL_MARKER_DEFINITIONS,

@@ -1,8 +1,19 @@
 import { namespace } from "../../core/namespace";
+import type {
+  VisibilityControl,
+  VisibilityControlGroup,
+  VisibilityRuntime
+} from "../../types/solar-system";
+
+interface VisibilityControlGroupDraft {
+  key: string;
+  label: string;
+  controlsByKey: Map<string, VisibilityControl>;
+}
 
 export class VisibilityControlGroupFactory {
-    create(visibilityRuntimes = []) {
-      const groupsByKey = new Map();
+    create(visibilityRuntimes: VisibilityRuntime[] = []): VisibilityControlGroup[] {
+      const groupsByKey = new Map<string, VisibilityControlGroupDraft>();
 
       for (const runtime of visibilityRuntimes) {
         const visibilityKey =
@@ -34,6 +45,7 @@ export class VisibilityControlGroupFactory {
         }
 
         const group = groupsByKey.get(groupKey);
+        if (!group) continue;
         if (group.controlsByKey.has(visibilityKey)) continue;
 
         group.controlsByKey.set(visibilityKey, {
@@ -44,7 +56,7 @@ export class VisibilityControlGroupFactory {
         });
       }
 
-      return Array.from(groupsByKey.values()).map((group) => ({
+      return Array.from(groupsByKey.values()).map((group): VisibilityControlGroup => ({
         key: group.key,
         label: group.label,
         controls: Array.from(group.controlsByKey.values())

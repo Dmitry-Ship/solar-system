@@ -1,20 +1,27 @@
 import { namespace } from "../../core/namespace";
+import type { VisibilityRuntime } from "../../types/solar-system";
+
+interface RuntimeVisibilityServiceOptions {
+  state?: {
+    isVisibilityEnabled?(key: string, fallbackVisibility?: boolean): boolean;
+  };
+}
 
 export class RuntimeVisibilityService {
-    [key: string]: any;
+    private readonly state?: RuntimeVisibilityServiceOptions["state"];
 
-    constructor(options: any = {}) {
+    constructor(options: RuntimeVisibilityServiceOptions = {}) {
       this.state = options.state;
     }
 
-    resolveVisibilityTarget(runtime) {
+    resolveVisibilityTarget(runtime: VisibilityRuntime): { visible: boolean } | null {
       if (runtime?.visibilityTarget) return runtime.visibilityTarget;
       if (runtime?.object) return runtime.object;
       if (runtime?.mesh) return runtime.mesh;
       return null;
     }
 
-    isRuntimeVisible(runtime) {
+    isRuntimeVisible(runtime: VisibilityRuntime): boolean {
       const defaultVisibility = runtime?.defaultVisible ?? true;
       if (typeof runtime?.visibilityKey !== "string" || !runtime.visibilityKey) {
         return Boolean(defaultVisibility);
@@ -27,7 +34,7 @@ export class RuntimeVisibilityService {
       return Boolean(defaultVisibility);
     }
 
-    apply(runtime) {
+    apply(runtime: VisibilityRuntime): boolean | null {
       const target = this.resolveVisibilityTarget(runtime);
       if (!target || !("visible" in target)) {
         return null;

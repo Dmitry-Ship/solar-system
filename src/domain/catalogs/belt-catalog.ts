@@ -1,9 +1,10 @@
 import { namespace } from "../../core/namespace";
 import { SIMULATION_CONSTANTS } from "../constants/simulation-constants";
+import type { AsteroidBeltConfig, BeltCatalog, OrbitRenderGroupConfig } from "../../types/solar-system";
 
 const STAR_DISTANCE_MIN_AU = SIMULATION_CONSTANTS.SCENE_OUTER_AU * 3.8;
 const STAR_DISTANCE_MAX_AU = SIMULATION_CONSTANTS.SCENE_OUTER_AU * (3.8 + 4.5);
-const ASTEROID_BELT_CONFIGS = [
+const ASTEROID_BELT_CONFIGS: AsteroidBeltConfig[] = [
   {
     name: "Main Belt",
     innerAu: 2.06,
@@ -31,7 +32,7 @@ const ASTEROID_BELT_CONFIGS = [
   }
 ];
 
-const ORBIT_RENDER_GROUPS = [
+const ORBIT_RENDER_GROUPS: OrbitRenderGroupConfig[] = [
   {
     key: "planets",
     segments: 220,
@@ -49,7 +50,7 @@ const ORBIT_RENDER_GROUPS = [
   }
 ];
 
-export const beltCatalog = Object.freeze({
+export const beltCatalog: BeltCatalog = Object.freeze({
   STAR_DISTANCE_MIN_AU,
   STAR_DISTANCE_MAX_AU,
   ASTEROID_BELT_CONFIGS,

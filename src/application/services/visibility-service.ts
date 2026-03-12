@@ -1,21 +1,30 @@
 import { namespace } from "../../core/namespace";
 import { RuntimeVisibilityService } from "./runtime-visibility-service";
+import type { VisibilityRuntime, VisibilityStateLike } from "../../types/solar-system";
+
+interface VisibilityServiceOptions {
+  state: VisibilityStateLike;
+  visibilityRuntimes?: VisibilityRuntime[];
+  runtimeVisibility?: RuntimeVisibilityService;
+}
 
 export class VisibilityService {
-    [key: string]: any;
+  private readonly state: VisibilityStateLike;
+  private readonly visibilityRuntimes: VisibilityRuntime[];
+  private readonly runtimeVisibility: RuntimeVisibilityService;
 
-    constructor(options: any) {
-      this.state = options.state;
-      this.visibilityRuntimes = options.visibilityRuntimes || [];
-      this.runtimeVisibility =
-        options.runtimeVisibility || new RuntimeVisibilityService({ state: this.state });
-    }
+  constructor(options: VisibilityServiceOptions) {
+    this.state = options.state;
+    this.visibilityRuntimes = options.visibilityRuntimes || [];
+    this.runtimeVisibility =
+      options.runtimeVisibility || new RuntimeVisibilityService({ state: this.state });
+  }
 
-    apply() {
-      for (const runtime of this.visibilityRuntimes) {
-        this.runtimeVisibility.apply(runtime);
-      }
+  apply(): void {
+    for (const runtime of this.visibilityRuntimes) {
+      this.runtimeVisibility.apply(runtime);
     }
   }
+}
 
 namespace.application.services.VisibilityService = VisibilityService;

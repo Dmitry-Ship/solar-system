@@ -1,115 +1,136 @@
+import type { Group, SphereGeometry } from "three";
 import { namespace } from "../../../core/namespace";
+import type { BodyRenderer } from "./body-renderer";
+import type {
+  MathApi,
+  OrbitRenderGroupKey,
+  OrbitingBody,
+  Point3,
+  RuntimeThreeModule,
+  SceneData,
+  SceneObjectRuntime,
+  VisibilityStateLike
+} from "../../../types/solar-system";
 
-  const NAMES_TOGGLE_TARGET_GROUPS = new Set(["planets", "dwarfPlanets", "comets"]);
-  const LABEL_OBJECT_TYPE_BY_GROUP_KEY = {
-    planets: "planet",
-    dwarfPlanets: "dwarf-planet",
-    comets: "comet"
-  };
+const NAMES_TOGGLE_TARGET_GROUPS = new Set<OrbitRenderGroupKey>([
+  "planets",
+  "dwarfPlanets",
+  "comets"
+]);
+const LABEL_OBJECT_TYPE_BY_GROUP_KEY: Record<OrbitRenderGroupKey, string> = {
+  planets: "planet",
+  dwarfPlanets: "dwarf-planet",
+  comets: "comet"
+};
+
+interface OrbitRendererOptions {
+  bodyRenderer: BodyRenderer | null;
+  THREE?: RuntimeThreeModule;
+}
 
 export class OrbitRenderer {
-    [key: string]: any;
+  private readonly bodyRenderer: BodyRenderer | null;
+  private readonly THREE: RuntimeThreeModule;
 
-    constructor(options: any) {
-      this.bodyRenderer = options.bodyRenderer;
-      this.THREE = options.THREE || namespace.runtime.THREE;
-      if (!this.THREE) {
-        throw new Error("OrbitRenderer: THREE is required.");
-      }
+  constructor(options: OrbitRendererOptions) {
+    this.bodyRenderer = options.bodyRenderer;
+    const THREE = options.THREE || namespace.runtime.THREE;
+    if (!THREE) {
+      throw new Error("OrbitRenderer: THREE is required.");
+    }
+    this.THREE = THREE;
+  }
+
+  buildOrbitLine(points: Point3[], color: string, opacity: number) {
+    const { THREE } = this;
+    const geometry = new THREE.BufferGeometry();
+    const positionArray = new Float32Array(points.length * 3);
+
+    let offset = 0;
+    for (const point of points) {
+      positionArray[offset] = point.x;
+      positionArray[offset + 1] = point.y;
+      positionArray[offset + 2] = point.z;
+      offset += 3;
     }
 
-    buildOrbitLine(points, color, opacity) {
-      const { THREE } = this;
+    geometry.setAttribute("position", new THREE.BufferAttribute(positionArray, 3));
+    const material = new THREE.LineBasicMaterial({
+      color,
+      transparent: true,
+      opacity
+    });
 
-      const geometry = new THREE.BufferGeometry();
-      const positionArray = new Float32Array(points.length * 3);
+    return new THREE.Line(geometry, material);
+  }
 
-      let offset = 0;
-      for (const point of points) {
-        positionArray[offset] = point.x;
-        positionArray[offset + 1] = point.y;
-        positionArray[offset + 2] = point.z;
-        offset += 3;
-      }
-
-      geometry.setAttribute("position", new THREE.BufferAttribute(positionArray, 3));
-      const material = new THREE.LineBasicMaterial({
-        color,
-        transparent: true,
-        opacity
-      });
-
-      return new THREE.Line(geometry, material);
+  buildOrbitingBodies(
+    sceneData: SceneData,
+    orbitGroup: Group,
+    bodyGroup: Group,
+    bodyGeometry: SphereGeometry,
+    sceneObjectRuntimes: SceneObjectRuntime[],
+    orbitingBodies: OrbitingBody[],
+    math: MathApi
+  ): void {
+    if (!this.bodyRenderer) {
+      throw new Error("OrbitRenderer: bodyRenderer is required for orbiting bodies.");
     }
 
-    buildOrbitingBodies(
-      sceneData,
-      orbitGroup,
-      bodyGroup,
-      bodyGeometry,
-      sceneObjectRuntimes,
-      orbitingBodies,
-      math
-    ) {
-      const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
-      const shouldPopulateOrbitingBodiesOutput = Array.isArray(orbitingBodies);
-      const orbitRenderGroupConfigs =
-        sceneData.orbitRenderGroupConfigs || sceneData.orbitRenderGroups;
-      for (const orbitRenderGroup of orbitRenderGroupConfigs) {
-        const orbitingBodiesInGroup = sceneData[orbitRenderGroup.key] || [];
-        for (const orbitingBody of orbitingBodiesInGroup) {
-          const orbitLine = this.buildOrbitLine(
-            orbitingBody.orbitPath,
-            orbitingBody.orbitColor,
-            orbitingBody.orbitOpacity
-          );
-          orbitGroup.add(orbitLine);
+    const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
+    const orbitRenderGroupConfigs = sceneData.orbitRenderGroupConfigs || sceneData.orbitRenderGroups;
+    for (const orbitRenderGroup of orbitRenderGroupConfigs) {
+      const orbitingBodiesInGroup = sceneData[orbitRenderGroup.key] || [];
+      for (const orbitingBody of orbitingBodiesInGroup) {
+        const orbitLine = this.buildOrbitLine(
+          orbitingBody.orbitPath,
+          orbitingBody.orbitColor,
+          orbitingBody.orbitOpacity
+        );
+        orbitGroup.add(orbitLine);
 
-          const fallbackMinPixelRadius = orbitRenderGroup.key === "planets" ? 1.25 : 1.1;
-          const runtime = this.bodyRenderer.createBodyRuntime(
-            {
-              name: orbitingBody.name,
-              color: orbitingBody.color,
-              renderRadius: orbitingBody.renderRadius,
-              minPixelRadius: orbitingBody.minPixelRadius || fallbackMinPixelRadius,
-              orbitingBody,
-              objectType:
-                LABEL_OBJECT_TYPE_BY_GROUP_KEY[orbitRenderGroup.key] || "orbiting-body",
-              togglesWithNamesButton: NAMES_TOGGLE_TARGET_GROUPS.has(orbitRenderGroup.key)
-            },
-            bodyGroup,
-            bodyGeometry
-          );
+        const fallbackMinPixelRadius = orbitRenderGroup.key === "planets" ? 1.25 : 1.1;
+        const runtime = this.bodyRenderer.createBodyRuntime(
+          {
+            name: orbitingBody.name,
+            color: orbitingBody.color,
+            renderRadius: orbitingBody.renderRadius,
+            minPixelRadius: orbitingBody.minPixelRadius || fallbackMinPixelRadius,
+            orbitingBody,
+            objectType: LABEL_OBJECT_TYPE_BY_GROUP_KEY[orbitRenderGroup.key],
+            togglesWithNamesButton: NAMES_TOGGLE_TARGET_GROUPS.has(orbitRenderGroup.key)
+          },
+          bodyGroup,
+          bodyGeometry
+        );
 
-          math.orbitalPositionInto(
-            orbitalPositionScratch,
-            orbitingBody.orbitRadius,
-            orbitingBody.theta,
-            orbitingBody.inclination,
-            orbitingBody.node,
-            0,
-            orbitingBody.eccentricity,
-            orbitingBody.periapsisArg
-          );
+        math.orbitalPositionInto(
+          orbitalPositionScratch,
+          orbitingBody.orbitRadius,
+          orbitingBody.theta,
+          orbitingBody.inclination,
+          orbitingBody.node,
+          0,
+          orbitingBody.eccentricity,
+          orbitingBody.periapsisArg
+        );
 
-          runtime.mesh.position.set(
-            orbitalPositionScratch.x,
-            orbitalPositionScratch.y,
-            orbitalPositionScratch.z
-          );
+        runtime.mesh.position.set(
+          orbitalPositionScratch.x,
+          orbitalPositionScratch.y,
+          orbitalPositionScratch.z
+        );
 
-          sceneObjectRuntimes.push(runtime);
-          if (shouldPopulateOrbitingBodiesOutput) {
-            orbitingBodies.push(orbitingBody);
-          }
-        }
+        sceneObjectRuntimes.push(runtime);
+        orbitingBodies.push(orbitingBody);
       }
-    }
-
-    applyOrbitVisibility(state, orbitGroup) {
-      if (!orbitGroup) return;
-      orbitGroup.visible = state.showOrbits;
     }
   }
+
+  applyOrbitVisibility(state: Pick<VisibilityStateLike, "showOrbits">, orbitGroup: Group | null): void {
+    if (!orbitGroup) return;
+    orbitGroup.visible = state.showOrbits;
+  }
+}
 
 namespace.infrastructure.three.renderers.OrbitRenderer = OrbitRenderer;

@@ -1,51 +1,49 @@
+export type DependencyFactory<T> = (container: DependencyContainer) => T;
+
 export class DependencyContainer {
-  [key: string]: any;
+  private readonly factories = new Map<string, DependencyFactory<unknown>>();
+  private readonly singletons = new Map<string, unknown>();
 
-  constructor() {
-    this._factories = new Map();
-    this._singletons = new Map();
+  register<T>(key: string, factory: DependencyFactory<T>): void {
+    this.factories.set(key, factory);
+    this.singletons.delete(key);
   }
 
-  register(key, factory) {
-    this._factories.set(key, factory);
-    this._singletons.delete(key);
+  registerInstance<T>(key: string, instance: T): void {
+    this.singletons.set(key, instance);
+    this.factories.delete(key);
   }
 
-  registerInstance(key, instance) {
-    this._singletons.set(key, instance);
-    this._factories.delete(key);
-  }
-
-  get(key) {
-    if (this._singletons.has(key)) {
-      return this._singletons.get(key);
+  get<T>(key: string): T {
+    if (this.singletons.has(key)) {
+      return this.singletons.get(key) as T;
     }
 
-    const factory = this._factories.get(key);
+    const factory = this.factories.get(key);
     if (!factory) {
       throw new Error(`Dependency not registered: ${key}`);
     }
 
-    const instance = factory(this);
-    this._singletons.set(key, instance);
+    const instance = factory(this) as T;
+    this.singletons.set(key, instance);
     return instance;
   }
 
-  has(key) {
-    return this._factories.has(key) || this._singletons.has(key);
+  has(key: string): boolean {
+    return this.factories.has(key) || this.singletons.has(key);
   }
 
-  getOrNull(key) {
+  getOrNull<T>(key: string): T | null {
     if (!this.has(key)) {
       return null;
     }
 
-    return this.get(key);
+    return this.get<T>(key);
   }
 
-  clear() {
-    this._factories.clear();
-    this._singletons.clear();
+  clear(): void {
+    this.factories.clear();
+    this.singletons.clear();
   }
 }
 

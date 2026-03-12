@@ -1,19 +1,22 @@
 import { namespace } from "./namespace";
 
+type ModuleFactory<T> = (registry: ModuleRegistry) => T;
+
+interface ModuleDefinition<T> {
+  factory: ModuleFactory<T>;
+  dependencies: string[];
+  instance: T | null;
+}
+
 export class ModuleRegistry {
-  [key: string]: any;
+  private readonly modules = new Map<string, ModuleDefinition<unknown>>();
 
-  constructor() {
-    this._modules = new Map();
-    this._initialized = false;
+  register<T>(name: string, factory: ModuleFactory<T>, dependencies: string[] = []): void {
+    this.modules.set(name, { factory, dependencies, instance: null });
   }
 
-  register(name, factory, dependencies = []) {
-    this._modules.set(name, { factory, dependencies, instance: null });
-  }
-
-  get(name) {
-    const module = this._modules.get(name);
+  get<T>(name: string): T {
+    const module = this.modules.get(name);
     if (!module) {
       throw new Error(`Module not registered: ${name}`);
     }
@@ -22,19 +25,19 @@ export class ModuleRegistry {
       module.instance = module.factory(this);
     }
 
-    return module.instance;
+    return module.instance as T;
   }
 
-  has(name) {
-    return this._modules.has(name);
+  has(name: string): boolean {
+    return this.modules.has(name);
   }
 
-  getOrNull(name) {
+  getOrNull<T>(name: string): T | null {
     if (!this.has(name)) {
       return null;
     }
 
-    return this.get(name);
+    return this.get<T>(name);
   }
 }
 

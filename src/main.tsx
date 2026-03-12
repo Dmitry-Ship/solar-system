@@ -1,13 +1,12 @@
 import { createRoot } from "react-dom/client";
 import "../styles.css";
 
-const rootElement = document.getElementById("root");
-
-if (!rootElement) {
-  throw new Error('Missing root element with id "root".');
-}
-
 async function bootstrap() {
+  const rootElement = document.getElementById("root");
+  if (!(rootElement instanceof HTMLElement)) {
+    throw new Error('Missing root element with id "root".');
+  }
+
   try {
     const { default: App } = await import("./App");
     createRoot(rootElement).render(<App />);
