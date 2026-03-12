@@ -492,7 +492,8 @@
   const TRAJECTORY_DEFINITIONS = [
     {
       name: "61 Cygni Transfer",
-      label: "61 Cygni trajectory",
+      label: "",
+      visibilityLabel: "61 Cygni trajectory",
       launchMarkerName: "61 Cygni",
       firstFocalMarkerName: "Gliese 300",
       secondFocalMarkerName: "61 Cygni",

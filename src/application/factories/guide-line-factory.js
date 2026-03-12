@@ -499,17 +499,32 @@
     );
     appendUniquePoint(points, secondFocalEndPoint);
 
+    const trajectoryLabel =
+      typeof trajectoryDefinition.label === "string"
+        ? trajectoryDefinition.label.trim()
+        : trajectoryDefinition.name;
+    const trajectoryVisibilityLabel =
+      typeof trajectoryDefinition.visibilityLabel === "string" &&
+      trajectoryDefinition.visibilityLabel.trim()
+        ? trajectoryDefinition.visibilityLabel.trim()
+        : trajectoryLabel || trajectoryDefinition.name;
+    const trajectoryVisibilityControlLabel =
+      typeof trajectoryDefinition.visibilityControlLabel === "string" &&
+      trajectoryDefinition.visibilityControlLabel.trim()
+        ? trajectoryDefinition.visibilityControlLabel.trim()
+        : trajectoryVisibilityLabel;
+
     return buildDirectionalGuideLine(launchMarker, trajectoryDefinition.color || "#ffd36e", {
       points,
       opacity: 0.94,
       depthTest: false,
       visibilityKey: buildTrajectoryVisibilityKey(trajectoryDefinition.name),
-      visibilityLabel: trajectoryDefinition.label || trajectoryDefinition.name,
-      visibilityControlLabel: trajectoryDefinition.label || trajectoryDefinition.name,
+      visibilityLabel: trajectoryVisibilityLabel,
+      visibilityControlLabel: trajectoryVisibilityControlLabel,
       visibilityGroupKey: "trajectories",
       visibilityGroupLabel: "Trajectories",
       initialVisibility: true,
-      label: trajectoryDefinition.label || trajectoryDefinition.name,
+      label: trajectoryLabel,
       labelAnchorPoint: firstFocalMidpoint,
       labelMarginPixels: 10
     });
