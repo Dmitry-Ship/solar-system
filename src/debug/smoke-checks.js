@@ -61,10 +61,6 @@
       sceneData = namespace.data.createSceneData();
       const hasStars =
         sceneData.stars?.positions instanceof Float32Array && sceneData.stars.count > 0;
-      const hasOortCloud =
-        !!sceneData.oortCloud &&
-        sceneData.oortCloud.positions instanceof Float32Array &&
-        sceneData.oortCloud.particleCount > 0;
       const validSceneData =
         Array.isArray(sceneData.planets) &&
         sceneData.planets.length > 0 &&
@@ -72,8 +68,7 @@
         sceneData.dwarfPlanets.length > 0 &&
         Array.isArray(sceneData.comets) &&
         sceneData.comets.length > 0 &&
-        hasStars &&
-        hasOortCloud;
+        hasStars;
       results.push(
         createResult(
           "Scene Assembly",

@@ -57,30 +57,6 @@
       particleGroup.add(stars);
     }
 
-    buildOortCloud(sceneData, particleGroup) {
-      const { THREE } = this;
-
-      const oortCloud = sceneData.oortCloud;
-      const positions = oortCloud.positions;
-
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-
-      const oortCloudPoints = new THREE.Points(
-        geometry,
-        new THREE.PointsMaterial({
-          color: oortCloud.color,
-          size: 3,
-          transparent: true,
-          opacity: Math.min(0.1, oortCloud.alpha * 0.75),
-          sizeAttenuation: true,
-          depthWrite: false
-        })
-      );
-
-      particleGroup.add(oortCloudPoints);
-    }
-
     buildAsteroidBelts(sceneData, particleGroup, beltRuntimes, math, orbitalPositionScratch) {
       const { THREE } = this;
 

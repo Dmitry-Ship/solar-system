@@ -63,7 +63,6 @@
 
     build(sceneData) {
       this.particleRenderer.buildStarField(sceneData, this.particleGroup);
-      this.particleRenderer.buildOortCloud(sceneData, this.particleGroup);
       this.guideRenderer.buildGuideLines(
         sceneData,
         this.guideLineGroup,

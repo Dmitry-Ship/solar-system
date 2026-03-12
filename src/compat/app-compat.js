@@ -129,11 +129,6 @@
     renderer.buildStarField(sceneData, particleGroup);
   };
 
-  app.buildOortCloud = function buildOortCloud(sceneData, particleGroup) {
-    const renderer = new ParticleRenderer({ THREE });
-    renderer.buildOortCloud(sceneData, particleGroup);
-  };
-
   app.buildAsteroidBelts = function buildAsteroidBelts(
     sceneData,
     particleGroup,

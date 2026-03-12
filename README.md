@@ -29,7 +29,7 @@ Runtime-critical scene data is now assembled into packed numeric stores where it
 
 - orbiting body motion uses a shared `sceneData.orbitingBodyMotionState` store
 - asteroid belts keep packed orbital element arrays plus a shared position buffer
-- stars and the Oort cloud are emitted as point-cloud position buffers instead of object-per-point collections
+- stars are emitted as point-cloud position buffers instead of object-per-point collections
 
 The legacy `window.SolarSystem` entry points remain intact, while renderers and simulation services consume the denser layouts directly.
 

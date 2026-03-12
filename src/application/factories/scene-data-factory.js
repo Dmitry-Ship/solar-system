@@ -141,31 +141,6 @@
       };
     }
 
-    createOortCloud(cloudConfig) {
-      const particleCount = cloudConfig.count;
-      const positions = new Float32Array(particleCount * 3);
-      const innerCubed = Math.pow(cloudConfig.innerAu, 3);
-      const outerCubed = Math.pow(cloudConfig.outerAu, 3);
-
-      for (let index = 0; index < particleCount; index += 1) {
-        const radius = Math.cbrt(innerCubed + this.random() * (outerCubed - innerCubed));
-        const theta = this.random() * Math.PI * 2;
-        const yUnit = this.random() * 2 - 1;
-        const radial = Math.sqrt(Math.max(0, 1 - yUnit * yUnit));
-        const positionOffset = index * 3;
-
-        positions[positionOffset] = radius * radial * Math.cos(theta);
-        positions[positionOffset + 1] = radius * yUnit;
-        positions[positionOffset + 2] = radius * radial * Math.sin(theta);
-      }
-
-      return {
-        ...cloudConfig,
-        particleCount,
-        positions
-      };
-    }
-
     createStars(count) {
       const positions = new Float32Array(count * 3);
 
@@ -302,7 +277,6 @@
         asteroidBelts: this.beltCatalog.ASTEROID_BELT_CONFIGS.map((beltConfig) =>
           this.createAsteroidBelt(beltConfig)
         ),
-        oortCloud: this.createOortCloud(this.beltCatalog.OORT_CLOUD_CONFIG),
         stars: this.createStars(1700)
       };
     }

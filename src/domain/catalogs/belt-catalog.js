@@ -7,8 +7,6 @@
 
   const STAR_DISTANCE_MIN_AU = constants.SCENE_OUTER_AU * 3.8;
   const STAR_DISTANCE_MAX_AU = constants.SCENE_OUTER_AU * (3.8 + 4.5);
-  const OORT_CLOUD_COLOR = "#d4e4ff";
-
   const ASTEROID_BELT_CONFIGS = [
     {
       name: "Main Belt",
@@ -37,14 +35,6 @@
     }
   ];
 
-  const OORT_CLOUD_CONFIG = {
-    innerAu: 2000,
-    outerAu: constants.SCENE_OUTER_AU,
-    count: 70000,
-    color: OORT_CLOUD_COLOR,
-    alpha: 0.2
-  };
-
   const ORBIT_RENDER_GROUPS = [
     {
       key: "planets",
@@ -67,7 +57,6 @@
     STAR_DISTANCE_MIN_AU,
     STAR_DISTANCE_MAX_AU,
     ASTEROID_BELT_CONFIGS,
-    OORT_CLOUD_CONFIG,
     ORBIT_RENDER_GROUPS
   });
 })();
