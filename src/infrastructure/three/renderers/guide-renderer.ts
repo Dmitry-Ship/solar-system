@@ -11,13 +11,13 @@ import { RuntimeThree } from "../../../runtime/three-globals";
 import type {
   DirectionalGuideLine,
   GuideRuntime,
-  LabelLayerLike,
   Point3,
   RuntimeThreeModule,
   SceneData,
   SceneObjectRuntime,
   VisibilityRuntime
 } from "../../../types/solar-system";
+import type { LabelLayerLike } from "../../dom/labels-layer";
 
 const LIGHT_RAY_MIN_AXIS_LENGTH = 1e-6;
 const LIGHT_RAY_MIN_VISIBLE_RADIUS = 1e-6;

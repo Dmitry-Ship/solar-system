@@ -1,21 +1,21 @@
 import { buildDirectionalGuideLines } from "./guide-line-factory";
+import type { BeltCatalog } from "../../domain/catalogs/belt-catalog";
+import type { CometCatalog } from "../../domain/catalogs/comet-catalog";
+import type { DwarfPlanetCatalog } from "../../domain/catalogs/dwarf-planet-catalog";
+import type { MarkerCatalog } from "../../domain/catalogs/marker-catalog";
+import type { PlanetCatalog } from "../../domain/catalogs/planet-catalog";
+import type { SceneBodyCatalog } from "../../domain/catalogs/scene-body-catalog";
 import type {
   AsteroidBelt,
   AsteroidBeltConfig,
-  BeltCatalog,
-  CometCatalog,
   DirectionalMarker,
   DriftingBody,
   DriftingBodyDefinition,
-  DwarfPlanetCatalog,
-  MarkerCatalog,
   MathApi,
   OrbitRenderGroupConfig,
   OrbitingBody,
   OrbitingBodyDefinition,
-  PlanetCatalog,
   Point3,
-  RawDefinitions,
   SceneData,
   SimulationConstants,
   StarField,
@@ -34,7 +34,7 @@ interface SceneDataFactoryOptions {
   cometCatalog: CometCatalog;
   markerCatalog: MarkerCatalog;
   beltCatalog: BeltCatalog;
-  rawDefinitions: RawDefinitions;
+  sceneBodyCatalog: SceneBodyCatalog;
 }
 
 export class SceneDataFactory {
@@ -46,7 +46,7 @@ export class SceneDataFactory {
   private readonly cometCatalog: CometCatalog;
   private readonly markerCatalog: MarkerCatalog;
   private readonly beltCatalog: BeltCatalog;
-  private readonly rawDefinitions: RawDefinitions;
+  private readonly sceneBodyCatalog: SceneBodyCatalog;
 
   constructor(options: SceneDataFactoryOptions) {
     this.constants = options.constants;
@@ -57,7 +57,7 @@ export class SceneDataFactory {
     this.cometCatalog = options.cometCatalog;
     this.markerCatalog = options.markerCatalog;
     this.beltCatalog = options.beltCatalog;
-    this.rawDefinitions = options.rawDefinitions;
+    this.sceneBodyCatalog = options.sceneBodyCatalog;
   }
 
   createOrbitingBody(bodyDefinition: OrbitingBodyDefinition): OrbitingBody {
@@ -307,8 +307,10 @@ export class SceneDataFactory {
       comets,
       orbitRenderGroupConfigs,
       orbitRenderGroups: orbitRenderGroupConfigs,
-      voyagers: this.createVoyagerSceneBodies(this.rawDefinitions.VOYAGERS),
-      driftingBodies: this.createRenderableDriftingBodies(this.rawDefinitions.DRIFTING_BODIES),
+      voyagers: this.createVoyagerSceneBodies(this.sceneBodyCatalog.VOYAGERS),
+      driftingBodies: this.createRenderableDriftingBodies(
+        this.sceneBodyCatalog.DRIFTING_BODIES
+      ),
       directionalMarkers,
       directionalGuideLines,
       asteroidBelts: this.beltCatalog.ASTEROID_BELT_CONFIGS.map((beltConfig) =>

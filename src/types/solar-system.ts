@@ -30,14 +30,6 @@ export interface OrbitPlanePoint {
   z: number;
 }
 
-export interface LabelOptions {
-  objectType?: string;
-}
-
-export interface LabelLayerLike {
-  createLabel(text: string, options?: LabelOptions): HTMLDivElement | null;
-}
-
 export interface SimulationConstants {
   SCENE_OUTER_AU: number;
   SOLAR_GRAVITATIONAL_LENS_AU: number;
@@ -159,13 +151,6 @@ export interface StarField {
   positions: Float32Array;
 }
 
-export interface MatryoshkaConeLayerDefinition {
-  lengthExtensionAu: number;
-  maxWidthScale: number;
-  tipRadiusScale: number;
-  focalOffsetAu: number;
-}
-
 export interface DirectionalGuideLine {
   points: Point3[];
   color: string;
@@ -188,47 +173,6 @@ export interface DirectionalGuideLine {
   label: string;
   labelAnchorPoint: Point3 | null;
   labelMarginPixels?: number;
-}
-
-export interface RawDefinitions {
-  PLANET_DEFINITIONS: OrbitingBodyDefinition[];
-  DWARF_PLANET_DEFINITIONS: OrbitingBodyDefinition[];
-  COMET_DEFINITIONS: OrbitingBodyDefinition[];
-  VOYAGERS: VoyagerDefinition[];
-  DRIFTING_BODIES: DriftingBodyDefinition[];
-  DIRECTIONAL_MARKER_DEFINITIONS: DirectionalMarkerDefinition[];
-  TRAJECTORY_DEFINITIONS: TrajectoryDefinition[];
-}
-
-export interface PlanetCatalog {
-  PLANET_DEFINITIONS: OrbitingBodyDefinition[];
-}
-
-export interface DwarfPlanetCatalog {
-  DWARF_PLANET_DEFINITIONS: OrbitingBodyDefinition[];
-}
-
-export interface CometCatalog {
-  COMET_DEFINITIONS: OrbitingBodyDefinition[];
-}
-
-export interface MarkerCatalog {
-  DIRECTIONAL_MARKER_DEFINITIONS: DirectionalMarkerDefinition[];
-  TRAJECTORY_DEFINITIONS: TrajectoryDefinition[];
-  DIRECTIONAL_CONE_MAX_WIDTH_AU: number;
-  DIRECTIONAL_CONE_TIP_RADIUS_AU: number;
-  DIRECTIONAL_SOURCE_CONE_COLOR: string;
-  DIRECTIONAL_SOURCE_CONE_DASH_PATTERN: number[];
-  DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU: number;
-  MATRYOSHKA_CONE_ALPHA: number;
-  MATRYOSHKA_CONE_LAYER_DEFINITIONS: MatryoshkaConeLayerDefinition[];
-}
-
-export interface BeltCatalog {
-  STAR_DISTANCE_MIN_AU: number;
-  STAR_DISTANCE_MAX_AU: number;
-  ASTEROID_BELT_CONFIGS: AsteroidBeltConfig[];
-  ORBIT_RENDER_GROUPS: OrbitRenderGroupConfig[];
 }
 
 export interface MathApi {
@@ -310,19 +254,6 @@ export interface SceneDataApi {
   createSceneData(): SceneData;
 }
 
-export interface VisibilityControl {
-  key: string;
-  label: string;
-  initialVisibility: boolean;
-  groupKey: string;
-}
-
-export interface VisibilityControlGroup {
-  key: string;
-  label: string;
-  controls: VisibilityControl[];
-}
-
 export interface VisibilityRuntime {
   visibilityKey?: string;
   visibilityLabel?: string;
@@ -391,30 +322,6 @@ export interface BodyRenderConfig {
   labelAnchorPosition?: Point3;
   labelAnchorRadius?: number;
   labelMarginPixels?: number;
-}
-
-export interface HudHandle {
-  updateZoomToggleLabel: () => void;
-}
-
-export interface VisibilityControlRenderCallbacks {
-  onRegisterControl?: (visibilityControl: VisibilityControl) => void;
-  onToggleControl?: (visibilityControl: VisibilityControl) => boolean;
-  isControlVisible?: (visibilityControl: VisibilityControl) => boolean;
-}
-
-export interface HudElements {
-  zoomToggleButton: HTMLButtonElement | null;
-  namesToggleButton: HTMLButtonElement | null;
-  orbitToggleButton: HTMLButtonElement | null;
-  visibilityControlsRoot: HTMLElement | null;
-}
-
-export interface AppRuntimeLike {
-  start(): void;
-  stop(): void;
-  resize(): void;
-  dispose(): void;
 }
 
 export interface ComposerLike {

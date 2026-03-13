@@ -9,7 +9,10 @@ import { constants as defaultConstants } from "../compat/constants-compat";
 import { data as defaultData } from "../compat/data-compat";
 import { math as defaultMath } from "../compat/math-compat";
 import { LabelsLayer } from "../infrastructure/dom/labels-layer";
-import { HudController } from "../infrastructure/dom/hud-controller";
+import {
+  HudController,
+  type HudHandle
+} from "../infrastructure/dom/hud-controller";
 import { BodyRenderer } from "../infrastructure/three/renderers/body-renderer";
 import { OrbitRenderer } from "../infrastructure/three/renderers/orbit-renderer";
 import { ParticleRenderer } from "../infrastructure/three/renderers/particle-renderer";
@@ -18,7 +21,6 @@ import { PostprocessingRenderer } from "../infrastructure/three/renderers/postpr
 import { setInitialCameraPlacement } from "../infrastructure/three/controllers/camera-controller";
 import { RuntimeThree } from "./three-globals";
 import type {
-  HudHandle,
   MathApi,
   RuntimeThreeModule,
   SceneData,

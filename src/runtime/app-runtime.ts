@@ -1,4 +1,9 @@
-import type { AppRuntimeLike } from "../types/solar-system";
+export interface AppRuntimeLike {
+  start(): void;
+  stop(): void;
+  resize(): void;
+  dispose(): void;
+}
 
 let activeAppInstance: AppRuntimeLike | null = null;
 

@@ -6,8 +6,15 @@ import { OrbitRenderer } from "../infrastructure/three/renderers/orbit-renderer"
 import { ParticleRenderer } from "../infrastructure/three/renderers/particle-renderer";
 import { GuideRenderer } from "../infrastructure/three/renderers/guide-renderer";
 import { PostprocessingRenderer } from "../infrastructure/three/renderers/postprocessing-renderer";
-import { LabelsLayer } from "../infrastructure/dom/labels-layer";
-import { HudController } from "../infrastructure/dom/hud-controller";
+import {
+  LabelsLayer,
+  type LabelLayerLike,
+  type LabelOptions
+} from "../infrastructure/dom/labels-layer";
+import {
+  HudController,
+  type HudHandle
+} from "../infrastructure/dom/hud-controller";
 import { setInitialCameraPlacement as applyInitialCameraPlacement } from "../infrastructure/three/controllers/camera-controller";
 import { VisibilityService } from "../application/services/visibility-service";
 import { LabelProjectionService } from "../application/services/label-projection-service";
@@ -16,9 +23,6 @@ import type {
   BodyRenderConfig,
   DirectionalGuideLine,
   GuideRuntime,
-  HudHandle,
-  LabelLayerLike,
-  LabelOptions,
   MathApi,
   PostprocessingConfig,
   RuntimeThreeModule,

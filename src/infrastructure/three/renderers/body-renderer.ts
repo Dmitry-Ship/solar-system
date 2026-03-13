@@ -10,11 +10,11 @@ import type {
 import { RuntimeThree } from "../../../runtime/three-globals";
 import type {
   BodyRenderConfig,
-  LabelLayerLike,
   RuntimeThreeModule,
   SceneData,
   SceneObjectRuntime
 } from "../../../types/solar-system";
+import type { LabelLayerLike } from "../../dom/labels-layer";
 
 interface BodyRendererOptions {
   labelsLayer: LabelLayerLike;

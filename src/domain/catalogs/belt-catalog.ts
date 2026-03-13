@@ -1,5 +1,15 @@
 import { SIMULATION_CONSTANTS } from "../constants/simulation-constants";
-import type { AsteroidBeltConfig, BeltCatalog, OrbitRenderGroupConfig } from "../../types/solar-system";
+import type {
+  AsteroidBeltConfig,
+  OrbitRenderGroupConfig
+} from "../../types/solar-system";
+
+export interface BeltCatalog {
+  STAR_DISTANCE_MIN_AU: number;
+  STAR_DISTANCE_MAX_AU: number;
+  ASTEROID_BELT_CONFIGS: AsteroidBeltConfig[];
+  ORBIT_RENDER_GROUPS: OrbitRenderGroupConfig[];
+}
 
 const STAR_DISTANCE_MIN_AU = SIMULATION_CONSTANTS.SCENE_OUTER_AU * 3.8;
 const STAR_DISTANCE_MAX_AU = SIMULATION_CONSTANTS.SCENE_OUTER_AU * (3.8 + 4.5);

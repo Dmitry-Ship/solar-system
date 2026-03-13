@@ -3,11 +3,14 @@ import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js
 import { VisibilityControlGroupFactory } from "../../application/factories/visibility-control-group-factory";
 import { HudView } from "./hud-view";
 import type {
-  HudHandle,
   MathApi,
   VisibilityRuntime,
   VisibilityStateLike
 } from "../../types/solar-system";
+
+export interface HudHandle {
+  updateZoomToggleLabel: () => void;
+}
 
 interface HudControllerOptions {
   state: VisibilityStateLike;

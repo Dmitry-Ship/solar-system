@@ -1,4 +1,10 @@
-import type { LabelLayerLike, LabelOptions } from "../../types/solar-system";
+export interface LabelOptions {
+  objectType?: string;
+}
+
+export interface LabelLayerLike {
+  createLabel(text: string, options?: LabelOptions): HTMLDivElement | null;
+}
 
 export class LabelsLayer implements LabelLayerLike {
   private layerElement: HTMLDivElement | null = null;

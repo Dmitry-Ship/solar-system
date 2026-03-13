@@ -1,9 +1,11 @@
 import type {
+  MarkerCatalog,
+  MatryoshkaConeLayerDefinition
+} from "../../domain/catalogs/marker-catalog";
+import type {
   DirectionalGuideLine,
   DirectionalMarker,
-  MarkerCatalog,
   MathApi,
-  MatryoshkaConeLayerDefinition,
   Point3,
   SimulationConstants,
   TrajectoryDefinition

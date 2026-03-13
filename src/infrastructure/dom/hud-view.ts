@@ -1,8 +1,20 @@
 import type {
-  HudElements,
-  VisibilityControlGroup,
-  VisibilityControlRenderCallbacks
-} from "../../types/solar-system";
+  VisibilityControl,
+  VisibilityControlGroup
+} from "../../application/factories/visibility-control-group-factory";
+
+export interface VisibilityControlRenderCallbacks {
+  onRegisterControl?: (visibilityControl: VisibilityControl) => void;
+  onToggleControl?: (visibilityControl: VisibilityControl) => boolean;
+  isControlVisible?: (visibilityControl: VisibilityControl) => boolean;
+}
+
+export interface HudElements {
+  zoomToggleButton: HTMLButtonElement | null;
+  namesToggleButton: HTMLButtonElement | null;
+  orbitToggleButton: HTMLButtonElement | null;
+  visibilityControlsRoot: HTMLElement | null;
+}
 
 interface HudViewOptions {
   document?: Document;
