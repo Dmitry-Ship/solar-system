@@ -20,8 +20,7 @@ bun run build
 - `src/domain`: immutable constants/catalogs, orbital math utilities, and domain models.
 - `src/application`: scene-data factories, state, simulation services, and update system.
 - `src/infrastructure`: Three.js renderers/controllers and DOM adapters.
-- `src/compat`: compatibility facades that expose the public `constants`, `math`, `data`, and `app` APIs as plain module exports.
-- `src/runtime`: Three.js package wiring, composition root (`SolarSystemApplication`), and bootstrapping.
+- `src/runtime`: Three.js package wiring, the public runtime API surface, composition root (`SolarSystemApplication`), and bootstrapping.
 - `src/debug`: smoke-check harness exported as `runSmokeChecks()`.
 - `src/App.tsx`: React shell that hosts the canvas and HUD DOM expected by the runtime.
 
@@ -44,7 +43,7 @@ Runtime-critical scene data is now assembled into packed numeric stores where it
 - asteroid belts keep packed orbital element arrays plus a shared position buffer
 - stars are emitted as point-cloud position buffers instead of object-per-point collections
 
-The compatibility exports remain available for external consumers, while renderers and simulation services consume the denser layouts directly.
+The public exports remain available for external consumers, while renderers and simulation services consume the denser layouts directly.
 
 ## Smoke checks
 

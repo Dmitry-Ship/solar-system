@@ -1,8 +1,5 @@
-import { app } from "../compat/app-compat";
-import { constants } from "../compat/constants-compat";
-import { data } from "../compat/data-compat";
-import { math } from "../compat/math-compat";
 import { getAppInstance } from "../runtime/app-runtime";
+import { app, constants, data, math } from "../runtime/public-api";
 import type { MathApi, Point3, SceneData } from "../types/solar-system";
 
 interface SmokeCheckResult {

@@ -1,6 +1,16 @@
 import type { Group, PerspectiveCamera, SphereGeometry, Vector3 } from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { RuntimeThree } from "../runtime/three-globals";
+import { SIMULATION_CONSTANTS } from "../domain/constants/simulation-constants";
+import { OrbitalMath } from "../domain/math/orbital-math";
+import { planetCatalog } from "../domain/catalogs/planet-catalog";
+import { dwarfPlanetCatalog } from "../domain/catalogs/dwarf-planet-catalog";
+import { cometCatalog } from "../domain/catalogs/comet-catalog";
+import { markerCatalog } from "../domain/catalogs/marker-catalog";
+import { beltCatalog } from "../domain/catalogs/belt-catalog";
+import { sceneBodyCatalog } from "../domain/catalogs/scene-body-catalog";
+import { SceneDataFactory } from "../application/factories/scene-data-factory";
+import { VisibilityService } from "../application/services/visibility-service";
+import { LabelProjectionService } from "../application/services/label-projection-service";
 import { BodyRenderer } from "../infrastructure/three/renderers/body-renderer";
 import { OrbitRenderer } from "../infrastructure/three/renderers/orbit-renderer";
 import { ParticleRenderer } from "../infrastructure/three/renderers/particle-renderer";
@@ -16,8 +26,7 @@ import {
   type HudHandle
 } from "../infrastructure/dom/hud-controller";
 import { setInitialCameraPlacement as applyInitialCameraPlacement } from "../infrastructure/three/controllers/camera-controller";
-import { VisibilityService } from "../application/services/visibility-service";
-import { LabelProjectionService } from "../application/services/label-projection-service";
+import { RuntimeThree } from "./three-globals";
 import type {
   BeltRuntime,
   BodyRenderConfig,
@@ -25,15 +34,34 @@ import type {
   GuideRuntime,
   MathApi,
   PostprocessingConfig,
-  RuntimeThreeModule,
   SceneData,
+  SceneDataApi,
   SceneObjectRuntime,
   SimulationConstants,
   VisibilityRuntime,
   VisibilityStateLike
 } from "../types/solar-system";
 
-const THREE: RuntimeThreeModule = RuntimeThree;
+const THREE = RuntimeThree;
+
+export const constants = SIMULATION_CONSTANTS;
+export const math: MathApi = OrbitalMath;
+
+export const sceneDataFactory = new SceneDataFactory({
+  constants: SIMULATION_CONSTANTS,
+  math: OrbitalMath,
+  planetCatalog,
+  dwarfPlanetCatalog,
+  cometCatalog,
+  markerCatalog,
+  beltCatalog,
+  sceneBodyCatalog,
+  random: Math.random
+});
+
+export const data: SceneDataApi = {
+  createSceneData: sceneDataFactory.createSceneData.bind(sceneDataFactory)
+};
 
 function createLabelAdapter(layer: HTMLElement): LabelLayerLike {
   return {
@@ -221,7 +249,7 @@ function setupHudControls(
   controls: OrbitControls,
   guideRuntimes: VisibilityRuntime[],
   camera: PerspectiveCamera,
-  math: Pick<MathApi, "clamp">,
+  mathApi: Pick<MathApi, "clamp">,
   orbitGroup: Group | null,
   requestRender?: () => void
 ): HudHandle {
@@ -231,7 +259,7 @@ function setupHudControls(
     orbitGroup,
     visibilityRuntimes: guideRuntimes,
     camera,
-    math,
+    math: mathApi,
     onOrbitVisibilityChanged: applyOrbitVisibility,
     onVisibilityChanged: applyGuideLineVisibility,
     requestRender

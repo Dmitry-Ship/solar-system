@@ -5,9 +5,6 @@ import { SceneRuntimeSystem } from "../application/systems/scene-runtime-system"
 import { VisibilityService } from "../application/services/visibility-service";
 import { LabelProjectionService } from "../application/services/label-projection-service";
 import { RuntimeVisibilityService } from "../application/services/runtime-visibility-service";
-import { constants as defaultConstants } from "../compat/constants-compat";
-import { data as defaultData } from "../compat/data-compat";
-import { math as defaultMath } from "../compat/math-compat";
 import { LabelsLayer } from "../infrastructure/dom/labels-layer";
 import {
   HudController,
@@ -19,6 +16,7 @@ import { ParticleRenderer } from "../infrastructure/three/renderers/particle-ren
 import { GuideRenderer } from "../infrastructure/three/renderers/guide-renderer";
 import { PostprocessingRenderer } from "../infrastructure/three/renderers/postprocessing-renderer";
 import { setInitialCameraPlacement } from "../infrastructure/three/controllers/camera-controller";
+import { constants as defaultConstants, data as defaultData, math as defaultMath } from "./public-api";
 import { RuntimeThree } from "./three-globals";
 import type {
   MathApi,
@@ -53,7 +51,6 @@ export class SolarSystemApplication {
   private readonly document: Document;
   private readonly hostWindow: Window | null;
   private readonly constants: SimulationConstants;
-  private readonly sceneDataApi: SceneDataApi;
   private readonly math: MathApi;
   private readonly THREE: RuntimeThreeModule;
   private initialized = false;
@@ -84,7 +81,7 @@ export class SolarSystemApplication {
 
   constructor(options: SolarSystemApplicationOptions = {}) {
     const constants = options.constants ?? defaultConstants;
-    const sceneDataApi = options.data ?? defaultData;
+    const data = options.data ?? defaultData;
     const math = options.math ?? defaultMath;
     const THREE = options.THREE ?? RuntimeThree;
 
@@ -92,8 +89,7 @@ export class SolarSystemApplication {
     this.document = options.document || document;
     this.hostWindow = options.window || this.document.defaultView;
     this.constants = constants;
-    this.sceneDataApi = sceneDataApi;
-    this.data = this.sceneDataApi;
+    this.data = data;
     this.math = math;
     this.THREE = THREE;
 
@@ -239,7 +235,7 @@ export class SolarSystemApplication {
   }
 
   initializeState(): void {
-    this.sceneData = this.sceneDataApi.createSceneData();
+    this.sceneData = this.data.createSceneData();
     this.state = new AppState();
   }
 
