@@ -53,12 +53,7 @@ export class SceneRuntimeSystem {
     orbitingBodies: OrbitingBody[];
 
     constructor(options: SceneRuntimeSystemOptions) {
-      const THREE = options.THREE || RuntimeThree;
-      if (!THREE) {
-        throw new Error("SceneRuntimeSystem: THREE is required.");
-      }
-
-      this.THREE = THREE;
+      this.THREE = options.THREE ?? RuntimeThree;
       this.scene = options.scene;
       this.constants = options.constants;
       this.math = options.math;
@@ -94,10 +89,11 @@ export class SceneRuntimeSystem {
     }
 
     initialize(): this {
-      Object.assign(this, this.createSceneGroups());
-      if (!this.orbitGroup || !this.guideLineGroup || !this.particleGroup || !this.bodyGroup) {
-        throw new Error("SceneRuntimeSystem: failed to initialize scene groups.");
-      }
+      const { orbitGroup, guideLineGroup, particleGroup, bodyGroup } = this.createSceneGroups();
+      this.orbitGroup = orbitGroup;
+      this.guideLineGroup = guideLineGroup;
+      this.particleGroup = particleGroup;
+      this.bodyGroup = bodyGroup;
       this.scene.add(this.orbitGroup);
       this.scene.add(this.guideLineGroup);
       this.scene.add(this.particleGroup);
@@ -160,7 +156,7 @@ export class SceneRuntimeSystem {
           renderRadius: this.constants.SUN_RADIUS_KM / this.constants.KM_PER_AU,
           minPixelRadius: 2.6,
           fixedPosition: { x: 0, y: 0, z: 0 },
-          emissive: true
+          emissive: true,
         },
         this.bodyGroup,
         this.bodyGeometry

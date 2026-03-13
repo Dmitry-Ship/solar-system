@@ -6,7 +6,6 @@ import type {
   Object3D,
   PerspectiveCamera,
   Points,
-  PointsMaterial,
   Scene,
   ShaderMaterial,
   SphereGeometry,

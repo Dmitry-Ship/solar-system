@@ -17,30 +17,25 @@ export class PostprocessingRenderer {
   private readonly finalComposer: ComposerLike;
 
   constructor(config: PostprocessingConfig) {
-    const THREE = config.THREE || RuntimeThree;
-    if (!THREE) {
-      throw new Error("PostprocessingRenderer: missing THREE.");
-    }
-
-    this.THREE = THREE;
+    this.THREE = config.THREE ?? RuntimeThree;
     this.config = config;
-    this.bloomLayer = new THREE.Layers();
+    this.bloomLayer = new this.THREE.Layers();
     this.bloomLayer.set(BLOOM_LAYER_INDEX);
     this.savedVisibility = Object.create(null) as Record<string, boolean>;
 
-    this.bloomComposer = new THREE.EffectComposer(config.renderer);
+    this.bloomComposer = new this.THREE.EffectComposer(config.renderer);
     this.bloomComposer.renderToScreen = false;
-    this.bloomComposer.addPass(new THREE.RenderPass(config.scene, config.camera));
-    const bloomPass = new THREE.UnrealBloomPass(
-      new THREE.Vector2(config.width, config.height),
+    this.bloomComposer.addPass(new this.THREE.RenderPass(config.scene, config.camera));
+    const bloomPass = new this.THREE.UnrealBloomPass(
+      new this.THREE.Vector2(config.width, config.height),
       config.bloomStrength,
       config.bloomRadius,
       config.bloomThreshold
     );
     this.bloomComposer.addPass(bloomPass);
 
-    const mixPass = new THREE.ShaderPass(
-      new THREE.ShaderMaterial({
+    const mixPass = new this.THREE.ShaderPass(
+      new this.THREE.ShaderMaterial({
         uniforms: {
           baseTexture: { value: null },
           bloomTexture: { value: this.bloomComposer.renderTarget2.texture }
@@ -69,8 +64,8 @@ export class PostprocessingRenderer {
     );
     mixPass.needsSwap = true;
 
-    this.finalComposer = new THREE.EffectComposer(config.renderer);
-    this.finalComposer.addPass(new THREE.RenderPass(config.scene, config.camera));
+    this.finalComposer = new this.THREE.EffectComposer(config.renderer);
+    this.finalComposer.addPass(new this.THREE.RenderPass(config.scene, config.camera));
     this.finalComposer.addPass(mixPass);
 
     this.hideNonBloomObjects = this.hideNonBloomObjects.bind(this);

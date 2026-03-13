@@ -27,11 +27,7 @@ export class LabelProjectionService {
   private readonly runtimeVisibility: RuntimeVisibilityService;
 
   constructor(options: LabelProjectionServiceOptions) {
-    const THREE = options.THREE || RuntimeThree;
-    if (!THREE) {
-      throw new Error("LabelProjectionService: missing THREE.");
-    }
-
+    const THREE = options.THREE ?? RuntimeThree;
     this.renderer = options.renderer;
     this.camera = options.camera;
     this.sceneObjectRuntimes = options.sceneObjectRuntimes || options.bodyRuntimes || [];

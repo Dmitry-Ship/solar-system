@@ -14,15 +14,15 @@ export class RuntimeVisibilityService {
     }
 
     resolveVisibilityTarget(runtime: VisibilityRuntime): { visible: boolean } | null {
-      if (runtime?.visibilityTarget) return runtime.visibilityTarget;
-      if (runtime?.object) return runtime.object;
-      if (runtime?.mesh) return runtime.mesh;
+      if (runtime.visibilityTarget) return runtime.visibilityTarget;
+      if (runtime.object) return runtime.object;
+      if (runtime.mesh) return runtime.mesh;
       return null;
     }
 
     isRuntimeVisible(runtime: VisibilityRuntime): boolean {
-      const defaultVisibility = runtime?.defaultVisible ?? true;
-      if (typeof runtime?.visibilityKey !== "string" || !runtime.visibilityKey) {
+      const defaultVisibility = runtime.defaultVisible ?? true;
+      if (typeof runtime.visibilityKey !== "string" || !runtime.visibilityKey) {
         return Boolean(defaultVisibility);
       }
 

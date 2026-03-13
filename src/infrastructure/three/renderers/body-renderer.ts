@@ -27,11 +27,7 @@ export class BodyRenderer {
 
   constructor(options: BodyRendererOptions) {
     this.labelsLayer = options.labelsLayer;
-    const THREE = options.THREE || RuntimeThree;
-    if (!THREE) {
-      throw new Error("BodyRenderer: THREE is required.");
-    }
-    this.THREE = THREE;
+    this.THREE = options.THREE ?? RuntimeThree;
   }
 
   createBodyMaterial(config: BodyRenderConfig): MeshLambertMaterial | MeshBasicMaterial {

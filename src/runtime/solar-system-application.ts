@@ -30,9 +30,9 @@ const RUNTIME_RENDER_CONFIG = Object.freeze({
   backgroundColor: "#000000",
   nearClip: 0.08,
   cameraFarDistanceMultiplier: 12,
-  bloomStrength: 5.4,
-  bloomRadius: 0.55,
-  bloomThreshold: 0.72
+  bloomStrength: 1.0,
+  bloomRadius: 0.7,
+  bloomThreshold: 0.4
 });
 
 interface SolarSystemApplicationOptions {
@@ -81,19 +81,10 @@ export class SolarSystemApplication {
   private readonly handlePointerUp: () => void;
 
   constructor(options: SolarSystemApplicationOptions = {}) {
-    const constants = options.constants || defaultConstants;
-    const sceneDataApi = options.data || defaultData;
-    const math = options.math || defaultMath;
-    const THREE = options.THREE || RuntimeThree;
-    if (!constants) {
-      throw new Error("SolarSystemApplication: missing constants.");
-    }
-    if (!sceneDataApi) {
-      throw new Error("SolarSystemApplication: missing scene data API.");
-    }
-    if (!math) {
-      throw new Error("SolarSystemApplication: missing math API.");
-    }
+    const constants = options.constants ?? defaultConstants;
+    const sceneDataApi = options.data ?? defaultData;
+    const math = options.math ?? defaultMath;
+    const THREE = options.THREE ?? RuntimeThree;
 
     this.canvasId = options.canvasId || "scene";
     this.document = options.document || document;
@@ -195,7 +186,7 @@ export class SolarSystemApplication {
     const { THREE } = this;
     const scene = new THREE.Scene();
     scene.add(new THREE.AmbientLight("#ffffff", 0.5));
-    scene.add(new THREE.PointLight("#ffd794", 1.2, 0, 0));
+    scene.add(new THREE.PointLight("#ffd794", 2.5, 0, 0));
     return scene;
   }
 
@@ -327,7 +318,6 @@ export class SolarSystemApplication {
       !this.controls ||
       !this.sceneRuntime ||
       !this.camera ||
-      !this.math ||
       !this.orbitRenderer ||
       !this.visibilityService
     ) {

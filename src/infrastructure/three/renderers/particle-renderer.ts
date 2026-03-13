@@ -16,11 +16,7 @@ export class ParticleRenderer {
   private readonly THREE: RuntimeThreeModule;
 
   constructor(options: ParticleRendererOptions) {
-    const THREE = options.THREE || RuntimeThree;
-    if (!THREE) {
-      throw new Error("ParticleRenderer: THREE is required.");
-    }
-    this.THREE = THREE;
+    this.THREE = options.THREE ?? RuntimeThree;
   }
 
   static clamp01(value: number): number {
@@ -108,7 +104,7 @@ export class ParticleRenderer {
     beltRuntimes: BeltRuntime[],
     camera: PerspectiveCamera | null
   ): void {
-    if (!camera || !Array.isArray(beltRuntimes) || beltRuntimes.length === 0) {
+    if (!camera || beltRuntimes.length === 0) {
       return;
     }
 
@@ -125,7 +121,7 @@ export class ParticleRenderer {
         outerAu
       } = beltRuntime;
 
-      const beltRadius = ((innerAu || 0) + (outerAu || 0)) * 0.5;
+      const beltRadius = (innerAu + outerAu) * 0.5;
       const angularRadius = beltRadius / cameraDistance;
       const closeVisibility = ParticleRenderer.smoothstep(
         fadeEndAngularRadius,

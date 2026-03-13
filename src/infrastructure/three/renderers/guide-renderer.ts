@@ -320,11 +320,7 @@ export class GuideRenderer {
 
   constructor(options: GuideRendererOptions) {
     this.labelsLayer = options.labelsLayer;
-    const THREE = options.THREE || RuntimeThree;
-    if (!THREE) {
-      throw new Error("GuideRenderer: THREE is required.");
-    }
-    this.THREE = THREE;
+    this.THREE = options.THREE ?? RuntimeThree;
   }
 
   createGuideLineLabelRuntime(
@@ -351,7 +347,7 @@ export class GuideRenderer {
       minPixelRadius: 0,
       togglesWithVisibilityControl: Boolean(guideLine.visibilityKey),
       visibilityKey: guideLine.visibilityKey,
-      defaultVisible: guideLine.initialVisibility ?? true,
+      defaultVisible: guideLine.initialVisibility,
       labelAnchorPosition: anchorObject.position,
       labelAnchorRadius: 0,
       labelMarginPixels: Math.max(1, guideLine.labelMarginPixels || 8)

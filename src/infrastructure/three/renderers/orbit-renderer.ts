@@ -34,11 +34,7 @@ export class OrbitRenderer {
 
   constructor(options: OrbitRendererOptions) {
     this.bodyRenderer = options.bodyRenderer;
-    const THREE = options.THREE || RuntimeThree;
-    if (!THREE) {
-      throw new Error("OrbitRenderer: THREE is required.");
-    }
-    this.THREE = THREE;
+    this.THREE = options.THREE ?? RuntimeThree;
   }
 
   buildOrbitLine(points: Point3[], color: string, opacity: number) {
@@ -78,9 +74,8 @@ export class OrbitRenderer {
     }
 
     const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
-    const orbitRenderGroupConfigs = sceneData.orbitRenderGroupConfigs || sceneData.orbitRenderGroups;
-    for (const orbitRenderGroup of orbitRenderGroupConfigs) {
-      const orbitingBodiesInGroup = sceneData[orbitRenderGroup.key] || [];
+    for (const orbitRenderGroup of sceneData.orbitRenderGroupConfigs) {
+      const orbitingBodiesInGroup = sceneData[orbitRenderGroup.key];
       for (const orbitingBody of orbitingBodiesInGroup) {
         const orbitLine = this.buildOrbitLine(
           orbitingBody.orbitPath,
