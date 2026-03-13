@@ -33,6 +33,7 @@ import type {
   DirectionalGuideLine,
   GuideRuntime,
   MathApi,
+  Point3,
   PostprocessingConfig,
   SceneData,
   SceneDataApi,
@@ -117,7 +118,7 @@ function createLabelAnchorRuntime(
   return renderer.createLabelAnchorRuntime(config);
 }
 
-function buildOrbitLine(points: { x: number; y: number; z: number }[], color: string, opacity: number) {
+function buildOrbitLine(points: Point3[], color: string, opacity: number) {
   const renderer = new OrbitRenderer({ bodyRenderer: null, THREE });
   return renderer.buildOrbitLine(points, color, opacity);
 }
@@ -172,7 +173,7 @@ function buildAsteroidBelts(
   particleGroup: Group,
   beltRuntimes: BeltRuntime[],
   math?: MathApi,
-  orbitalPositionScratch?: { x: number; y: number; z: number }
+  orbitalPositionScratch?: Point3
 ): void {
   const renderer = new ParticleRenderer({ THREE });
   renderer.buildAsteroidBelts(

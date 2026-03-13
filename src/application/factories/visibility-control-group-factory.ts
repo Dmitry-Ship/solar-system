@@ -1,27 +1,31 @@
-import type { VisibilityRuntime } from "../../types/solar-system";
+import type {
+  VisibilityGroupKey,
+  VisibilityKey,
+  VisibilityRuntime
+} from "../../types/solar-system";
 
 export interface VisibilityControl {
-  key: string;
+  key: VisibilityKey;
   label: string;
   initialVisibility: boolean;
-  groupKey: string;
+  groupKey: VisibilityGroupKey;
 }
 
 export interface VisibilityControlGroup {
-  key: string;
+  key: VisibilityGroupKey;
   label: string;
   controls: VisibilityControl[];
 }
 
 interface VisibilityControlGroupDraft {
-  key: string;
+  key: VisibilityGroupKey;
   label: string;
-  controlsByKey: Map<string, VisibilityControl>;
+  controlsByKey: Map<VisibilityKey, VisibilityControl>;
 }
 
 export class VisibilityControlGroupFactory {
   create(visibilityRuntimes: VisibilityRuntime[] = []): VisibilityControlGroup[] {
-    const groupsByKey = new Map<string, VisibilityControlGroupDraft>();
+    const groupsByKey = new Map<VisibilityGroupKey, VisibilityControlGroupDraft>();
 
     for (const runtime of visibilityRuntimes) {
       const visibilityKey =

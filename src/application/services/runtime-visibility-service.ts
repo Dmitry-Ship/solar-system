@@ -1,8 +1,11 @@
-import type { VisibilityRuntime } from "../../types/solar-system";
+import type {
+  VisibilityKey,
+  VisibilityRuntime
+} from "../../types/solar-system";
 
 interface RuntimeVisibilityServiceOptions {
   state?: {
-    isVisibilityEnabled?(key: string, fallbackVisibility?: boolean): boolean;
+    isVisibilityEnabled?(key: VisibilityKey, fallbackVisibility?: boolean): boolean;
   };
 }
 

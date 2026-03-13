@@ -5,10 +5,14 @@ import type {
 import type {
   DirectionalGuideLine,
   DirectionalMarker,
+  LightRayVisibilityKey,
   MathApi,
   Point3,
   SimulationConstants,
-  TrajectoryDefinition
+  TrajectoryDefinition,
+  TrajectoryVisibilityKey,
+  VisibilityGroupKey,
+  VisibilityKey
 } from "../../types/solar-system";
 
 const MATRYOSHKA_SEGMENT_POINT_COUNT = 26;
@@ -43,10 +47,10 @@ interface DirectionalGuideLineOptions {
   lightRayLayerIndex?: number;
   dashPattern?: number[];
   depthTest?: boolean;
-  visibilityKey?: string;
+  visibilityKey?: VisibilityKey;
   visibilityLabel?: string;
   visibilityControlLabel?: string;
-  visibilityGroupKey?: string;
+  visibilityGroupKey?: VisibilityGroupKey;
   visibilityGroupLabel?: string;
   initialVisibility?: boolean;
   label?: string;
@@ -130,22 +134,21 @@ function buildDistanceFadeProfile(points: Point3[], marker: Point3 | null): numb
   });
 }
 
-function buildLightRayVisibilityKey(name: string): string {
+function slugifyVisibilityName(name: string, fallback: string): string {
   const normalizedName = typeof name === "string" ? name.trim().toLowerCase() : "";
   if (!normalizedName) {
-    return "light-ray";
+    return fallback;
   }
 
-  return `light-ray:${normalizedName.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`;
+  return normalizedName.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-function buildTrajectoryVisibilityKey(name: string): string {
-  const normalizedName = typeof name === "string" ? name.trim().toLowerCase() : "";
-  if (!normalizedName) {
-    return "trajectory";
-  }
+function buildLightRayVisibilityKey(name: string): LightRayVisibilityKey {
+  return `light-ray:${slugifyVisibilityName(name, "source")}`;
+}
 
-  return `trajectory:${normalizedName.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`;
+function buildTrajectoryVisibilityKey(name: string): TrajectoryVisibilityKey {
+  return `trajectory:${slugifyVisibilityName(name, "path")}`;
 }
 
 function buildLightRayRadiusProfile(
@@ -246,15 +249,15 @@ function buildDirectionalGuideLine(
     lightRayRadiusProfileAu,
     lightRayOpacityProfile,
     lightRayLayerIndex,
-    dashPattern: options.dashPattern || [],
+    dashPattern: options.dashPattern ?? [],
     depthTest: options.depthTest,
-    visibilityKey: options.visibilityKey || "",
-    visibilityLabel: options.visibilityLabel || "",
-    visibilityControlLabel: options.visibilityControlLabel || "",
-    visibilityGroupKey: options.visibilityGroupKey || "",
-    visibilityGroupLabel: options.visibilityGroupLabel || "",
+    visibilityKey: options.visibilityKey,
+    visibilityLabel: options.visibilityLabel,
+    visibilityControlLabel: options.visibilityControlLabel,
+    visibilityGroupKey: options.visibilityGroupKey,
+    visibilityGroupLabel: options.visibilityGroupLabel,
     initialVisibility: options.initialVisibility ?? true,
-    label: options.label || "",
+    label: options.label ?? "",
     labelAnchorPoint: options.labelAnchorPoint ? clonePoint(options.labelAnchorPoint) : null,
     labelMarginPixels: options.labelMarginPixels
   };

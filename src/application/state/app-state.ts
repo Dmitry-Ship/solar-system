@@ -1,3 +1,9 @@
+import type {
+  LightRayVisibilityKey,
+  VisibilityGroupKey,
+  VisibilityKey
+} from "../../types/solar-system";
+
 const MIN_CAMERA_DISTANCE_AU = 0.1;
 const MAX_CAMERA_DISTANCE_AU = 6000;
 
@@ -5,9 +11,9 @@ export class AppState {
     showBodyNames: boolean;
     showOrbits: boolean;
     showLightRays: boolean;
-    visibilityByKey: Record<string, boolean>;
-    visibilityGroupByKey: Record<string, string>;
-    lightRayVisibilityByKey: Record<string, boolean>;
+    visibilityByKey: Partial<Record<VisibilityKey, boolean>>;
+    visibilityGroupByKey: Partial<Record<VisibilityKey, VisibilityGroupKey>>;
+    lightRayVisibilityByKey: Partial<Record<VisibilityKey, boolean>>;
     minCamera: number;
     maxCamera: number;
 
@@ -22,7 +28,11 @@ export class AppState {
       this.maxCamera = MAX_CAMERA_DISTANCE_AU;
     }
 
-    registerVisibility(key: string, initialVisibility = false, groupKey = ""): void {
+    registerVisibility(
+      key: VisibilityKey,
+      initialVisibility = false,
+      groupKey?: VisibilityGroupKey
+    ): void {
       if (typeof key !== "string" || !key) return;
       if (!(key in this.visibilityByKey)) {
         this.visibilityByKey[key] = Boolean(initialVisibility);
@@ -31,13 +41,13 @@ export class AppState {
       if (typeof groupKey === "string" && groupKey) {
         this.visibilityGroupByKey[key] = groupKey;
       } else if (!(key in this.visibilityGroupByKey)) {
-        this.visibilityGroupByKey[key] = "";
+        delete this.visibilityGroupByKey[key];
       }
 
       this.syncLegacyVisibilityAggregates();
     }
 
-    isVisibilityEnabled(key: string, fallbackVisibility = true): boolean {
+    isVisibilityEnabled(key: VisibilityKey, fallbackVisibility = true): boolean {
       if (typeof key !== "string" || !key) {
         return Boolean(fallbackVisibility);
       }
@@ -47,21 +57,22 @@ export class AppState {
         : Boolean(fallbackVisibility);
     }
 
-    setVisibility(key: string, isVisible: boolean): boolean {
+    setVisibility(key: VisibilityKey, isVisible: boolean): boolean {
       if (typeof key !== "string" || !key) return false;
       this.visibilityByKey[key] = Boolean(isVisible);
       this.syncLegacyVisibilityAggregates();
       return this.visibilityByKey[key];
     }
 
-    toggleVisibility(key: string, fallbackVisibility = false): boolean {
+    toggleVisibility(key: VisibilityKey, fallbackVisibility = false): boolean {
       return this.setVisibility(key, !this.isVisibilityEnabled(key, fallbackVisibility));
     }
 
-    isAnyVisibilityEnabled(groupKey = ""): boolean {
+    isAnyVisibilityEnabled(groupKey?: VisibilityGroupKey): boolean {
       return Object.keys(this.visibilityByKey).some(
         (key) =>
-          this.visibilityGroupByKey[key] === groupKey && Boolean(this.visibilityByKey[key])
+          this.visibilityGroupByKey[key as VisibilityKey] === groupKey &&
+          Boolean(this.visibilityByKey[key as VisibilityKey])
       );
     }
 
@@ -69,11 +80,11 @@ export class AppState {
       this.showLightRays = this.isAnyVisibilityEnabled("light-rays");
     }
 
-    registerLightRay(key: string, initialVisibility = false): void {
+    registerLightRay(key: LightRayVisibilityKey, initialVisibility = false): void {
       this.registerVisibility(key, initialVisibility, "light-rays");
     }
 
-    isLightRayVisible(key: string): boolean {
+    isLightRayVisible(key: LightRayVisibilityKey): boolean {
       if (typeof key !== "string" || !key) {
         return Boolean(this.showLightRays);
       }
@@ -81,11 +92,11 @@ export class AppState {
       return this.isVisibilityEnabled(key, false);
     }
 
-    setLightRayVisibility(key: string, isVisible: boolean): boolean {
+    setLightRayVisibility(key: LightRayVisibilityKey, isVisible: boolean): boolean {
       return this.setVisibility(key, isVisible);
     }
 
-    toggleLightRayVisibility(key: string): boolean {
+    toggleLightRayVisibility(key: LightRayVisibilityKey): boolean {
       return this.toggleVisibility(key, false);
     }
   }

@@ -13,6 +13,7 @@ import type {
   DriftingBodyDefinition,
   MathApi,
   OrbitRenderGroupConfig,
+  OrbitRenderGroupKey,
   OrbitingBody,
   OrbitingBodyDefinition,
   Point3,
@@ -266,7 +267,7 @@ export class SceneDataFactory {
 
     const orbitOpacityBodies = [...planets, ...dwarfPlanets];
     const orbitOpacityForBodyRadius = this.createOrbitOpacityCalculator(orbitOpacityBodies);
-    const orbitingBodiesByGroupKey = {
+    const orbitingBodiesByGroupKey: Record<OrbitRenderGroupKey, OrbitingBody[]> = {
       planets,
       dwarfPlanets,
       comets

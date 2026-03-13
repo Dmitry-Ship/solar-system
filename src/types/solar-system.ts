@@ -116,6 +116,18 @@ export interface TrajectoryDefinition {
 }
 
 export type OrbitRenderGroupKey = "planets" | "dwarfPlanets" | "comets";
+export type GuideRenderStyle = "line" | "lightRay";
+export type LightRayVisibilityKey = `light-ray:${string}`;
+export type TrajectoryVisibilityKey = `trajectory:${string}`;
+export type VisibilityKey =
+  | LightRayVisibilityKey
+  | TrajectoryVisibilityKey
+  | (string & {});
+export type VisibilityGroupKey =
+  | "light-rays"
+  | "trajectories"
+  | "visibility"
+  | (string & {});
 
 export interface OrbitRenderGroupConfig {
   key: OrbitRenderGroupKey;
@@ -151,10 +163,19 @@ export interface StarField {
   positions: Float32Array;
 }
 
-export interface DirectionalGuideLine {
+export interface VisibilityDescriptor {
+  visibilityKey?: VisibilityKey;
+  visibilityLabel?: string;
+  visibilityControlLabel?: string;
+  visibilityGroupKey?: VisibilityGroupKey;
+  visibilityGroupLabel?: string;
+  initialVisibility?: boolean;
+}
+
+export interface DirectionalGuideLine extends VisibilityDescriptor {
   points: Point3[];
   color: string;
-  renderStyle: "line" | "lightRay";
+  renderStyle: GuideRenderStyle;
   opacity: number;
   lightRayRadiusAu: number;
   lightRayStartRadiusAu: number;
@@ -164,12 +185,6 @@ export interface DirectionalGuideLine {
   lightRayLayerIndex: number;
   dashPattern: number[];
   depthTest?: boolean;
-  visibilityKey: string;
-  visibilityLabel: string;
-  visibilityControlLabel: string;
-  visibilityGroupKey: string;
-  visibilityGroupLabel: string;
-  initialVisibility: boolean;
   label: string;
   labelAnchorPoint: Point3 | null;
   labelMarginPixels?: number;
@@ -254,13 +269,7 @@ export interface SceneDataApi {
   createSceneData(): SceneData;
 }
 
-export interface VisibilityRuntime {
-  visibilityKey?: string;
-  visibilityLabel?: string;
-  visibilityControlLabel?: string;
-  visibilityGroupKey?: string;
-  visibilityGroupLabel?: string;
-  initialVisibility?: boolean;
+export interface VisibilityRuntime extends VisibilityDescriptor {
   defaultVisible?: boolean;
   visibilityTarget?: { visible: boolean } | null;
   object?: Object3D | null;
@@ -272,9 +281,13 @@ export interface VisibilityStateLike {
   maxCamera: number;
   showBodyNames: boolean;
   showOrbits: boolean;
-  registerVisibility(key: string, initialVisibility?: boolean, groupKey?: string): void;
-  toggleVisibility(key: string, fallbackVisibility?: boolean): boolean;
-  isVisibilityEnabled(key: string, fallbackVisibility?: boolean): boolean;
+  registerVisibility(
+    key: VisibilityKey,
+    initialVisibility?: boolean,
+    groupKey?: VisibilityGroupKey
+  ): void;
+  toggleVisibility(key: VisibilityKey, fallbackVisibility?: boolean): boolean;
+  isVisibilityEnabled(key: VisibilityKey, fallbackVisibility?: boolean): boolean;
 }
 
 export interface SceneObjectRuntime extends VisibilityRuntime {
