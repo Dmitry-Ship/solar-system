@@ -19,10 +19,10 @@ bun run build
 
 - `src/domain`: immutable constants/catalogs, orbital math utilities, and domain models.
 - `src/application`: scene-data factories, state, simulation services, and update system.
-- `src/infrastructure`: Three.js renderers/controllers and DOM adapters.
+- `src/infrastructure`: Three.js renderers/controllers plus label/HUD integration adapters.
 - `src/runtime`: Three.js package wiring, the public runtime API surface, composition root (`SolarSystemApplication`), and bootstrapping.
 - `src/debug`: smoke-check harness exported as `runSmokeChecks()`.
-- `src/App.tsx`: React shell that hosts the canvas and HUD DOM expected by the runtime.
+- `src/App.tsx`: React shell that hosts the canvas and renders the HUD from runtime state/actions.
 
 ## Compatibility contract
 

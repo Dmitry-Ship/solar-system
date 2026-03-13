@@ -1,15 +1,48 @@
 import type { Group, PerspectiveCamera } from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { VisibilityControlGroupFactory } from "../../application/factories/visibility-control-group-factory";
-import { HudView } from "./hud-view";
+import {
+  VisibilityControlGroupFactory,
+  type VisibilityControlGroup
+} from "../../application/factories/visibility-control-group-factory";
 import type {
   MathApi,
+  VisibilityKey,
   VisibilityRuntime,
   VisibilityStateLike
 } from "../../types/solar-system";
 
+export interface HudVisibilityControlSnapshot {
+  key: VisibilityKey;
+  label: string;
+  groupKey: string;
+  isVisible: boolean;
+}
+
+export interface HudVisibilityControlGroupSnapshot {
+  key: string;
+  label: string;
+  controls: HudVisibilityControlSnapshot[];
+}
+
+export interface HudSnapshot {
+  zoomToggleLabel: string;
+  namesToggleLabel: string;
+  orbitsToggleLabel: string;
+  showBodyNames: boolean;
+  showOrbits: boolean;
+  visibilityControlGroups: HudVisibilityControlGroupSnapshot[];
+}
+
+export type HudSubscriber = (snapshot: HudSnapshot) => void;
+
 export interface HudHandle {
   updateZoomToggleLabel: () => void;
+  getSnapshot: () => HudSnapshot;
+  subscribe: (listener: HudSubscriber) => () => void;
+  toggleZoom: () => void;
+  toggleNames: () => void;
+  toggleOrbits: () => void;
+  toggleVisibility: (key: VisibilityKey) => void;
 }
 
 interface HudControllerOptions {
@@ -25,8 +58,6 @@ interface HudControllerOptions {
   onVisibilityChanged?: (state: VisibilityStateLike, visibilityRuntimes: VisibilityRuntime[]) => void;
   requestRender?: () => void;
   visibilityControlGroupFactory?: VisibilityControlGroupFactory;
-  view?: HudView;
-  document?: Document;
 }
 
 export class HudController {
@@ -46,8 +77,13 @@ export class HudController {
   ) => void;
   private readonly requestRender?: () => void;
   private readonly visibilityControlGroupFactory: VisibilityControlGroupFactory;
-  private readonly view: HudView;
-  private updateZoomToggleLabel: () => void = () => {};
+  private readonly subscribers = new Set<HudSubscriber>();
+  private readonly initialVisibilityByKey = new Map<VisibilityKey, boolean>();
+  private visibilityControlGroups: VisibilityControlGroup[] = [];
+  private isSetup = false;
+  private updateZoomToggleLabel: () => void = () => {
+    this.emitSnapshot();
+  };
 
   constructor(options: HudControllerOptions) {
     this.state = options.state;
@@ -65,18 +101,88 @@ export class HudController {
     this.requestRender = options.requestRender;
     this.visibilityControlGroupFactory =
       options.visibilityControlGroupFactory || new VisibilityControlGroupFactory();
-    this.view = options.view || new HudView({ document: options.document });
   }
 
-  setupZoomToggle(zoomToggleButton: HTMLButtonElement | null): void {
-    const cameraDistance = () => this.camera.position.distanceTo(this.controls.target);
-    this.updateZoomToggleLabel = () => {
-      if (!zoomToggleButton) return;
-      zoomToggleButton.textContent =
-        Math.abs(cameraDistance() - this.state.minCamera) < 1e-3
-          ? "Maximum Zoom"
-          : "Minimum Zoom";
+  private cameraDistance(): number {
+    return this.camera.position.distanceTo(this.controls.target);
+  }
+
+  private getZoomToggleLabel(): string {
+    return Math.abs(this.cameraDistance() - this.state.minCamera) < 1e-3
+      ? "Maximum Zoom"
+      : "Minimum Zoom";
+  }
+
+  private getNamesToggleLabel(): string {
+    return this.state.showBodyNames ? "Hide Body Names" : "Show Body Names";
+  }
+
+  private getOrbitsToggleLabel(): string {
+    return this.state.showOrbits ? "Hide Orbits" : "Show Orbits";
+  }
+
+  private emitSnapshot(): void {
+    const snapshot = this.getSnapshot();
+    for (const subscriber of this.subscribers) {
+      subscriber(snapshot);
+    }
+  }
+
+  private registerVisibilityControls(): void {
+    if (this.isSetup) {
+      return;
+    }
+
+    this.visibilityControlGroups = this.visibilityControlGroupFactory.create(this.visibilityRuntimes);
+    for (const visibilityControlGroup of this.visibilityControlGroups) {
+      for (const visibilityControl of visibilityControlGroup.controls) {
+        this.initialVisibilityByKey.set(
+          visibilityControl.key,
+          Boolean(visibilityControl.initialVisibility)
+        );
+        this.state.registerVisibility(
+          visibilityControl.key,
+          this.initialVisibilityByKey.get(visibilityControl.key) ?? false,
+          visibilityControl.groupKey
+        );
+      }
+    }
+    this.isSetup = true;
+  }
+
+  getSnapshot(): HudSnapshot {
+    return {
+      zoomToggleLabel: this.getZoomToggleLabel(),
+      namesToggleLabel: this.getNamesToggleLabel(),
+      orbitsToggleLabel: this.getOrbitsToggleLabel(),
+      showBodyNames: this.state.showBodyNames,
+      showOrbits: this.state.showOrbits,
+      visibilityControlGroups: this.visibilityControlGroups.map((group) => ({
+        key: group.key,
+        label: group.label,
+        controls: group.controls.map((control) => ({
+          key: control.key,
+          label: control.label,
+          groupKey: control.groupKey,
+          isVisible: this.state.isVisibilityEnabled(
+            control.key,
+            this.initialVisibilityByKey.get(control.key) ?? false
+          )
+        }))
+      }))
     };
+  }
+
+  subscribe(listener: HudSubscriber): () => void {
+    this.subscribers.add(listener);
+    listener(this.getSnapshot());
+    return () => {
+      this.subscribers.delete(listener);
+    };
+  }
+
+  toggleZoom(): void {
+    const cameraDistance = this.cameraDistance();
 
     const setCameraDistance = (distanceAu: number) => {
       const clamped = this.math.clamp(distanceAu, this.state.minCamera, this.state.maxCamera);
@@ -85,107 +191,51 @@ export class HudController {
       this.controls.update();
     };
 
-    if (!zoomToggleButton) return;
-
-    zoomToggleButton.addEventListener("click", () => {
-      const targetDistance =
-        Math.abs(cameraDistance() - this.state.minCamera) < 1e-3
-          ? this.state.maxCamera
-          : this.state.minCamera;
-      setCameraDistance(targetDistance);
-      this.updateZoomToggleLabel();
-      this.requestRender?.();
-    });
+    const targetDistance =
+      Math.abs(cameraDistance - this.state.minCamera) < 1e-3
+        ? this.state.maxCamera
+        : this.state.minCamera;
+    setCameraDistance(targetDistance);
+    this.updateZoomToggleLabel();
+    this.requestRender?.();
   }
 
-  setupNamesToggle(namesToggleButton: HTMLButtonElement | null): void {
-    if (!namesToggleButton) return;
-
-    namesToggleButton.addEventListener("click", () => {
-      this.state.showBodyNames = !this.state.showBodyNames;
-      this.view.setBooleanToggleLabel(
-        namesToggleButton,
-        this.state.showBodyNames,
-        "Hide Names",
-        "Show Names"
-      );
-      this.requestRender?.();
-    });
-
-    this.view.setBooleanToggleLabel(
-      namesToggleButton,
-      this.state.showBodyNames,
-      "Hide Names",
-      "Show Names"
-    );
+  toggleNames(): void {
+    this.state.showBodyNames = !this.state.showBodyNames;
+    this.requestRender?.();
+    this.emitSnapshot();
   }
 
-  setupOrbitToggle(orbitToggleButton: HTMLButtonElement | null): void {
-    if (!orbitToggleButton) return;
-
-    orbitToggleButton.addEventListener("click", () => {
-      this.state.showOrbits = !this.state.showOrbits;
-      this.onOrbitVisibilityChanged?.(this.state, this.orbitGroup);
-      this.view.setBooleanToggleLabel(
-        orbitToggleButton,
-        this.state.showOrbits,
-        "Hide Orbits",
-        "Show Orbits"
-      );
-      this.requestRender?.();
-    });
-
-    this.view.setBooleanToggleLabel(
-      orbitToggleButton,
-      this.state.showOrbits,
-      "Hide Orbits",
-      "Show Orbits"
-    );
+  toggleOrbits(): void {
+    this.state.showOrbits = !this.state.showOrbits;
+    this.onOrbitVisibilityChanged?.(this.state, this.orbitGroup);
+    this.requestRender?.();
+    this.emitSnapshot();
   }
 
-  setupVisibilityControls(): void {
-    const visibilityControlGroups = this.visibilityControlGroupFactory.create(
-      this.visibilityRuntimes
-    );
-    this.view.renderVisibilityControlGroups(visibilityControlGroups, {
-      onRegisterControl: (visibilityControl) => {
-        this.state.registerVisibility(
-          visibilityControl.key,
-          visibilityControl.initialVisibility,
-          visibilityControl.groupKey
-        );
-      },
-      onToggleControl: (visibilityControl) => {
-        const isVisible = this.state.toggleVisibility(
-          visibilityControl.key,
-          visibilityControl.initialVisibility
-        );
-        this.onVisibilityChanged?.(this.state, this.visibilityRuntimes);
-        this.requestRender?.();
-        return isVisible;
-      },
-      isControlVisible: (visibilityControl) =>
-        this.state.isVisibilityEnabled(
-          visibilityControl.key,
-          visibilityControl.initialVisibility
-        )
-    });
+  toggleVisibility(key: VisibilityKey): void {
+    const fallbackVisibility = this.initialVisibilityByKey.get(key) ?? false;
+    this.state.toggleVisibility(key, fallbackVisibility);
+    this.onVisibilityChanged?.(this.state, this.visibilityRuntimes);
+    this.requestRender?.();
+    this.emitSnapshot();
   }
 
   setup(): HudHandle {
-    const { zoomToggleButton, namesToggleButton, orbitToggleButton } =
-      this.view.getElements();
-
-    this.setupZoomToggle(zoomToggleButton);
-    this.setupNamesToggle(namesToggleButton);
-    this.setupOrbitToggle(orbitToggleButton);
-    this.setupVisibilityControls();
-
-    this.controls.addEventListener("change", this.updateZoomToggleLabel);
-    this.updateZoomToggleLabel();
+    this.registerVisibilityControls();
+    this.updateZoomToggleLabel = () => {
+      this.emitSnapshot();
+    };
+    this.emitSnapshot();
 
     return {
-      updateZoomToggleLabel: this.updateZoomToggleLabel
+      updateZoomToggleLabel: this.updateZoomToggleLabel,
+      getSnapshot: this.getSnapshot.bind(this),
+      subscribe: this.subscribe.bind(this),
+      toggleZoom: this.toggleZoom.bind(this),
+      toggleNames: this.toggleNames.bind(this),
+      toggleOrbits: this.toggleOrbits.bind(this),
+      toggleVisibility: this.toggleVisibility.bind(this)
     };
   }
 }

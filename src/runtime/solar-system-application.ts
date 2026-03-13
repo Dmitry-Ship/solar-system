@@ -8,7 +8,9 @@ import { RuntimeVisibilityService } from "../application/services/runtime-visibi
 import { LabelsLayer } from "../infrastructure/dom/labels-layer";
 import {
   HudController,
-  type HudHandle
+  type HudHandle,
+  type HudSnapshot,
+  type HudSubscriber
 } from "../infrastructure/dom/hud-controller";
 import { BodyRenderer } from "../infrastructure/three/renderers/body-renderer";
 import { OrbitRenderer } from "../infrastructure/three/renderers/orbit-renderer";
@@ -71,7 +73,6 @@ export class SolarSystemApplication {
   private sceneRuntime: SceneRuntimeSystem | null = null;
   private runtimeVisibility: RuntimeVisibilityService | null = null;
   private visibilityService: VisibilityService | null = null;
-  private hudController: HudController | null = null;
   private hud: HudHandle | null = null;
   private labelProjectionService: LabelProjectionService | null = null;
   private readonly handleResize: () => void;
@@ -94,7 +95,7 @@ export class SolarSystemApplication {
     this.THREE = THREE;
 
     this.handleResize = this.resize.bind(this);
-    this.handleControlsChange = this.renderScene.bind(this);
+    this.handleControlsChange = this.onControlsChange.bind(this);
     this.handlePointerDown = this.onPointerDown.bind(this);
     this.handlePointerUp = this.onPointerUp.bind(this);
   }
@@ -322,7 +323,7 @@ export class SolarSystemApplication {
       throw new Error("SolarSystemApplication: HUD dependencies are missing.");
     }
 
-    this.hudController = new HudController({
+    this.hud = new HudController({
       state: this.state,
       controls: this.controls,
       orbitGroup: this.sceneRuntime.orbitGroup,
@@ -332,8 +333,7 @@ export class SolarSystemApplication {
       onOrbitVisibilityChanged: this.orbitRenderer.applyOrbitVisibility.bind(this.orbitRenderer),
       onVisibilityChanged: this.visibilityService.apply.bind(this.visibilityService),
       requestRender: this.renderScene.bind(this)
-    });
-    this.hud = this.hudController.setup();
+    }).setup();
   }
 
   initializeCameraPlacement(): void {
@@ -437,6 +437,35 @@ export class SolarSystemApplication {
     this.canvas?.classList.remove("dragging");
   }
 
+  onControlsChange(): void {
+    this.renderScene();
+    this.hud?.updateZoomToggleLabel();
+  }
+
+  getHudSnapshot(): HudSnapshot | null {
+    return this.hud?.getSnapshot() ?? null;
+  }
+
+  subscribeToHud(listener: HudSubscriber): () => void {
+    return this.hud?.subscribe(listener) ?? (() => {});
+  }
+
+  toggleZoom(): void {
+    this.hud?.toggleZoom();
+  }
+
+  toggleNames(): void {
+    this.hud?.toggleNames();
+  }
+
+  toggleOrbits(): void {
+    this.hud?.toggleOrbits();
+  }
+
+  toggleVisibility(key: Parameters<HudHandle["toggleVisibility"]>[0]): void {
+    this.hud?.toggleVisibility(key);
+  }
+
   resize(): void {
     if (
       !this.renderer ||
@@ -494,6 +523,7 @@ export class SolarSystemApplication {
       this.labelsLayerElement.remove();
       this.labelsLayerElement = null;
     }
+    this.hud = null;
     this.initialized = false;
   }
 }

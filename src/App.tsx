@@ -1,4 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { HudPanel } from "./components/hud-panel";
+import type { HudSnapshot } from "./infrastructure/dom/hud-controller";
 import { SolarSystemApplication } from "./runtime/solar-system-application";
 import { setAppInstance } from "./runtime/app-runtime";
 
@@ -18,43 +20,46 @@ function reportRuntimeError(error: unknown) {
 }
 
 export default function App() {
+  const [app, setApp] = useState<SolarSystemApplication | null>(null);
+  const [hudSnapshot, setHudSnapshot] = useState<HudSnapshot | null>(null);
+
   useEffect(() => {
-    let app: SolarSystemApplication | null = null;
+    let application: SolarSystemApplication | null = null;
+    let unsubscribeHud = () => {};
 
     try {
-      app = new SolarSystemApplication();
-      setAppInstance(app);
-      app.start();
+      application = new SolarSystemApplication();
+      setAppInstance(application);
+      application.start();
+      unsubscribeHud = application.subscribeToHud(setHudSnapshot);
+      setHudSnapshot(application.getHudSnapshot());
+      setApp(application);
     } catch (error) {
       reportRuntimeError(error);
       return;
     }
 
     return () => {
-      if (app) {
+      unsubscribeHud();
+      setApp(null);
+      setHudSnapshot(null);
+      if (application) {
         setAppInstance(null);
       }
-      app?.dispose();
+      application?.dispose();
     };
   }, []);
 
   return (
     <>
       <canvas id="scene" aria-label="3D solar system model" />
-      <section className="hud" aria-label="Instructions">
-        <div className="hud-controls">
-          <button id="zoom-toggle" className="zoom-button" type="button">
-            Switch to Minimum Zoom
-          </button>
-          <button id="names-toggle" className="zoom-button" type="button" aria-pressed="true">
-            Hide Body Names
-          </button>
-          <button id="orbits-toggle" className="zoom-button" type="button" aria-pressed="true">
-            Hide Orbits
-          </button>
-        </div>
-        <div id="visibility-controls-root" aria-label="Visibility controls" />
-      </section>
+      <HudPanel
+        snapshot={hudSnapshot}
+        onToggleZoom={() => app?.toggleZoom()}
+        onToggleNames={() => app?.toggleNames()}
+        onToggleOrbits={() => app?.toggleOrbits()}
+        onToggleVisibility={(key) => app?.toggleVisibility(key)}
+      />
     </>
   );
 }
