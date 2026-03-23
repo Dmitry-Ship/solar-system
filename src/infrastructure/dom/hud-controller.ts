@@ -26,6 +26,7 @@ export interface HudVisibilityControlGroupSnapshot {
 
 export interface HudSnapshot {
   zoomToggleLabel: string;
+  isZoomedIn: boolean;
   namesToggleLabel: string;
   orbitsToggleLabel: string;
   showBodyNames: boolean;
@@ -107,18 +108,20 @@ export class HudController {
     return this.camera.position.distanceTo(this.controls.target);
   }
 
+  private isZoomedIn(): boolean {
+    return Math.abs(this.cameraDistance() - this.state.minCamera) < 1e-3;
+  }
+
   private getZoomToggleLabel(): string {
-    return Math.abs(this.cameraDistance() - this.state.minCamera) < 1e-3
-      ? "Maximum Zoom"
-      : "Minimum Zoom";
+    return this.isZoomedIn() ? "Near" : "Far";
   }
 
   private getNamesToggleLabel(): string {
-    return this.state.showBodyNames ? "Hide Body Names" : "Show Body Names";
+    return "Names";
   }
 
   private getOrbitsToggleLabel(): string {
-    return this.state.showOrbits ? "Hide Orbits" : "Show Orbits";
+    return "Orbits";
   }
 
   private emitSnapshot(): void {
@@ -153,6 +156,7 @@ export class HudController {
   getSnapshot(): HudSnapshot {
     return {
       zoomToggleLabel: this.getZoomToggleLabel(),
+      isZoomedIn: this.isZoomedIn(),
       namesToggleLabel: this.getNamesToggleLabel(),
       orbitsToggleLabel: this.getOrbitsToggleLabel(),
       showBodyNames: this.state.showBodyNames,

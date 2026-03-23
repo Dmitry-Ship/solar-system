@@ -1,0 +1,118 @@
+{
+  "before": {
+    "zoom": {
+      "text": "Far",
+      "title": "Zoom: Far",
+      "pressed": "false",
+      "state": "far",
+      "background": "rgba(18, 56, 96, 0.88)",
+      "border": "rgba(121, 202, 255, 0.6)",
+      "color": "rgb(237, 247, 255)"
+    },
+    "names": {
+      "text": "Names",
+      "title": "Names off",
+      "pressed": "false",
+      "state": "",
+      "background": "rgba(88, 28, 38, 0.86)",
+      "border": "rgba(255, 134, 151, 0.6)",
+      "color": "rgb(255, 230, 234)"
+    },
+    "orbits": {
+      "text": "Orbits",
+      "title": "Orbits on",
+      "pressed": "true",
+      "state": "",
+      "background": "rgba(18, 84, 52, 0.9)",
+      "border": "rgba(123, 255, 179, 0.62)",
+      "color": "rgb(239, 255, 245)"
+    },
+    "visibility": [
+      {
+        "key": "light-ray:61-cygni",
+        "text": "61 Cygni",
+        "title": "Light Rays: 61 Cygni Ray off",
+        "pressed": "false",
+        "background": "rgba(88, 28, 38, 0.86)",
+        "border": "rgba(255, 134, 151, 0.6)",
+        "color": "rgb(255, 230, 234)"
+      },
+      {
+        "key": "light-ray:gliese-300",
+        "text": "Gliese 300",
+        "title": "Light Rays: Gliese 300 Ray off",
+        "pressed": "false",
+        "background": "rgba(88, 28, 38, 0.86)",
+        "border": "rgba(255, 134, 151, 0.6)",
+        "color": "rgb(255, 230, 234)"
+      },
+      {
+        "key": "trajectory:61-cygni-transfer",
+        "text": "61 Cygni",
+        "title": "Trajectories: 61 Cygni trajectory on",
+        "pressed": "true",
+        "background": "rgba(18, 84, 52, 0.9)",
+        "border": "rgba(123, 255, 179, 0.62)",
+        "color": "rgb(239, 255, 245)"
+      }
+    ]
+  },
+  "after": {
+    "zoom": {
+      "text": "Far",
+      "title": "Zoom: Far",
+      "pressed": "false",
+      "state": "far",
+      "background": "rgba(18, 56, 96, 0.88)",
+      "border": "rgba(121, 202, 255, 0.6)",
+      "color": "rgb(237, 247, 255)"
+    },
+    "names": {
+      "text": "Names",
+      "title": "Names on",
+      "pressed": "true",
+      "state": "",
+      "background": "rgba(18, 84, 52, 0.9)",
+      "border": "rgba(123, 255, 179, 0.62)",
+      "color": "rgb(239, 255, 245)"
+    },
+    "orbits": {
+      "text": "Orbits",
+      "title": "Orbits off",
+      "pressed": "false",
+      "state": "",
+      "background": "rgba(88, 28, 38, 0.86)",
+      "border": "rgba(255, 134, 151, 0.6)",
+      "color": "rgb(255, 230, 234)"
+    },
+    "visibility": [
+      {
+        "key": "light-ray:61-cygni",
+        "text": "61 Cygni",
+        "title": "Light Rays: 61 Cygni Ray on",
+        "pressed": "true",
+        "background": "rgba(18, 84, 52, 0.9)",
+        "border": "rgba(123, 255, 179, 0.62)",
+        "color": "rgb(239, 255, 245)"
+      },
+      {
+        "key": "light-ray:gliese-300",
+        "text": "Gliese 300",
+        "title": "Light Rays: Gliese 300 Ray off",
+        "pressed": "false",
+        "background": "rgba(88, 28, 38, 0.86)",
+        "border": "rgba(255, 134, 151, 0.6)",
+        "color": "rgb(255, 230, 234)"
+      },
+      {
+        "key": "trajectory:61-cygni-transfer",
+        "text": "61 Cygni",
+        "title": "Trajectories: 61 Cygni trajectory on",
+        "pressed": "true",
+        "background": "rgba(18, 84, 52, 0.9)",
+        "border": "rgba(123, 255, 179, 0.62)",
+        "color": "rgb(239, 255, 245)"
+      }
+    ]
+  }
+}

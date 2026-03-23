@@ -10,13 +10,30 @@ interface HudPanelProps {
 }
 
 const FALLBACK_HUD_SNAPSHOT: HudSnapshot = {
-  zoomToggleLabel: "Minimum Zoom",
-  namesToggleLabel: "Show Body Names",
-  orbitsToggleLabel: "Hide Orbits",
+  zoomToggleLabel: "Far",
+  isZoomedIn: false,
+  namesToggleLabel: "Names",
+  orbitsToggleLabel: "Orbits",
   showBodyNames: false,
   showOrbits: true,
   visibilityControlGroups: []
 };
+
+function formatVisibilityButtonLabel(label: string, groupKey: string): string {
+  const trimmedLabel = label.trim();
+  if (!trimmedLabel) {
+    return "Item";
+  }
+
+  const compactLabel =
+    groupKey === "trajectories"
+      ? trimmedLabel.replace(/\s+trajectory$/i, "")
+      : groupKey === "light-rays"
+        ? trimmedLabel.replace(/\s+ray$/i, "")
+        : trimmedLabel;
+
+  return compactLabel.trim() || trimmedLabel;
+}
 
 export function HudPanel({
   snapshot,
@@ -28,25 +45,35 @@ export function HudPanel({
   const hud = snapshot ?? FALLBACK_HUD_SNAPSHOT;
 
   return (
-    <section className="hud" aria-label="Instructions">
+    <section className="hud" aria-label="Scene controls">
       <div className="hud-controls">
-        <button id="zoom-toggle" className="zoom-button" type="button" onClick={onToggleZoom}>
-          Switch to {hud.zoomToggleLabel}
+        <button
+          id="zoom-toggle"
+          className="hud-button"
+          type="button"
+          aria-pressed={hud.isZoomedIn}
+          data-state={hud.isZoomedIn ? "near" : "far"}
+          title={`Zoom: ${hud.zoomToggleLabel}`}
+          onClick={onToggleZoom}
+        >
+          {hud.zoomToggleLabel}
         </button>
         <button
           id="names-toggle"
-          className="zoom-button"
+          className="hud-button"
           type="button"
           aria-pressed={hud.showBodyNames}
+          title={`Names ${hud.showBodyNames ? "on" : "off"}`}
           onClick={onToggleNames}
         >
           {hud.namesToggleLabel}
         </button>
         <button
           id="orbits-toggle"
-          className="zoom-button"
+          className="hud-button"
           type="button"
           aria-pressed={hud.showOrbits}
+          title={`Orbits ${hud.showOrbits ? "on" : "off"}`}
           onClick={onToggleOrbits}
         >
           {hud.orbitsToggleLabel}
@@ -64,13 +91,14 @@ export function HudPanel({
               {group.controls.map((control) => (
                 <button
                   key={control.key}
-                  className="zoom-button"
+                  className="hud-button"
                   type="button"
                   data-visibility-key={control.key}
                   aria-pressed={control.isVisible}
+                  title={`${group.label}: ${control.label} ${control.isVisible ? "on" : "off"}`}
                   onClick={() => onToggleVisibility(control.key)}
                 >
-                  {control.isVisible ? `Hide ${control.label}` : `Show ${control.label}`}
+                  {formatVisibilityButtonLabel(control.label, group.key)}
                 </button>
               ))}
             </div>
