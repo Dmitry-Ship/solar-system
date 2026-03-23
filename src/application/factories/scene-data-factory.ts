@@ -25,6 +25,7 @@ import type {
 } from "../../types/solar-system";
 
 const DEFAULT_ORBIT_COLOR = "#b0bdc1";
+const INITIAL_OPPOSITION_THETA_SAMPLE_COUNT = 1440;
 
 interface SceneDataFactoryOptions {
   constants: SimulationConstants;
@@ -62,9 +63,12 @@ export class SceneDataFactory {
   }
 
   createOrbitingBody(bodyDefinition: OrbitingBodyDefinition): OrbitingBody {
+    const theta = Number.isFinite(bodyDefinition.initialThetaDeg)
+      ? this.math.degToRad(bodyDefinition.initialThetaDeg ?? 0)
+      : this.random() * Math.PI * 2;
     return {
       ...bodyDefinition,
-      theta: this.random() * Math.PI * 2,
+      theta,
       inclination: this.math.degToRad(bodyDefinition.inclinationDeg || 0),
       node: this.math.degToRad(bodyDefinition.nodeDeg || 0),
       periapsisArg: this.math.degToRad(bodyDefinition.periapsisArgDeg || 0),
@@ -79,6 +83,100 @@ export class SceneDataFactory {
 
   createOrbitingBodies(definitions: OrbitingBodyDefinition[]): OrbitingBody[] {
     return definitions.map((definition) => this.createOrbitingBody(definition));
+  }
+
+  normalizeLookupName(name: string): string {
+    return typeof name === "string" ? name.trim().toLowerCase() : "";
+  }
+
+  pointMagnitude(point: Point3): number {
+    return Math.hypot(point.x, point.y, point.z);
+  }
+
+  normalizePoint(point: Point3): Point3 {
+    const magnitude = this.pointMagnitude(point);
+    if (magnitude <= 1e-9) {
+      return { x: 0, y: 0, z: 0 };
+    }
+
+    return {
+      x: point.x / magnitude,
+      y: point.y / magnitude,
+      z: point.z / magnitude
+    };
+  }
+
+  dotPoint(a: Point3, b: Point3): number {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+  }
+
+  findDirectionalMarkerByName(
+    directionalMarkers: DirectionalMarker[],
+    markerName: string
+  ): DirectionalMarker | null {
+    const normalizedMarkerName = this.normalizeLookupName(markerName);
+    if (!normalizedMarkerName) {
+      return null;
+    }
+
+    return (
+      directionalMarkers.find(
+        (directionalMarker) =>
+          this.normalizeLookupName(directionalMarker.name) === normalizedMarkerName
+      ) ?? null
+    );
+  }
+
+  resolveOrbitThetaOppositeMarker(
+    orbitingBody: OrbitingBody,
+    targetMarker: DirectionalMarker
+  ): number {
+    const markerDirection = this.normalizePoint(targetMarker);
+    const orbitalPosition = { x: 0, y: 0, z: 0 };
+    let bestTheta = orbitingBody.theta;
+    let bestDot = Number.POSITIVE_INFINITY;
+
+    for (let step = 0; step < INITIAL_OPPOSITION_THETA_SAMPLE_COUNT; step += 1) {
+      const theta = (step / INITIAL_OPPOSITION_THETA_SAMPLE_COUNT) * Math.PI * 2;
+      this.math.orbitalPositionInto(
+        orbitalPosition,
+        orbitingBody.orbitRadius,
+        theta,
+        orbitingBody.inclination,
+        orbitingBody.node,
+        0,
+        orbitingBody.eccentricity,
+        orbitingBody.periapsisArg
+      );
+
+      const positionDirection = this.normalizePoint(orbitalPosition);
+      const oppositionDot = this.dotPoint(positionDirection, markerDirection);
+      if (oppositionDot < bestDot) {
+        bestDot = oppositionDot;
+        bestTheta = theta;
+      }
+    }
+
+    return bestTheta;
+  }
+
+  applyDirectionalMarkerPhaseConstraints(
+    orbitingBodies: OrbitingBody[],
+    directionalMarkers: DirectionalMarker[]
+  ): void {
+    for (const orbitingBody of orbitingBodies) {
+      const markerName = orbitingBody.initialOppositionMarkerName;
+      if (typeof markerName !== "string" || !markerName.trim()) {
+        continue;
+      }
+
+      const targetMarker = this.findDirectionalMarkerByName(directionalMarkers, markerName);
+      if (!targetMarker) {
+        continue;
+      }
+
+      orbitingBody.theta = this.resolveOrbitThetaOppositeMarker(orbitingBody, targetMarker);
+    }
   }
 
   markerOnSphereFromRaDec(
@@ -133,6 +231,28 @@ export class SceneDataFactory {
       position: { ...voyagerDefinition.position },
       renderRadius: voyagerDefinition.radiusKm / this.constants.KM_PER_AU
     }));
+  }
+
+  createLocalTrajectoryTargets(orbitingBodies: OrbitingBody[]): Array<Point3 & { name: string }> {
+    return orbitingBodies.map((orbitingBody) => {
+      const position = this.math.orbitalPositionInto(
+        { x: 0, y: 0, z: 0 },
+        orbitingBody.orbitRadius,
+        orbitingBody.theta,
+        orbitingBody.inclination,
+        orbitingBody.node,
+        0,
+        orbitingBody.eccentricity,
+        orbitingBody.periapsisArg
+      );
+
+      return {
+        name: orbitingBody.name,
+        x: position.x,
+        y: position.y,
+        z: position.z
+      };
+    });
   }
 
   createRenderableDriftingBodies(definitions: DriftingBodyDefinition[]): DriftingBody[] {
@@ -259,11 +379,28 @@ export class SceneDataFactory {
   }
 
   createSceneData(): SceneData {
+    const directionalMarkerDistanceAu =
+      (this.beltCatalog.STAR_DISTANCE_MIN_AU + this.beltCatalog.STAR_DISTANCE_MAX_AU) * 0.5;
+    const directionalMarkers = this.markerCatalog.DIRECTIONAL_MARKER_DEFINITIONS.map(
+      (definition) =>
+        this.markerOnSphereFromRaDec(
+          definition.name,
+          directionalMarkerDistanceAu,
+          definition.raHours,
+          definition.decDeg,
+          definition.color,
+          definition.minPixelRadius,
+          definition.label
+        )
+    );
     const planets = this.createOrbitingBodies(this.planetCatalog.PLANET_DEFINITIONS);
     const dwarfPlanets = this.createOrbitingBodies(
       this.dwarfPlanetCatalog.DWARF_PLANET_DEFINITIONS
     );
     const comets = this.createOrbitingBodies(this.cometCatalog.COMET_DEFINITIONS);
+    this.applyDirectionalMarkerPhaseConstraints(planets, directionalMarkers);
+    this.applyDirectionalMarkerPhaseConstraints(dwarfPlanets, directionalMarkers);
+    this.applyDirectionalMarkerPhaseConstraints(comets, directionalMarkers);
 
     const orbitOpacityBodies = [...planets, ...dwarfPlanets];
     const orbitOpacityForBodyRadius = this.createOrbitOpacityCalculator(orbitOpacityBodies);
@@ -282,24 +419,12 @@ export class SceneDataFactory {
       );
     }
 
-    const directionalMarkerDistanceAu =
-      (this.beltCatalog.STAR_DISTANCE_MIN_AU + this.beltCatalog.STAR_DISTANCE_MAX_AU) * 0.5;
-    const directionalMarkers = this.markerCatalog.DIRECTIONAL_MARKER_DEFINITIONS.map(
-      (definition) =>
-        this.markerOnSphereFromRaDec(
-          definition.name,
-          directionalMarkerDistanceAu,
-          definition.raHours,
-          definition.decDeg,
-          definition.color,
-          definition.minPixelRadius,
-          definition.label
-        )
-    );
+    const localTrajectoryTargets = this.createLocalTrajectoryTargets(planets);
     const directionalGuideLines = buildDirectionalGuideLines(directionalMarkers, {
       constants: this.constants,
       math: this.math,
-      markerCatalog: this.markerCatalog
+      markerCatalog: this.markerCatalog,
+      localTrajectoryTargets
     });
 
     return {

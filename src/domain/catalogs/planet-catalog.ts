@@ -30,6 +30,8 @@ const PLANET_DEFINITIONS: OrbitingBodyDefinition[] = [
     au: 1.000372,
     radiusKm: 6371,
     color: "#5ea7ff",
+    // Derived from the guide marker so Earth stays opposite the 61 Cygni direction.
+    initialOppositionMarkerName: "61 Cygni",
     inclinationDeg: 0.000267,
     nodeDeg: 163.974871,
     periapsisArgDeg: 297.76718,

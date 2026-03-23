@@ -11,6 +11,7 @@ import type {
   SimulationConstants,
   TrajectoryDefinition,
   TrajectoryFocalBranchDefinition,
+  TrajectoryLocalBranchDefinition,
   TrajectoryRoutePointDefinition,
   TrajectoryRouteSegmentDefinition,
   TrajectoryVisibilityKey,
@@ -27,11 +28,17 @@ const LIGHT_RAY_DISTANCE_FADE_POWER = 2.2;
 const TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT = 64;
 const TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT = 24;
 const TRAJECTORY_BRANCH_FOCAL_LINE_SEGMENT_COUNT = 14;
+const TRAJECTORY_BRANCH_LOCAL_LINE_SEGMENT_COUNT = 12;
+
+interface LocalTrajectoryTarget extends Point3 {
+  name: string;
+}
 
 interface GuideLineFactoryDependencies {
   constants: SimulationConstants;
   math: MathApi;
   markerCatalog: MarkerCatalog;
+  localTrajectoryTargets?: LocalTrajectoryTarget[];
 }
 
 interface ResolvedGuideLineDependencies extends GuideLineFactoryDependencies {
@@ -304,6 +311,18 @@ function appendRadialLinePoints(
   }
 }
 
+function appendLinearPoints(
+  points: Point3[],
+  start: Point3,
+  end: Point3,
+  segmentCount: number
+): void {
+  const safeSegmentCount = Math.max(1, Math.floor(segmentCount));
+  for (let step = 0; step <= safeSegmentCount; step += 1) {
+    appendUniquePoint(points, lerpPoint(start, end, step / safeSegmentCount));
+  }
+}
+
 function buildDistanceFadeProfile(points: Point3[], marker: Point3 | null): number[] | null {
   if (!marker) {
     return null;
@@ -499,6 +518,10 @@ function findPeriapsisPointIndex(points: Point3[]): number {
 
 function normalizeTrajectoryRoutePointKey(key: string): string {
   return typeof key === "string" ? key.trim() : "";
+}
+
+function normalizeLookupName(name: string): string {
+  return typeof name === "string" ? name.trim().toLowerCase() : "";
 }
 
 function resolveTrajectoryVisibilityDescriptor(
@@ -757,6 +780,97 @@ function createTrajectoryFocalBranchGuideLine(
   });
 }
 
+function createTrajectoryLocalBranchGuideLine(
+  sourceRoutePoint: TrajectoryRoutePointSample | null,
+  targetPoint: Point3,
+  branchDefinition: TrajectoryLocalBranchDefinition,
+  fallbackColor: string,
+  visibilityDescriptor: TrajectoryVisibilityDescriptor
+): DirectionalGuideLine | null {
+  if (!sourceRoutePoint) {
+    return null;
+  }
+
+  const planeHeight = Number.isFinite(targetPoint.y) ? targetPoint.y : 0;
+  const planeProjectedSource = {
+    x: sourceRoutePoint.point.x,
+    y: planeHeight,
+    z: sourceRoutePoint.point.z
+  };
+  const horizontalDelta = {
+    x: targetPoint.x - planeProjectedSource.x,
+    y: 0,
+    z: targetPoint.z - planeProjectedSource.z
+  };
+  const horizontalDistance = pointMagnitude(horizontalDelta);
+  const planeDirection =
+    horizontalDistance > 1e-6
+      ? scalePoint(horizontalDelta, 1 / horizontalDistance)
+      : { x: 1, y: 0, z: 0 };
+  const planeJoinDistanceAu = Math.max(0.12, Math.min(horizontalDistance * 0.45, 0.6));
+  const planeJoinPoint = {
+    x: targetPoint.x - planeDirection.x * planeJoinDistanceAu,
+    y: planeHeight,
+    z: targetPoint.z - planeDirection.z * planeJoinDistanceAu
+  };
+  const sourceToPlaneJoinDistance = pointDistance(sourceRoutePoint.point, planeJoinPoint);
+  const sourceToPlaneJoinDirection = normalizePoint(
+    subtractPoint(planeJoinPoint, sourceRoutePoint.point)
+  );
+  const branchBreakoutDirection = normalizePoint(
+    addPoint(
+      scalePoint(sourceRoutePoint.tangent, 0.18),
+      scalePoint(sourceToPlaneJoinDirection, 1.05)
+    )
+  );
+  const startHandleLength = Math.max(
+    0.05,
+    Math.min(sourceToPlaneJoinDistance * 0.12, Math.max(horizontalDistance * 0.12, 0.16))
+  );
+  const planeHandleLength = Math.max(0.08, Math.min(planeJoinDistanceAu * 0.85, 0.35));
+  const startControlPoint = addPoint(
+    sourceRoutePoint.point,
+    scalePoint(branchBreakoutDirection, startHandleLength)
+  );
+  const planeJoinControlPoint = {
+    x: planeJoinPoint.x - planeDirection.x * planeHandleLength,
+    y: planeHeight,
+    z: planeJoinPoint.z - planeDirection.z * planeHandleLength
+  };
+  const branchPoints: Point3[] = [];
+
+  appendCubicBezierPoints(
+    branchPoints,
+    sourceRoutePoint.point,
+    startControlPoint,
+    planeJoinControlPoint,
+    planeJoinPoint,
+    TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT
+  );
+  appendLinearPoints(
+    branchPoints,
+    planeJoinPoint,
+    targetPoint,
+    TRAJECTORY_BRANCH_LOCAL_LINE_SEGMENT_COUNT
+  );
+
+  const label = typeof branchDefinition.label === "string" ? branchDefinition.label.trim() : "";
+  return buildDirectionalGuideLine(sourceRoutePoint.point, branchDefinition.color || fallbackColor, {
+    points: branchPoints,
+    opacity: 0.9,
+    depthTest: false,
+    visibilityKey: visibilityDescriptor.visibilityKey,
+    visibilityLabel: visibilityDescriptor.visibilityLabel,
+    visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
+    visibilityGroupKey: "trajectories",
+    visibilityGroupLabel: "Trajectories",
+    initialVisibility: true,
+    label,
+    labelAnchorPoint: resolvePolylineMidpoint(branchPoints),
+    labelMarginPixels: 10
+  });
+}
+
 function buildMatryoshkaCylinderProfile(
   sourceMarker: Point3,
   sourceRadiusAu: number,
@@ -962,15 +1076,31 @@ function findMarkerByName(
   sourceMarkers: DirectionalMarker[],
   markerName: string
 ): DirectionalMarker | null {
-  const normalizedMarkerName = typeof markerName === "string" ? markerName.trim() : "";
+  const normalizedMarkerName = normalizeLookupName(markerName);
   if (!normalizedMarkerName) {
     return null;
   }
 
   return (
     sourceMarkers.find(
-      (sourceMarker) => sourceMarker.name.trim().toLowerCase() === normalizedMarkerName.toLowerCase()
+      (sourceMarker) => normalizeLookupName(sourceMarker.name) === normalizedMarkerName
     ) || null
+  );
+}
+
+function findLocalTrajectoryTargetByName(
+  localTrajectoryTargets: LocalTrajectoryTarget[] | null | undefined,
+  targetName: string
+): LocalTrajectoryTarget | null {
+  const normalizedTargetName = normalizeLookupName(targetName);
+  if (!normalizedTargetName) {
+    return null;
+  }
+
+  return (
+    localTrajectoryTargets?.find(
+      (localTrajectoryTarget) => normalizeLookupName(localTrajectoryTarget.name) === normalizedTargetName
+    ) ?? null
   );
 }
 
@@ -1091,6 +1221,28 @@ function createTrajectoryGuideLinesForDefinition(
     );
     if (focalBranchGuideLine) {
       guideLines.push(focalBranchGuideLine);
+    }
+  }
+
+  for (const localBranch of trajectoryDefinition.localBranches ?? []) {
+    const targetBody = findLocalTrajectoryTargetByName(
+      dependencies.localTrajectoryTargets,
+      localBranch.targetBodyName
+    );
+    const sourcePointKey = normalizeTrajectoryRoutePointKey(localBranch.sourcePointKey);
+    if (!targetBody || !sourcePointKey) {
+      continue;
+    }
+
+    const localBranchGuideLine = createTrajectoryLocalBranchGuideLine(
+      route.routePointsByKey.get(sourcePointKey) ?? null,
+      targetBody,
+      localBranch,
+      trajectoryColor,
+      visibilityDescriptor
+    );
+    if (localBranchGuideLine) {
+      guideLines.push(localBranchGuideLine);
     }
   }
 

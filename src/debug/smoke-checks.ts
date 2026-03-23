@@ -20,6 +20,23 @@ function pointMagnitude(point: Point3): number {
   return Math.hypot(point.x, point.y, point.z);
 }
 
+function normalizePoint(point: Point3): Point3 {
+  const magnitude = pointMagnitude(point);
+  if (magnitude <= 1e-9) {
+    return { x: 0, y: 0, z: 0 };
+  }
+
+  return {
+    x: point.x / magnitude,
+    y: point.y / magnitude,
+    z: point.z / magnitude
+  };
+}
+
+function dotPoint(a: Point3, b: Point3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
 function referenceSolveEccentricAnomaly(meanAnomaly: number, eccentricity: number): number {
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
   const normalizeAngleSigned = (value: number) => {
@@ -78,6 +95,7 @@ export function runSmokeChecks() {
     }
 
     sceneData = dataApi.createSceneData();
+    const sceneDataSecondPass = dataApi.createSceneData();
     const hasStars =
       sceneData.stars?.positions instanceof Float32Array && sceneData.stars.count > 0;
     const validSceneData =
@@ -93,6 +111,68 @@ export function runSmokeChecks() {
         "Scene Assembly",
         validSceneData,
         validSceneData ? "Scene data collections were generated." : "Scene data shape is invalid."
+      )
+    );
+
+    const earthA = sceneData.planets.find((planet) => planet.name === "Earth 🌎") ?? null;
+    const earthB = sceneDataSecondPass.planets.find((planet) => planet.name === "Earth 🌎") ?? null;
+    const earthPositionA =
+      earthA &&
+      mathApi?.orbitalPositionInto(
+        { x: 0, y: 0, z: 0 },
+        earthA.orbitRadius,
+        earthA.theta,
+        earthA.inclination,
+        earthA.node,
+        0,
+        earthA.eccentricity,
+        earthA.periapsisArg
+      );
+    const earthPositionB =
+      earthB &&
+      mathApi?.orbitalPositionInto(
+        { x: 0, y: 0, z: 0 },
+        earthB.orbitRadius,
+        earthB.theta,
+        earthB.inclination,
+        earthB.node,
+        0,
+        earthB.eccentricity,
+        earthB.periapsisArg
+      );
+    const deterministicEarthPosition =
+      !!earthA &&
+      !!earthB &&
+      approxEqual(earthA.theta, earthB.theta) &&
+      !!earthPositionA &&
+      !!earthPositionB &&
+      approxEqual(earthPositionA.x, earthPositionB.x) &&
+      approxEqual(earthPositionA.y, earthPositionB.y) &&
+      approxEqual(earthPositionA.z, earthPositionB.z);
+    results.push(
+      createResult(
+        "Earth Position Determinism",
+        deterministicEarthPosition,
+        deterministicEarthPosition
+          ? "Earth keeps the same orbital phase across scene rebuilds."
+          : "Earth phase or position changes across scene rebuilds."
+      )
+    );
+
+    const cygniMarker = sceneData.directionalMarkers.find((marker) => marker.name === "61 Cygni") ?? null;
+    const earthOppositionDot =
+      earthPositionA && cygniMarker
+        ? dotPoint(normalizePoint(earthPositionA), normalizePoint(cygniMarker))
+        : Number.NaN;
+    const earthOppositionOk =
+      !!earthPositionA && !!cygniMarker && Number.isFinite(earthOppositionDot) && earthOppositionDot <= -0.95;
+    results.push(
+      createResult(
+        "Earth Opposition to 61 Cygni",
+        earthOppositionOk,
+        earthOppositionOk
+          ? "Earth is positioned on the orbital side opposite the 61 Cygni direction."
+          : "Earth is not opposite enough to the 61 Cygni direction."
       )
     );
   } catch (error) {
@@ -249,24 +329,67 @@ export function runSmokeChecks() {
     trajectoryGuideLines.find((guideLine) => guideLine.label === "observer path") ?? null;
   const transmitterPathGuideLine =
     trajectoryGuideLines.find((guideLine) => guideLine.label === "transmitter path") ?? null;
+  const landerPathGuideLine =
+    trajectoryGuideLines.find((guideLine) => guideLine.label === "lander path") ?? null;
+  const trajectoryBranchColors = [
+    commonPathGuideLine?.color,
+    observerPathGuideLine?.color,
+    transmitterPathGuideLine?.color,
+    landerPathGuideLine?.color
+  ].filter((color): color is string => typeof color === "string" && color.length > 0);
   const trajectorySegmentationOk =
     !!commonPathGuideLine &&
     !!observerPathGuideLine &&
     !!transmitterPathGuideLine &&
+    !!landerPathGuideLine &&
     commonPathGuideLine.points.length > 1 &&
     observerPathGuideLine.points.length > 1 &&
     transmitterPathGuideLine.points.length > 1 &&
-    commonPathGuideLine.color === observerPathGuideLine.color &&
-    commonPathGuideLine.color !== transmitterPathGuideLine.color &&
+    landerPathGuideLine.points.length > 1 &&
+    new Set(trajectoryBranchColors).size === 4 &&
     commonPathGuideLine.visibilityKey === observerPathGuideLine.visibilityKey &&
-    commonPathGuideLine.visibilityKey === transmitterPathGuideLine.visibilityKey;
+    commonPathGuideLine.visibilityKey === transmitterPathGuideLine.visibilityKey &&
+    commonPathGuideLine.visibilityKey === landerPathGuideLine.visibilityKey;
   results.push(
     createResult(
       "Trajectory Segmentation",
       trajectorySegmentationOk,
       trajectorySegmentationOk
-        ? "Common, observer, and transmitter paths are present with the expected shared visibility and color split."
-        : "Trajectory segments are missing or use the wrong colors/visibility grouping."
+        ? "Common, observer, transmitter, and lander paths are present with shared visibility and unique colors."
+        : "Trajectory paths are missing or do not use unique colors within the shared visibility grouping."
+    )
+  );
+
+  const landerPathTail = landerPathGuideLine?.points.slice(-4) ?? [];
+  const landerPathFlatTail =
+    landerPathTail.length >= 2 &&
+    landerPathTail.every(
+      (point) => Math.abs(point.y - (landerPathTail[0]?.y ?? point.y)) <= 1e-9
+    );
+  const landerPathStartsOnTransmitter =
+    !!landerPathGuideLine &&
+    !!transmitterPathGuideLine &&
+    transmitterPathGuideLine.points.some(
+      (point) =>
+        Math.hypot(
+          point.x - (landerPathGuideLine.points[0]?.x ?? point.x),
+          point.y - (landerPathGuideLine.points[0]?.y ?? point.y),
+          point.z - (landerPathGuideLine.points[0]?.z ?? point.z)
+        ) <= 1e-9
+    );
+  const landerPathOk =
+    !!landerPathGuideLine &&
+    landerPathGuideLine.points.length > 1 &&
+    landerPathGuideLine.visibilityKey === transmitterPathGuideLine?.visibilityKey &&
+    landerPathStartsOnTransmitter &&
+    landerPathFlatTail;
+  results.push(
+    createResult(
+      "Lander Trajectory Branch",
+      landerPathOk,
+      landerPathOk
+        ? "Lander path starts on the transmitter path and finishes with an ecliptic-parallel approach."
+        : "Lander path is missing, detached from the transmitter path, or does not flatten into the ecliptic approach."
     )
   );
 

@@ -57,6 +57,11 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
         key: "branching-point",
         distanceAu: 3000,
         location: "inbound"
+      },
+      {
+        key: "sun-passage",
+        distanceAu: 0.01,
+        location: "outbound"
       }
     ],
     routeSegments: [
@@ -73,6 +78,14 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
         color: "#7dd3fc"
       }
     ],
+    localBranches: [
+      {
+        label: "lander path",
+        sourcePointKey: "sun-passage",
+        targetBodyName: "Earth 🌎",
+        color: "#4ade80"
+      }
+    ],
     focalBranches: [
       {
         label: "observer path",
@@ -80,7 +93,7 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
         targetMarkerName: "Gliese 300",
         joinDistanceAu: 1000,
         endDistanceAu: constants.SOLAR_GRAVITATIONAL_LENS_AU,
-        color: "#ffd36e"
+        color: "#f472b6"
       }
     ],
     color: "#ffd36e"

@@ -46,6 +46,8 @@ export interface OrbitingBodyDefinition {
   nodeDeg: number;
   periapsisArgDeg: number;
   eccentricity: number;
+  initialThetaDeg?: number;
+  initialOppositionMarkerName?: string;
   minPixelRadius?: number;
   orbitColor?: string;
 }
@@ -128,6 +130,13 @@ export interface TrajectoryFocalBranchDefinition {
   color?: string;
 }
 
+export interface TrajectoryLocalBranchDefinition {
+  label: string;
+  sourcePointKey: string;
+  targetBodyName: string;
+  color?: string;
+}
+
 export interface TrajectoryDefinition {
   name: string;
   label?: string;
@@ -141,6 +150,7 @@ export interface TrajectoryDefinition {
   routePoints?: TrajectoryRoutePointDefinition[];
   routeSegments?: TrajectoryRouteSegmentDefinition[];
   focalBranches?: TrajectoryFocalBranchDefinition[];
+  localBranches?: TrajectoryLocalBranchDefinition[];
   color?: string;
 }
 
