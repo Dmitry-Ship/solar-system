@@ -153,11 +153,65 @@ body {
   margin-top: 0.75rem;
 }
 
+.hud-radio-group {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
 .hud-control-heading {
   font: 600 0.72rem/1 "Avenir Next", "Futura", "Trebuchet MS", sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+.hud-radio-options {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.hud-radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.48rem 0.7rem;
+  border: 1px solid var(--button-off-border);
+  border-radius: 999px;
+  background: rgba(16, 28, 56, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 22px -14px rgba(20, 56, 96, 0.2);
+  color: var(--button-far-text);
+  font: 600 0.78rem/1 "Avenir Next", "Futura", "Trebuchet MS", sans-serif;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease;
+}
+
+.hud-radio-option:hover {
+  transform: translateY(-1px);
+}
+
+.hud-radio-option[data-checked="true"] {
+  border-color: var(--button-on-border);
+  background: rgba(18, 84, 52, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 22px -14px var(--button-on-shadow);
+  color: var(--button-on-text);
+}
+
+.hud-radio-input {
+  margin: 0;
+  accent-color: #7bffb3;
 }
 
 .hud-button {

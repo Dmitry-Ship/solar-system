@@ -1,8 +1,9 @@
 import type { HudSnapshot } from "../infrastructure/dom/hud-controller";
-import type { VisibilityKey } from "../types/solar-system";
+import type { PovTargetKey, VisibilityKey } from "../types/solar-system";
 
 interface HudPanelProps {
   snapshot: HudSnapshot | null;
+  onSetPov: (pov: PovTargetKey) => void;
   onToggleZoom: () => void;
   onToggleNames: () => void;
   onToggleOrbits: () => void;
@@ -14,10 +15,13 @@ const FALLBACK_HUD_SNAPSHOT: HudSnapshot = {
   isZoomedIn: false,
   namesToggleLabel: "Names",
   orbitsToggleLabel: "Orbits",
+  currentPov: "sun",
   showBodyNames: false,
   showOrbits: true,
   visibilityControlGroups: []
 };
+
+const POV_OPTIONS: PovTargetKey[] = ["sun", "earth", "61 Cygni"];
 
 function formatVisibilityButtonLabel(label: string, groupKey: string): string {
   const trimmedLabel = label.trim();
@@ -37,6 +41,7 @@ function formatVisibilityButtonLabel(label: string, groupKey: string): string {
 
 export function HudPanel({
   snapshot,
+  onSetPov,
   onToggleZoom,
   onToggleNames,
   onToggleOrbits,
@@ -79,6 +84,32 @@ export function HudPanel({
           {hud.orbitsToggleLabel}
         </button>
       </div>
+      <fieldset className="hud-control-group hud-radio-group">
+        <legend className="hud-control-heading">POV</legend>
+        <div className="hud-radio-options">
+          {POV_OPTIONS.map((option) => {
+            const isChecked = hud.currentPov === option;
+
+            return (
+              <label
+                key={option}
+                className="hud-radio-option"
+                data-checked={isChecked}
+              >
+                <input
+                  className="hud-radio-input"
+                  type="radio"
+                  name="scene-pov"
+                  value={option}
+                  checked={isChecked}
+                  onChange={() => onSetPov(option)}
+                />
+                <span>{option}</span>
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
       <div id="visibility-controls-root" aria-label="Visibility controls">
         {hud.visibilityControlGroups.map((group) => (
           <div

@@ -1,5 +1,6 @@
 import type {
   LightRayVisibilityKey,
+  PovTargetKey,
   VisibilityGroupKey,
   VisibilityKey
 } from "../../types/solar-system";
@@ -11,6 +12,7 @@ export class AppState {
     showBodyNames: boolean;
     showOrbits: boolean;
     showLightRays: boolean;
+    currentPov: PovTargetKey;
     visibilityByKey: Partial<Record<VisibilityKey, boolean>>;
     visibilityGroupByKey: Partial<Record<VisibilityKey, VisibilityGroupKey>>;
     lightRayVisibilityByKey: Partial<Record<VisibilityKey, boolean>>;
@@ -21,6 +23,7 @@ export class AppState {
       this.showBodyNames = false;
       this.showOrbits = true;
       this.showLightRays = false;
+      this.currentPov = "sun";
       this.visibilityByKey = Object.create(null);
       this.visibilityGroupByKey = Object.create(null);
       this.lightRayVisibilityByKey = this.visibilityByKey;
@@ -98,5 +101,10 @@ export class AppState {
 
     toggleLightRayVisibility(key: LightRayVisibilityKey): boolean {
       return this.toggleVisibility(key, false);
+    }
+
+    setPov(pov: PovTargetKey): PovTargetKey {
+      this.currentPov = pov;
+      return this.currentPov;
     }
   }

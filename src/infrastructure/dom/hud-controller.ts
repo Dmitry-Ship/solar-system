@@ -5,7 +5,10 @@ import {
   type VisibilityControlGroup
 } from "../../application/factories/visibility-control-group-factory";
 import type {
+  HudStateLike,
   MathApi,
+  Point3,
+  PovTargetKey,
   VisibilityKey,
   VisibilityRuntime,
   VisibilityStateLike
@@ -29,6 +32,7 @@ export interface HudSnapshot {
   isZoomedIn: boolean;
   namesToggleLabel: string;
   orbitsToggleLabel: string;
+  currentPov: PovTargetKey;
   showBodyNames: boolean;
   showOrbits: boolean;
   visibilityControlGroups: HudVisibilityControlGroupSnapshot[];
@@ -40,6 +44,7 @@ export interface HudHandle {
   updateZoomToggleLabel: () => void;
   getSnapshot: () => HudSnapshot;
   subscribe: (listener: HudSubscriber) => () => void;
+  setPov: (pov: PovTargetKey) => void;
   toggleZoom: () => void;
   toggleNames: () => void;
   toggleOrbits: () => void;
@@ -47,7 +52,7 @@ export interface HudHandle {
 }
 
 interface HudControllerOptions {
-  state: VisibilityStateLike;
+  state: HudStateLike;
   controls: OrbitControls;
   orbitGroup: Group | null;
   visibilityRuntimes?: VisibilityRuntime[];
@@ -58,11 +63,12 @@ interface HudControllerOptions {
   onOrbitVisibilityChanged?: (state: VisibilityStateLike, orbitGroup: Group | null) => void;
   onVisibilityChanged?: (state: VisibilityStateLike, visibilityRuntimes: VisibilityRuntime[]) => void;
   requestRender?: () => void;
+  resolvePovTarget?: (pov: PovTargetKey) => Point3 | null;
   visibilityControlGroupFactory?: VisibilityControlGroupFactory;
 }
 
 export class HudController {
-  private readonly state: VisibilityStateLike;
+  private readonly state: HudStateLike;
   private readonly controls: OrbitControls;
   private readonly orbitGroup: Group | null;
   private readonly visibilityRuntimes: VisibilityRuntime[];
@@ -77,6 +83,7 @@ export class HudController {
     visibilityRuntimes: VisibilityRuntime[]
   ) => void;
   private readonly requestRender?: () => void;
+  private readonly resolvePovTarget?: (pov: PovTargetKey) => Point3 | null;
   private readonly visibilityControlGroupFactory: VisibilityControlGroupFactory;
   private readonly subscribers = new Set<HudSubscriber>();
   private readonly initialVisibilityByKey = new Map<VisibilityKey, boolean>();
@@ -100,6 +107,7 @@ export class HudController {
     this.onOrbitVisibilityChanged = options.onOrbitVisibilityChanged;
     this.onVisibilityChanged = options.onVisibilityChanged;
     this.requestRender = options.requestRender;
+    this.resolvePovTarget = options.resolvePovTarget;
     this.visibilityControlGroupFactory =
       options.visibilityControlGroupFactory || new VisibilityControlGroupFactory();
   }
@@ -159,6 +167,7 @@ export class HudController {
       isZoomedIn: this.isZoomedIn(),
       namesToggleLabel: this.getNamesToggleLabel(),
       orbitsToggleLabel: this.getOrbitsToggleLabel(),
+      currentPov: this.state.currentPov,
       showBodyNames: this.state.showBodyNames,
       showOrbits: this.state.showOrbits,
       visibilityControlGroups: this.visibilityControlGroups.map((group) => ({
@@ -183,6 +192,35 @@ export class HudController {
     return () => {
       this.subscribers.delete(listener);
     };
+  }
+
+  private moveCameraTarget(targetPoint: Point3): void {
+    const currentTarget = this.controls.target.clone();
+    const nextTarget = currentTarget.clone().set(targetPoint.x, targetPoint.y, targetPoint.z);
+    const targetDelta = nextTarget.clone().sub(currentTarget);
+
+    this.camera.position.add(targetDelta);
+    this.controls.target.copy(nextTarget);
+    this.camera.lookAt(this.controls.target);
+    this.controls.update();
+  }
+
+  setPov(pov: PovTargetKey): void {
+    if (pov === this.state.currentPov) {
+      this.emitSnapshot();
+      return;
+    }
+
+    const targetPoint =
+      pov === "sun" ? { x: 0, y: 0, z: 0 } : this.resolvePovTarget?.(pov);
+    if (!targetPoint) {
+      return;
+    }
+
+    this.state.setPov(pov);
+    this.moveCameraTarget(targetPoint);
+    this.updateZoomToggleLabel();
+    this.requestRender?.();
   }
 
   toggleZoom(): void {
@@ -236,6 +274,7 @@ export class HudController {
       updateZoomToggleLabel: this.updateZoomToggleLabel,
       getSnapshot: this.getSnapshot.bind(this),
       subscribe: this.subscribe.bind(this),
+      setPov: this.setPov.bind(this),
       toggleZoom: this.toggleZoom.bind(this),
       toggleNames: this.toggleNames.bind(this),
       toggleOrbits: this.toggleOrbits.bind(this),

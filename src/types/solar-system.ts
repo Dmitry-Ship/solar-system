@@ -156,6 +156,7 @@ export interface TrajectoryDefinition {
 
 export type OrbitRenderGroupKey = "planets" | "dwarfPlanets" | "comets";
 export type GuideRenderStyle = "line" | "lightRay";
+export type PovTargetKey = "sun" | "earth" | "61 Cygni";
 export type LightRayVisibilityKey = `light-ray:${string}`;
 export type TrajectoryVisibilityKey = `trajectory:${string}`;
 export type VisibilityKey =
@@ -328,6 +329,11 @@ export interface VisibilityStateLike {
   ): void;
   toggleVisibility(key: VisibilityKey, fallbackVisibility?: boolean): boolean;
   isVisibilityEnabled(key: VisibilityKey, fallbackVisibility?: boolean): boolean;
+}
+
+export interface HudStateLike extends VisibilityStateLike {
+  currentPov: PovTargetKey;
+  setPov(pov: PovTargetKey): PovTargetKey;
 }
 
 export interface SceneObjectRuntime extends VisibilityRuntime {

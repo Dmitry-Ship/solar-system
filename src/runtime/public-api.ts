@@ -32,9 +32,11 @@ import type {
   BodyRenderConfig,
   DirectionalGuideLine,
   GuideRuntime,
+  HudStateLike,
   MathApi,
   Point3,
   PostprocessingConfig,
+  PovTargetKey,
   SceneData,
   SceneDataApi,
   SceneObjectRuntime,
@@ -246,13 +248,14 @@ function applyOrbitVisibility(
 }
 
 function setupHudControls(
-  state: VisibilityStateLike,
+  state: HudStateLike,
   controls: OrbitControls,
   guideRuntimes: VisibilityRuntime[],
   camera: PerspectiveCamera,
   mathApi: Pick<MathApi, "clamp">,
   orbitGroup: Group | null,
-  requestRender?: () => void
+  requestRender?: () => void,
+  resolvePovTarget?: (pov: PovTargetKey) => Point3 | null
 ): HudHandle {
   const controller = new HudController({
     state,
@@ -263,6 +266,7 @@ function setupHudControls(
     math: mathApi,
     onOrbitVisibilityChanged: applyOrbitVisibility,
     onVisibilityChanged: applyGuideLineVisibility,
+    resolvePovTarget,
     requestRender
   });
   return controller.setup();

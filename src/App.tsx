@@ -55,6 +55,7 @@ export default function App() {
       <canvas id="scene" aria-label="3D solar system model" />
       <HudPanel
         snapshot={hudSnapshot}
+        onSetPov={(pov) => app?.setPov(pov)}
         onToggleZoom={() => app?.toggleZoom()}
         onToggleNames={() => app?.toggleNames()}
         onToggleOrbits={() => app?.toggleOrbits()}

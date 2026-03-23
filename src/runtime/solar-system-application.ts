@@ -22,6 +22,8 @@ import { constants as defaultConstants, data as defaultData, math as defaultMath
 import { RuntimeThree } from "./three-globals";
 import type {
   MathApi,
+  Point3,
+  PovTargetKey,
   RuntimeThreeModule,
   SceneData,
   SceneDataApi,
@@ -311,6 +313,56 @@ export class SolarSystemApplication {
     this.sceneRuntime.build(this.sceneData);
   }
 
+  resolveOrbitingBodyPosition(bodyName: string): Point3 | null {
+    const runtimePosition = this.sceneRuntime?.sceneObjectRuntimes.find(
+      (runtime) => runtime.orbitingBody?.name === bodyName
+    )?.mesh.position;
+    if (runtimePosition) {
+      return {
+        x: runtimePosition.x,
+        y: runtimePosition.y,
+        z: runtimePosition.z
+      };
+    }
+
+    const orbitingBody = this.sceneData?.planets.find((planet) => planet.name === bodyName);
+    if (!orbitingBody) {
+      return null;
+    }
+
+    return this.math.orbitalPositionInto(
+      { x: 0, y: 0, z: 0 },
+      orbitingBody.orbitRadius,
+      orbitingBody.theta,
+      orbitingBody.inclination,
+      orbitingBody.node,
+      0,
+      orbitingBody.eccentricity,
+      orbitingBody.periapsisArg
+    );
+  }
+
+  resolvePovTarget(pov: PovTargetKey): Point3 | null {
+    if (pov === "sun") {
+      return { x: 0, y: 0, z: 0 };
+    }
+
+    if (pov === "earth") {
+      return this.resolveOrbitingBodyPosition("Earth 🌎");
+    }
+
+    const marker = this.sceneData?.directionalMarkers.find(
+      (directionalMarker) => directionalMarker.name === pov
+    );
+    return marker
+      ? {
+          x: marker.x,
+          y: marker.y,
+          z: marker.z
+        }
+      : null;
+  }
+
   initializeHud(): void {
     if (
       !this.state ||
@@ -332,6 +384,7 @@ export class SolarSystemApplication {
       math: this.math,
       onOrbitVisibilityChanged: this.orbitRenderer.applyOrbitVisibility.bind(this.orbitRenderer),
       onVisibilityChanged: this.visibilityService.apply.bind(this.visibilityService),
+      resolvePovTarget: this.resolvePovTarget.bind(this),
       requestRender: this.renderScene.bind(this)
     }).setup();
   }
@@ -464,6 +517,10 @@ export class SolarSystemApplication {
 
   toggleVisibility(key: Parameters<HudHandle["toggleVisibility"]>[0]): void {
     this.hud?.toggleVisibility(key);
+  }
+
+  setPov(pov: Parameters<HudHandle["setPov"]>[0]): void {
+    this.hud?.setPov(pov);
   }
 
   resize(): void {
