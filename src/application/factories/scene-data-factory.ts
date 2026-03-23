@@ -8,6 +8,7 @@ import type { SceneBodyCatalog } from "../../domain/catalogs/scene-body-catalog"
 import type {
   AsteroidBelt,
   AsteroidBeltConfig,
+  DirectionalMarkerDefinition,
   DirectionalMarker,
   DriftingBody,
   DriftingBodyDefinition,
@@ -203,6 +204,43 @@ export class SceneDataFactory {
     };
   }
 
+  resolveDirectionalMarkerDistanceScaleAuPerLightYear(
+    definitions: DirectionalMarkerDefinition[]
+  ): number {
+    let minimumDistanceLightYears = Number.POSITIVE_INFINITY;
+
+    for (const definition of definitions) {
+      const distanceLightYears = definition.distanceLightYears ?? Number.NaN;
+      if (Number.isFinite(distanceLightYears) && distanceLightYears > 0) {
+        minimumDistanceLightYears = Math.min(minimumDistanceLightYears, distanceLightYears);
+      }
+    }
+
+    if (!Number.isFinite(minimumDistanceLightYears)) {
+      return 0;
+    }
+
+    return this.beltCatalog.STAR_DISTANCE_MIN_AU / minimumDistanceLightYears;
+  }
+
+  resolveDirectionalMarkerDistanceAu(
+    definition: DirectionalMarkerDefinition,
+    distanceScaleAuPerLightYear: number,
+    fallbackDistanceAu: number
+  ): number {
+    const distanceLightYears = definition.distanceLightYears ?? Number.NaN;
+    if (
+      Number.isFinite(distanceLightYears) &&
+      distanceLightYears > 0 &&
+      Number.isFinite(distanceScaleAuPerLightYear) &&
+      distanceScaleAuPerLightYear > 0
+    ) {
+      return distanceLightYears * distanceScaleAuPerLightYear;
+    }
+
+    return fallbackDistanceAu;
+  }
+
   createDriftingBodies(definitions: DriftingBodyDefinition[]): Array<DriftingBodyDefinition & Point3> {
     return definitions.map((bodyDefinition) => {
       if (bodyDefinition.position) {
@@ -379,13 +417,21 @@ export class SceneDataFactory {
   }
 
   createSceneData(): SceneData {
-    const directionalMarkerDistanceAu =
+    const fallbackDirectionalMarkerDistanceAu =
       (this.beltCatalog.STAR_DISTANCE_MIN_AU + this.beltCatalog.STAR_DISTANCE_MAX_AU) * 0.5;
+    const directionalMarkerDistanceScaleAuPerLightYear =
+      this.resolveDirectionalMarkerDistanceScaleAuPerLightYear(
+        this.markerCatalog.DIRECTIONAL_MARKER_DEFINITIONS
+      );
     const directionalMarkers = this.markerCatalog.DIRECTIONAL_MARKER_DEFINITIONS.map(
       (definition) =>
         this.markerOnSphereFromRaDec(
           definition.name,
-          directionalMarkerDistanceAu,
+          this.resolveDirectionalMarkerDistanceAu(
+            definition,
+            directionalMarkerDistanceScaleAuPerLightYear,
+            fallbackDirectionalMarkerDistanceAu
+          ),
           definition.raHours,
           definition.decDeg,
           definition.color,

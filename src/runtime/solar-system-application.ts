@@ -34,6 +34,7 @@ const RUNTIME_RENDER_CONFIG = Object.freeze({
   backgroundColor: "#000000",
   nearClip: 0.08,
   cameraFarDistanceMultiplier: 12,
+  sceneFarClipPaddingMultiplier: 1.2,
   bloomStrength: 1.0,
   bloomRadius: 0.7,
   bloomThreshold: 0.4
@@ -191,6 +192,39 @@ export class SolarSystemApplication {
     return scene;
   }
 
+  resolveSceneFarClipDistance(): number {
+    const defaultFarDistance =
+      this.constants.SCENE_OUTER_AU * RUNTIME_RENDER_CONFIG.cameraFarDistanceMultiplier;
+    if (!this.sceneData) {
+      return defaultFarDistance;
+    }
+
+    let maxSceneDistanceAu = this.constants.SCENE_OUTER_AU;
+    const updateMaxDistance = (x: number, y: number, z: number) => {
+      maxSceneDistanceAu = Math.max(maxSceneDistanceAu, Math.hypot(x, y, z));
+    };
+
+    for (const marker of this.sceneData.directionalMarkers) {
+      updateMaxDistance(marker.x, marker.y, marker.z);
+    }
+
+    for (const guideLine of this.sceneData.directionalGuideLines) {
+      for (const point of guideLine.points) {
+        updateMaxDistance(point.x, point.y, point.z);
+      }
+    }
+
+    const starPositions = this.sceneData.stars.positions;
+    for (let index = 0; index < starPositions.length; index += 3) {
+      updateMaxDistance(starPositions[index], starPositions[index + 1], starPositions[index + 2]);
+    }
+
+    return Math.max(
+      defaultFarDistance,
+      maxSceneDistanceAu * RUNTIME_RENDER_CONFIG.sceneFarClipPaddingMultiplier
+    );
+  }
+
   createCamera(): PerspectiveCamera {
     const { THREE } = this;
     const { width, height } = this.getViewportSize();
@@ -198,7 +232,7 @@ export class SolarSystemApplication {
       48,
       width / height,
       RUNTIME_RENDER_CONFIG.nearClip,
-      this.constants.SCENE_OUTER_AU * RUNTIME_RENDER_CONFIG.cameraFarDistanceMultiplier
+      this.resolveSceneFarClipDistance()
     );
   }
 

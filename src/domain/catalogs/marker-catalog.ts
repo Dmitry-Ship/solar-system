@@ -29,6 +29,7 @@ const DIRECTIONAL_MARKER_DEFINITIONS: DirectionalMarkerDefinition[] = [
     name: "61 Cygni",
     label: "61 Cygni (11.4 light-years)",
     color: "#ffb878",
+    distanceLightYears: 11.4,
     raHours: 21 + 6 / 60 + 53.94 / 3600,
     decDeg: 38 + 44 / 60 + 57.9 / 3600,
     minPixelRadius: 2.5
@@ -37,6 +38,7 @@ const DIRECTIONAL_MARKER_DEFINITIONS: DirectionalMarkerDefinition[] = [
     name: "Gliese 300",
     label: "Gliese 300 (26 light years)",
     color: "#ff6f63",
+    distanceLightYears: 26,
     raHours: 8 + 12 / 60 + 40.8889728169 / 3600,
     decDeg: -(21 + 33 / 60 + 6.982558553 / 3600),
     minPixelRadius: 2.5

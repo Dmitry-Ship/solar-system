@@ -93,6 +93,7 @@ export interface DirectionalMarkerDefinition {
   name: string;
   label: string;
   color: string;
+  distanceLightYears?: number;
   raHours: number;
   decDeg: number;
   minPixelRadius: number;

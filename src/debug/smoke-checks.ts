@@ -1,5 +1,6 @@
 import { getAppInstance } from "../runtime/app-runtime";
 import { app, constants, data, math } from "../runtime/public-api";
+import { markerCatalog } from "../domain/catalogs/marker-catalog";
 import type { MathApi, Point3, SceneData } from "../types/solar-system";
 
 interface SmokeCheckResult {
@@ -160,6 +161,8 @@ export function runSmokeChecks() {
     );
 
     const cygniMarker = sceneData.directionalMarkers.find((marker) => marker.name === "61 Cygni") ?? null;
+    const glieseMarker =
+      sceneData.directionalMarkers.find((marker) => marker.name === "Gliese 300") ?? null;
     const earthOppositionDot =
       earthPositionA && cygniMarker
         ? dotPoint(normalizePoint(earthPositionA), normalizePoint(cygniMarker))
@@ -173,6 +176,39 @@ export function runSmokeChecks() {
         earthOppositionOk
           ? "Earth is positioned on the orbital side opposite the 61 Cygni direction."
           : "Earth is not opposite enough to the 61 Cygni direction."
+      )
+    );
+
+    const cygniDefinition =
+      markerCatalog.DIRECTIONAL_MARKER_DEFINITIONS.find((definition) => definition.name === "61 Cygni") ?? null;
+    const glieseDefinition =
+      markerCatalog.DIRECTIONAL_MARKER_DEFINITIONS.find((definition) => definition.name === "Gliese 300") ?? null;
+    const expectedDistanceRatio =
+      cygniDefinition &&
+      glieseDefinition &&
+      Number.isFinite(cygniDefinition.distanceLightYears) &&
+      Number.isFinite(glieseDefinition.distanceLightYears) &&
+      (cygniDefinition.distanceLightYears ?? 0) > 0
+        ? (glieseDefinition.distanceLightYears ?? 0) / (cygniDefinition.distanceLightYears ?? 1)
+        : Number.NaN;
+    const actualDistanceRatio =
+      cygniMarker && glieseMarker && pointMagnitude(cygniMarker) > 1e-9
+        ? pointMagnitude(glieseMarker) / pointMagnitude(cygniMarker)
+        : Number.NaN;
+    const markerDistanceScalingOk =
+      !!cygniMarker &&
+      !!glieseMarker &&
+      pointMagnitude(glieseMarker) > pointMagnitude(cygniMarker) &&
+      Number.isFinite(actualDistanceRatio) &&
+      Number.isFinite(expectedDistanceRatio) &&
+      approxEqual(actualDistanceRatio, expectedDistanceRatio, 1e-9);
+    results.push(
+      createResult(
+        "Directional Marker Distance Scaling",
+        markerDistanceScalingOk,
+        markerDistanceScalingOk
+          ? "Directional marker radii follow the configured light-year ratio."
+          : `Expected ratio ${expectedDistanceRatio}, got ${actualDistanceRatio}.`
       )
     );
   } catch (error) {
