@@ -103,20 +103,44 @@ export interface DirectionalMarker extends Point3 {
   minPixelRadius: number;
 }
 
+export type TrajectoryRoutePointLocation = "inbound" | "outbound";
+export type TrajectoryRoutePointKey = "launch" | "exit" | (string & {});
+
+export interface TrajectoryRoutePointDefinition {
+  key: string;
+  distanceAu: number;
+  location?: TrajectoryRoutePointLocation;
+}
+
+export interface TrajectoryRouteSegmentDefinition {
+  label: string;
+  startPointKey: TrajectoryRoutePointKey;
+  endPointKey: TrajectoryRoutePointKey;
+  color?: string;
+}
+
+export interface TrajectoryFocalBranchDefinition {
+  label: string;
+  sourcePointKey: string;
+  targetMarkerName: string;
+  joinDistanceAu?: number;
+  endDistanceAu?: number;
+  color?: string;
+}
+
 export interface TrajectoryDefinition {
   name: string;
-  label: string;
+  label?: string;
   visibilityLabel?: string;
   visibilityControlLabel?: string;
   launchMarkerName: string;
   approachMarkerName?: string;
-  firstFocalMarkerName: string;
-  secondFocalMarkerName: string;
+  exitMarkerName: string;
   solarAssistRadiusAu?: number;
   solarFlybyPeriapsisDirection?: Point3;
-  firstFocalBranchStartDistanceAu?: number;
-  firstFocalBranchJoinDistanceAu?: number;
-  firstFocalBranchEndDistanceAu?: number;
+  routePoints?: TrajectoryRoutePointDefinition[];
+  routeSegments?: TrajectoryRouteSegmentDefinition[];
+  focalBranches?: TrajectoryFocalBranchDefinition[];
   color?: string;
 }
 

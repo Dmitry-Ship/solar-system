@@ -10,6 +10,9 @@ import type {
   Point3,
   SimulationConstants,
   TrajectoryDefinition,
+  TrajectoryFocalBranchDefinition,
+  TrajectoryRoutePointDefinition,
+  TrajectoryRouteSegmentDefinition,
   TrajectoryVisibilityKey,
   VisibilityGroupKey,
   VisibilityKey
@@ -58,6 +61,26 @@ interface DirectionalGuideLineOptions {
   label?: string;
   labelAnchorPoint?: Point3 | null;
   labelMarginPixels?: number;
+}
+
+interface TrajectoryVisibilityDescriptor {
+  visibilityKey: TrajectoryVisibilityKey;
+  visibilityLabel: string;
+  visibilityControlLabel: string;
+}
+
+interface TrajectoryRoutePointSample {
+  key: string;
+  point: Point3;
+  tangent: Point3;
+  segmentStartIndex: number;
+  segmentT: number;
+  routePointIndex?: number;
+}
+
+interface TrajectoryRouteBuildResult {
+  points: Point3[];
+  routePointsByKey: Map<string, TrajectoryRoutePointSample>;
 }
 
 function clamp01(value: number): number {
@@ -164,11 +187,16 @@ function appendUniquePoint(points: Point3[], point: Point3 | null | undefined): 
   }
 }
 
+function appendPointAndGetIndex(points: Point3[], point: Point3): number {
+  appendUniquePoint(points, point);
+  return Math.max(0, points.length - 1);
+}
+
 function findPointOnSegmentAtRadius(
   start: Point3,
   end: Point3,
   targetRadiusAu: number
-): Point3 | null {
+): { point: Point3; t: number } | null {
   const startRadiusAu = pointMagnitude(start);
   const endRadiusAu = pointMagnitude(end);
   const minRadiusAu = Math.min(startRadiusAu, endRadiusAu);
@@ -178,20 +206,28 @@ function findPointOnSegmentAtRadius(
   }
 
   if (Math.abs(startRadiusAu - endRadiusAu) <= 1e-9) {
-    return clonePoint(start);
+    return {
+      point: clonePoint(start),
+      t: 0
+    };
   }
 
   let lowerT = 0;
   let upperT = 1;
   const isIncreasing = endRadiusAu >= startRadiusAu;
   let candidate = clonePoint(start);
+  let candidateT = 0;
 
   for (let iteration = 0; iteration < 40; iteration += 1) {
     const midpointT = (lowerT + upperT) * 0.5;
+    candidateT = midpointT;
     candidate = lerpPoint(start, end, midpointT);
     const candidateRadiusAu = pointMagnitude(candidate);
     if (Math.abs(candidateRadiusAu - targetRadiusAu) <= 1e-6) {
-      return candidate;
+      return {
+        point: candidate,
+        t: candidateT
+      };
     }
 
     const shouldAdvanceLowerBound = isIncreasing
@@ -204,27 +240,33 @@ function findPointOnSegmentAtRadius(
     }
   }
 
-  return candidate;
+  return {
+    point: candidate,
+    t: candidateT
+  };
 }
 
 function findPolylinePointAtRadius(
   points: Point3[],
   targetRadiusAu: number,
   startIndex = 0
-): { point: Point3; tangent: Point3 } | null {
+): TrajectoryRoutePointSample | null {
   const normalizedStartIndex = Math.max(0, Math.floor(startIndex));
   for (let index = normalizedStartIndex; index < points.length - 1; index += 1) {
     const segmentStart = points[index];
     const segmentEnd = points[index + 1];
-    const point = findPointOnSegmentAtRadius(segmentStart, segmentEnd, targetRadiusAu);
-    if (!point) {
+    const sample = findPointOnSegmentAtRadius(segmentStart, segmentEnd, targetRadiusAu);
+    if (!sample) {
       continue;
     }
 
     const tangent = normalizePoint(subtractPoint(segmentEnd, segmentStart));
     return {
-      point,
-      tangent: pointMagnitude(tangent) > 1e-9 ? tangent : normalizePoint(segmentEnd)
+      key: "",
+      point: sample.point,
+      tangent: pointMagnitude(tangent) > 1e-9 ? tangent : normalizePoint(segmentEnd),
+      segmentStartIndex: index,
+      segmentT: sample.t
     };
   }
 
@@ -414,6 +456,305 @@ function buildDirectionalGuideLine(
     labelAnchorPoint: options.labelAnchorPoint ? clonePoint(options.labelAnchorPoint) : null,
     labelMarginPixels: options.labelMarginPixels
   };
+}
+
+function resolvePolylineMidpoint(points: Point3[]): Point3 | null {
+  if (!Array.isArray(points) || points.length === 0) {
+    return null;
+  }
+
+  if (points.length === 1) {
+    return clonePoint(points[0]);
+  }
+
+  const segmentLengths = points.slice(0, -1).map((point, index) => pointDistance(point, points[index + 1]));
+  const totalLength = segmentLengths.reduce((sum, segmentLength) => sum + segmentLength, 0);
+  if (totalLength <= 1e-6) {
+    return clonePoint(points[Math.floor(points.length * 0.5)]);
+  }
+
+  const midpointDistance = totalLength * 0.5;
+  let traversedDistance = 0;
+  for (let index = 0; index < segmentLengths.length; index += 1) {
+    const segmentLength = segmentLengths[index];
+    if (traversedDistance + segmentLength >= midpointDistance) {
+      const segmentProgress = (midpointDistance - traversedDistance) / Math.max(segmentLength, 1e-6);
+      return lerpPoint(points[index], points[index + 1], segmentProgress);
+    }
+    traversedDistance += segmentLength;
+  }
+
+  return clonePoint(points[points.length - 1]);
+}
+
+function findPeriapsisPointIndex(points: Point3[]): number {
+  let periapsisIndex = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    if (pointMagnitude(points[index]) < pointMagnitude(points[periapsisIndex])) {
+      periapsisIndex = index;
+    }
+  }
+  return periapsisIndex;
+}
+
+function normalizeTrajectoryRoutePointKey(key: string): string {
+  return typeof key === "string" ? key.trim() : "";
+}
+
+function resolveTrajectoryVisibilityDescriptor(
+  trajectoryDefinition: TrajectoryDefinition
+): TrajectoryVisibilityDescriptor {
+  const trajectoryLabel =
+    typeof trajectoryDefinition.label === "string"
+      ? trajectoryDefinition.label.trim()
+      : trajectoryDefinition.name;
+  const visibilityLabel =
+    typeof trajectoryDefinition.visibilityLabel === "string" &&
+    trajectoryDefinition.visibilityLabel.trim()
+      ? trajectoryDefinition.visibilityLabel.trim()
+      : trajectoryLabel || trajectoryDefinition.name;
+  const visibilityControlLabel =
+    typeof trajectoryDefinition.visibilityControlLabel === "string" &&
+    trajectoryDefinition.visibilityControlLabel.trim()
+      ? trajectoryDefinition.visibilityControlLabel.trim()
+      : visibilityLabel;
+
+  return {
+    visibilityKey: buildTrajectoryVisibilityKey(trajectoryDefinition.name),
+    visibilityLabel,
+    visibilityControlLabel
+  };
+}
+
+function resolveTrajectoryRoutePointSamples(
+  trajectoryPoints: Point3[],
+  routePointDefinitions: TrajectoryRoutePointDefinition[] | null | undefined
+): TrajectoryRoutePointSample[] {
+  if (!Array.isArray(routePointDefinitions) || routePointDefinitions.length === 0) {
+    return [];
+  }
+
+  const periapsisIndex = findPeriapsisPointIndex(trajectoryPoints);
+  return routePointDefinitions.flatMap((routePointDefinition) => {
+    const key = normalizeTrajectoryRoutePointKey(routePointDefinition.key);
+    const distanceAu = Number.isFinite(routePointDefinition.distanceAu)
+      ? Math.max(0, routePointDefinition.distanceAu)
+      : Number.NaN;
+    if (!key || !Number.isFinite(distanceAu)) {
+      return [];
+    }
+
+    const sample = findPolylinePointAtRadius(
+      trajectoryPoints,
+      distanceAu,
+      routePointDefinition.location === "outbound" ? periapsisIndex : 0
+    );
+    if (!sample) {
+      return [];
+    }
+
+    return [
+      {
+        ...sample,
+        key
+      }
+    ];
+  });
+}
+
+function buildTrajectoryRoute(
+  trajectoryPoints: Point3[],
+  routePointSamples: TrajectoryRoutePointSample[]
+): TrajectoryRouteBuildResult {
+  if (!Array.isArray(trajectoryPoints) || trajectoryPoints.length === 0) {
+    return {
+      points: [],
+      routePointsByKey: new Map()
+    };
+  }
+
+  const routePointsByKey = new Map<string, TrajectoryRoutePointSample>();
+  const splitPointsBySegment = new Map<number, TrajectoryRoutePointSample[]>();
+  for (const routePointSample of routePointSamples) {
+    const segmentSamples = splitPointsBySegment.get(routePointSample.segmentStartIndex) ?? [];
+    segmentSamples.push(routePointSample);
+    splitPointsBySegment.set(routePointSample.segmentStartIndex, segmentSamples);
+  }
+
+  const points: Point3[] = [];
+  const launchTangent =
+    trajectoryPoints.length > 1
+      ? normalizePoint(subtractPoint(trajectoryPoints[1], trajectoryPoints[0]))
+      : normalizePoint(trajectoryPoints[0]);
+  appendPointAndGetIndex(points, trajectoryPoints[0]);
+  routePointsByKey.set("launch", {
+    key: "launch",
+    point: clonePoint(trajectoryPoints[0]),
+    tangent: pointMagnitude(launchTangent) > 1e-9 ? launchTangent : normalizePoint(trajectoryPoints[0]),
+    segmentStartIndex: 0,
+    segmentT: 0,
+    routePointIndex: 0
+  });
+
+  for (let segmentIndex = 0; segmentIndex < trajectoryPoints.length - 1; segmentIndex += 1) {
+    const segmentSamples = [...(splitPointsBySegment.get(segmentIndex) ?? [])].sort(
+      (left, right) => left.segmentT - right.segmentT
+    );
+
+    for (const segmentSample of segmentSamples) {
+      const routePointIndex = appendPointAndGetIndex(points, segmentSample.point);
+      routePointsByKey.set(segmentSample.key, {
+        ...segmentSample,
+        routePointIndex
+      });
+    }
+
+    appendPointAndGetIndex(points, trajectoryPoints[segmentIndex + 1]);
+  }
+
+  const exitPoint = points[points.length - 1];
+  const exitTangent =
+    trajectoryPoints.length > 1
+      ? normalizePoint(
+          subtractPoint(
+            trajectoryPoints[trajectoryPoints.length - 1],
+            trajectoryPoints[trajectoryPoints.length - 2]
+          )
+        )
+      : normalizePoint(exitPoint);
+  routePointsByKey.set("exit", {
+    key: "exit",
+    point: clonePoint(exitPoint),
+    tangent: pointMagnitude(exitTangent) > 1e-9 ? exitTangent : normalizePoint(exitPoint),
+    segmentStartIndex: Math.max(0, trajectoryPoints.length - 2),
+    segmentT: 1,
+    routePointIndex: points.length - 1
+  });
+
+  return {
+    points,
+    routePointsByKey
+  };
+}
+
+function resolveTrajectoryRouteSegments(
+  trajectoryDefinition: TrajectoryDefinition
+): TrajectoryRouteSegmentDefinition[] {
+  if (Array.isArray(trajectoryDefinition.routeSegments) && trajectoryDefinition.routeSegments.length > 0) {
+    return trajectoryDefinition.routeSegments;
+  }
+
+  return [
+    {
+      label: typeof trajectoryDefinition.label === "string" ? trajectoryDefinition.label.trim() : "",
+      startPointKey: "launch",
+      endPointKey: "exit",
+      color: trajectoryDefinition.color
+    }
+  ];
+}
+
+function createTrajectoryRouteSegmentGuideLine(
+  route: TrajectoryRouteBuildResult,
+  segmentDefinition: TrajectoryRouteSegmentDefinition,
+  fallbackColor: string,
+  visibilityDescriptor: TrajectoryVisibilityDescriptor
+): DirectionalGuideLine | null {
+  const startPointKey = normalizeTrajectoryRoutePointKey(segmentDefinition.startPointKey);
+  const endPointKey = normalizeTrajectoryRoutePointKey(segmentDefinition.endPointKey);
+  const startRoutePoint = route.routePointsByKey.get(startPointKey);
+  const endRoutePoint = route.routePointsByKey.get(endPointKey);
+  const startIndex = startRoutePoint?.routePointIndex ?? -1;
+  const endIndex = endRoutePoint?.routePointIndex ?? -1;
+  if (startIndex < 0 || endIndex <= startIndex) {
+    return null;
+  }
+
+  const segmentPoints = route.points.slice(startIndex, endIndex + 1);
+  const label = typeof segmentDefinition.label === "string" ? segmentDefinition.label.trim() : "";
+
+  return buildDirectionalGuideLine(segmentPoints[0] ?? null, segmentDefinition.color || fallbackColor, {
+    points: segmentPoints,
+    opacity: 0.94,
+    depthTest: false,
+    visibilityKey: visibilityDescriptor.visibilityKey,
+    visibilityLabel: visibilityDescriptor.visibilityLabel,
+    visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
+    visibilityGroupKey: "trajectories",
+    visibilityGroupLabel: "Trajectories",
+    initialVisibility: true,
+    label,
+    labelAnchorPoint: resolvePolylineMidpoint(segmentPoints),
+    labelMarginPixels: 10
+  });
+}
+
+function createTrajectoryFocalBranchGuideLine(
+  sourceRoutePoint: TrajectoryRoutePointSample | null,
+  targetDirection: Point3,
+  branchDefinition: TrajectoryFocalBranchDefinition,
+  fallbackColor: string,
+  fallbackEndDistanceAu: number,
+  visibilityDescriptor: TrajectoryVisibilityDescriptor
+): DirectionalGuideLine | null {
+  if (!sourceRoutePoint) {
+    return null;
+  }
+
+  const sourceDistanceAu = pointMagnitude(sourceRoutePoint.point);
+  const endDistanceAu = Number.isFinite(branchDefinition.endDistanceAu)
+    ? Math.max(0, branchDefinition.endDistanceAu ?? fallbackEndDistanceAu)
+    : fallbackEndDistanceAu;
+  if (!(sourceDistanceAu > endDistanceAu + 1e-6)) {
+    return null;
+  }
+
+  const joinDistanceAu = Number.isFinite(branchDefinition.joinDistanceAu)
+    ? Math.max(endDistanceAu, branchDefinition.joinDistanceAu ?? endDistanceAu)
+    : endDistanceAu;
+  const branchJoinPoint = scalePoint(targetDirection, joinDistanceAu);
+  const branchChordLength = pointDistance(sourceRoutePoint.point, branchJoinPoint);
+  const handleLength = Math.max(60, Math.min(branchChordLength * 0.55, joinDistanceAu * 0.7));
+  const startControlPoint = addPoint(
+    sourceRoutePoint.point,
+    scalePoint(sourceRoutePoint.tangent, handleLength)
+  );
+  const endControlPoint = addPoint(branchJoinPoint, scalePoint(targetDirection, handleLength));
+  const branchPoints: Point3[] = [];
+
+  appendCubicBezierPoints(
+    branchPoints,
+    sourceRoutePoint.point,
+    startControlPoint,
+    endControlPoint,
+    branchJoinPoint,
+    TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT
+  );
+  if (joinDistanceAu > endDistanceAu + 1e-6) {
+    appendRadialLinePoints(
+      branchPoints,
+      targetDirection,
+      joinDistanceAu,
+      endDistanceAu,
+      TRAJECTORY_BRANCH_FOCAL_LINE_SEGMENT_COUNT
+    );
+  }
+
+  const label = typeof branchDefinition.label === "string" ? branchDefinition.label.trim() : "";
+  return buildDirectionalGuideLine(sourceRoutePoint.point, branchDefinition.color || fallbackColor, {
+    points: branchPoints,
+    opacity: 0.9,
+    depthTest: false,
+    visibilityKey: visibilityDescriptor.visibilityKey,
+    visibilityLabel: visibilityDescriptor.visibilityLabel,
+    visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
+    visibilityGroupKey: "trajectories",
+    visibilityGroupLabel: "Trajectories",
+    initialVisibility: true,
+    label,
+    labelAnchorPoint: resolvePolylineMidpoint(branchPoints),
+    labelMarginPixels: 10
+  });
 }
 
 function buildMatryoshkaCylinderProfile(
@@ -660,96 +1001,6 @@ function appendHyperbolicAssistPoints(
   }
 }
 
-function createTrajectoryFirstFocalBranchGuideLine(
-  trajectoryPoints: Point3[],
-  firstFocalDirection: Point3,
-  branchStartDistanceAu: number,
-  branchJoinDistanceAu: number,
-  branchEndDistanceAu: number,
-  color: string,
-  visibilityKey: TrajectoryVisibilityKey,
-  visibilityLabel: string,
-  visibilityControlLabel: string
-): DirectionalGuideLine | null {
-  if (
-    !(branchStartDistanceAu > branchEndDistanceAu + 1e-6) ||
-    !(branchJoinDistanceAu > branchEndDistanceAu + 1e-6)
-  ) {
-    return null;
-  }
-
-  let periapsisIndex = 0;
-  for (let index = 1; index < trajectoryPoints.length; index += 1) {
-    if (pointMagnitude(trajectoryPoints[index]) < pointMagnitude(trajectoryPoints[periapsisIndex])) {
-      periapsisIndex = index;
-    }
-  }
-
-  let branchSample: { point: Point3; tangent: Point3 } | null = null;
-  for (let index = 0; index < periapsisIndex; index += 1) {
-    const segmentStart = trajectoryPoints[index];
-    const segmentEnd = trajectoryPoints[index + 1];
-    const point = findPointOnSegmentAtRadius(segmentStart, segmentEnd, branchStartDistanceAu);
-    if (!point) {
-      continue;
-    }
-
-    const tangent = normalizePoint(subtractPoint(segmentEnd, segmentStart));
-    branchSample = {
-      point,
-      tangent: pointMagnitude(tangent) > 1e-9 ? tangent : normalizePoint(segmentEnd)
-    };
-  }
-  if (!branchSample) {
-    return null;
-  }
-
-  const safeBranchJoinDistanceAu = Math.max(branchEndDistanceAu, branchJoinDistanceAu);
-  const branchJoinPoint = scalePoint(firstFocalDirection, safeBranchJoinDistanceAu);
-  const branchChordLength = pointDistance(branchSample.point, branchJoinPoint);
-  const handleLength = Math.max(
-    60,
-    Math.min(branchChordLength * 0.55, safeBranchJoinDistanceAu * 0.7)
-  );
-  const startControlPoint = addPoint(
-    branchSample.point,
-    scalePoint(branchSample.tangent, handleLength)
-  );
-  const endControlPoint = addPoint(
-    branchJoinPoint,
-    scalePoint(firstFocalDirection, handleLength)
-  );
-  const branchPoints: Point3[] = [];
-
-  appendCubicBezierPoints(
-    branchPoints,
-    branchSample.point,
-    startControlPoint,
-    endControlPoint,
-    branchJoinPoint,
-    TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT
-  );
-  appendRadialLinePoints(
-    branchPoints,
-    firstFocalDirection,
-    safeBranchJoinDistanceAu,
-    branchEndDistanceAu,
-    TRAJECTORY_BRANCH_FOCAL_LINE_SEGMENT_COUNT
-  );
-
-  return buildDirectionalGuideLine(branchSample.point, color, {
-    points: branchPoints,
-    opacity: 0.9,
-    depthTest: false,
-    visibilityKey,
-    visibilityLabel,
-    visibilityControlLabel,
-    visibilityGroupKey: "trajectories",
-    visibilityGroupLabel: "Trajectories",
-    initialVisibility: true
-  });
-}
-
 function createTrajectoryGuideLinesForDefinition(
   trajectoryDefinition: TrajectoryDefinition | null,
   sourceMarkers: DirectionalMarker[],
@@ -762,116 +1013,84 @@ function createTrajectoryGuideLinesForDefinition(
   const launchMarker = findMarkerByName(sourceMarkers, trajectoryDefinition.launchMarkerName);
   const approachMarker = findMarkerByName(
     sourceMarkers,
-    trajectoryDefinition.approachMarkerName ?? trajectoryDefinition.firstFocalMarkerName
+    trajectoryDefinition.approachMarkerName ?? trajectoryDefinition.launchMarkerName
   );
-  const firstFocalMarker = findMarkerByName(
-    sourceMarkers,
-    trajectoryDefinition.firstFocalMarkerName
-  );
-  const secondFocalMarker = findMarkerByName(
-    sourceMarkers,
-    trajectoryDefinition.secondFocalMarkerName
-  );
-  if (!launchMarker || !approachMarker || !secondFocalMarker) {
+  const exitMarker = findMarkerByName(sourceMarkers, trajectoryDefinition.exitMarkerName);
+  if (!launchMarker || !approachMarker || !exitMarker) {
     return [];
   }
 
-  const {
-    constants,
-    directionalGuideSharedEndDistanceAu,
-    focalLineMinDistanceAu,
-    focalLineMaxDistanceAu
-  } = dependencies;
+  const { directionalGuideSharedEndDistanceAu, focalLineMinDistanceAu, focalLineMaxDistanceAu } =
+    dependencies;
   const approachDirection = normalizePoint(
     dependencies.math.pointOnRadiusAlongDirection(approachMarker, 1)
   );
-  const firstFocalDirection = firstFocalMarker
-    ? normalizePoint(dependencies.math.pointOnRadiusAlongDirection(firstFocalMarker, -1))
-    : null;
-  const secondFocalDirection = normalizePoint(
-    dependencies.math.pointOnRadiusAlongDirection(secondFocalMarker, -1)
+  const exitDirection = normalizePoint(
+    dependencies.math.pointOnRadiusAlongDirection(exitMarker, -1)
   );
   const focalMidDistanceAu = (focalLineMinDistanceAu + focalLineMaxDistanceAu) * 0.5;
   const approachMidpoint = scalePoint(approachDirection, focalMidDistanceAu);
-  const secondFocalExitPoint = scalePoint(secondFocalDirection, directionalGuideSharedEndDistanceAu);
+  const exitPoint = scalePoint(exitDirection, directionalGuideSharedEndDistanceAu);
   const solarAssistRadiusAu = Number.isFinite(trajectoryDefinition.solarAssistRadiusAu)
     ? trajectoryDefinition.solarAssistRadiusAu ?? 0.25
     : 0.25;
-  const points: Point3[] = [];
+  const trajectoryPoints: Point3[] = [];
 
-  appendUniquePoint(points, launchMarker);
-  appendUniquePoint(points, approachMidpoint);
+  appendUniquePoint(trajectoryPoints, launchMarker);
+  appendUniquePoint(trajectoryPoints, approachMidpoint);
   appendHyperbolicAssistPoints(
-    points,
+    trajectoryPoints,
     approachDirection,
-    secondFocalDirection,
+    exitDirection,
     solarAssistRadiusAu,
     focalLineMinDistanceAu,
     TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT,
     dependencies.math,
     trajectoryDefinition.solarFlybyPeriapsisDirection
   );
-  appendUniquePoint(points, secondFocalExitPoint);
+  appendUniquePoint(trajectoryPoints, exitPoint);
 
-  const trajectoryLabel =
-    typeof trajectoryDefinition.label === "string"
-      ? trajectoryDefinition.label.trim()
-      : trajectoryDefinition.name;
-  const trajectoryVisibilityLabel =
-    typeof trajectoryDefinition.visibilityLabel === "string" &&
-    trajectoryDefinition.visibilityLabel.trim()
-      ? trajectoryDefinition.visibilityLabel.trim()
-      : trajectoryLabel || trajectoryDefinition.name;
-  const trajectoryVisibilityControlLabel =
-    typeof trajectoryDefinition.visibilityControlLabel === "string" &&
-    trajectoryDefinition.visibilityControlLabel.trim()
-      ? trajectoryDefinition.visibilityControlLabel.trim()
-      : trajectoryVisibilityLabel;
-  const trajectoryVisibilityKey = buildTrajectoryVisibilityKey(trajectoryDefinition.name);
+  const routePointSamples = resolveTrajectoryRoutePointSamples(
+    trajectoryPoints,
+    trajectoryDefinition.routePoints
+  );
+  const route = buildTrajectoryRoute(trajectoryPoints, routePointSamples);
+  const visibilityDescriptor = resolveTrajectoryVisibilityDescriptor(trajectoryDefinition);
   const trajectoryColor = trajectoryDefinition.color || "#ffd36e";
   const guideLines: DirectionalGuideLine[] = [];
 
-  const mainGuideLine = buildDirectionalGuideLine(launchMarker, trajectoryColor, {
-    points,
-    opacity: 0.94,
-    depthTest: false,
-    visibilityKey: trajectoryVisibilityKey,
-    visibilityLabel: trajectoryVisibilityLabel,
-    visibilityControlLabel: trajectoryVisibilityControlLabel,
-    visibilityGroupKey: "trajectories",
-    visibilityGroupLabel: "Trajectories",
-    initialVisibility: true,
-    label: trajectoryLabel,
-    labelAnchorPoint: approachMidpoint,
-    labelMarginPixels: 10
-  });
-  if (mainGuideLine) {
-    guideLines.push(mainGuideLine);
+  for (const routeSegment of resolveTrajectoryRouteSegments(trajectoryDefinition)) {
+    const routeSegmentGuideLine = createTrajectoryRouteSegmentGuideLine(
+      route,
+      routeSegment,
+      trajectoryColor,
+      visibilityDescriptor
+    );
+    if (routeSegmentGuideLine) {
+      guideLines.push(routeSegmentGuideLine);
+    }
   }
 
-  const branchStartDistanceAu = Number.isFinite(trajectoryDefinition.firstFocalBranchStartDistanceAu)
-    ? Math.max(0, trajectoryDefinition.firstFocalBranchStartDistanceAu ?? 0)
-    : 0;
-  const branchEndDistanceAu = Number.isFinite(trajectoryDefinition.firstFocalBranchEndDistanceAu)
-    ? Math.max(0, trajectoryDefinition.firstFocalBranchEndDistanceAu ?? constants.SOLAR_GRAVITATIONAL_LENS_AU)
-    : constants.SOLAR_GRAVITATIONAL_LENS_AU;
-  const branchJoinDistanceAu = Number.isFinite(trajectoryDefinition.firstFocalBranchJoinDistanceAu)
-    ? Math.max(branchEndDistanceAu, trajectoryDefinition.firstFocalBranchJoinDistanceAu ?? branchStartDistanceAu)
-    : Math.max(branchEndDistanceAu, branchStartDistanceAu);
-  if (firstFocalDirection && branchStartDistanceAu > branchEndDistanceAu + 1e-6) {
-    const branchGuideLine = createTrajectoryFirstFocalBranchGuideLine(
-      points,
-      firstFocalDirection,
-      branchStartDistanceAu,
-      branchJoinDistanceAu,
-      branchEndDistanceAu,
-      trajectoryColor,
-      trajectoryVisibilityKey,
-      trajectoryVisibilityLabel,
-      trajectoryVisibilityControlLabel
+  for (const focalBranch of trajectoryDefinition.focalBranches ?? []) {
+    const targetMarker = findMarkerByName(sourceMarkers, focalBranch.targetMarkerName);
+    const sourcePointKey = normalizeTrajectoryRoutePointKey(focalBranch.sourcePointKey);
+    if (!targetMarker || !sourcePointKey) {
+      continue;
+    }
+
+    const targetDirection = normalizePoint(
+      dependencies.math.pointOnRadiusAlongDirection(targetMarker, -1)
     );
-    if (branchGuideLine) {
-      guideLines.push(branchGuideLine);
+    const focalBranchGuideLine = createTrajectoryFocalBranchGuideLine(
+      route.routePointsByKey.get(sourcePointKey) ?? null,
+      targetDirection,
+      focalBranch,
+      trajectoryColor,
+      dependencies.constants.SOLAR_GRAVITATIONAL_LENS_AU,
+      visibilityDescriptor
+    );
+    if (focalBranchGuideLine) {
+      guideLines.push(focalBranchGuideLine);
     }
   }
 

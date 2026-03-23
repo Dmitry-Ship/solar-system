@@ -242,6 +242,34 @@ export function runSmokeChecks() {
     )
   );
 
+  const trajectoryGuideLines = sceneData?.directionalGuideLines || [];
+  const commonPathGuideLine =
+    trajectoryGuideLines.find((guideLine) => guideLine.label === "common path") ?? null;
+  const observerPathGuideLine =
+    trajectoryGuideLines.find((guideLine) => guideLine.label === "observer path") ?? null;
+  const transmitterPathGuideLine =
+    trajectoryGuideLines.find((guideLine) => guideLine.label === "transmitter path") ?? null;
+  const trajectorySegmentationOk =
+    !!commonPathGuideLine &&
+    !!observerPathGuideLine &&
+    !!transmitterPathGuideLine &&
+    commonPathGuideLine.points.length > 1 &&
+    observerPathGuideLine.points.length > 1 &&
+    transmitterPathGuideLine.points.length > 1 &&
+    commonPathGuideLine.color === observerPathGuideLine.color &&
+    commonPathGuideLine.color !== transmitterPathGuideLine.color &&
+    commonPathGuideLine.visibilityKey === observerPathGuideLine.visibilityKey &&
+    commonPathGuideLine.visibilityKey === transmitterPathGuideLine.visibilityKey;
+  results.push(
+    createResult(
+      "Trajectory Segmentation",
+      trajectorySegmentationOk,
+      trajectorySegmentationOk
+        ? "Common, observer, and transmitter paths are present with the expected shared visibility and color split."
+        : "Trajectory segments are missing or use the wrong colors/visibility grouping."
+    )
+  );
+
   const summary = {
     total: results.length,
     passed: results.filter((item) => item.passed).length,

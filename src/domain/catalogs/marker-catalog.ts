@@ -46,17 +46,43 @@ const DIRECTIONAL_MARKER_DEFINITIONS: DirectionalMarkerDefinition[] = [
 const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
   {
     name: "61 Cygni Transfer",
-    label: "",
     visibilityLabel: "61 Cygni trajectory",
     launchMarkerName: "61 Cygni",
     approachMarkerName: "61 Cygni",
-    firstFocalMarkerName: "Gliese 300",
-    secondFocalMarkerName: "61 Cygni",
+    exitMarkerName: "61 Cygni",
     solarAssistRadiusAu: 0.01,
     solarFlybyPeriapsisDirection: { x: 0, y: 1, z: 0 } satisfies Point3,
-    firstFocalBranchStartDistanceAu: 3000,
-    firstFocalBranchJoinDistanceAu: 1000,
-    firstFocalBranchEndDistanceAu: constants.SOLAR_GRAVITATIONAL_LENS_AU,
+    routePoints: [
+      {
+        key: "branching-point",
+        distanceAu: 3000,
+        location: "inbound"
+      }
+    ],
+    routeSegments: [
+      {
+        label: "common path",
+        startPointKey: "launch",
+        endPointKey: "branching-point",
+        color: "#ffd36e"
+      },
+      {
+        label: "transmitter path",
+        startPointKey: "branching-point",
+        endPointKey: "exit",
+        color: "#7dd3fc"
+      }
+    ],
+    focalBranches: [
+      {
+        label: "observer path",
+        sourcePointKey: "branching-point",
+        targetMarkerName: "Gliese 300",
+        joinDistanceAu: 1000,
+        endDistanceAu: constants.SOLAR_GRAVITATIONAL_LENS_AU,
+        color: "#ffd36e"
+      }
+    ],
     color: "#ffd36e"
   }
 ];
