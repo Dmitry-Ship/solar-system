@@ -2,24 +2,13 @@ import type { HudSnapshot } from "../infrastructure/dom/hud-controller";
 import type { PovTargetKey, VisibilityKey } from "../types/solar-system";
 
 interface HudPanelProps {
-  snapshot: HudSnapshot | null;
+  snapshot: HudSnapshot;
   onSetPov: (pov: PovTargetKey) => void;
   onToggleZoom: () => void;
   onToggleNames: () => void;
   onToggleOrbits: () => void;
   onToggleVisibility: (key: VisibilityKey) => void;
 }
-
-const FALLBACK_HUD_SNAPSHOT: HudSnapshot = {
-  zoomToggleLabel: "Far",
-  isZoomedIn: false,
-  namesToggleLabel: "Names",
-  orbitsToggleLabel: "Orbits",
-  currentPov: "sun",
-  showBodyNames: false,
-  showOrbits: true,
-  visibilityControlGroups: []
-};
 
 const POV_OPTIONS: PovTargetKey[] = ["sun", "earth", "61 Cygni"];
 
@@ -47,8 +36,6 @@ export function HudPanel({
   onToggleOrbits,
   onToggleVisibility
 }: HudPanelProps) {
-  const hud = snapshot ?? FALLBACK_HUD_SNAPSHOT;
-
   return (
     <section className="hud" aria-label="Scene controls">
       <div className="hud-controls">
@@ -56,39 +43,39 @@ export function HudPanel({
           id="zoom-toggle"
           className="hud-button"
           type="button"
-          aria-pressed={hud.isZoomedIn}
-          data-state={hud.isZoomedIn ? "near" : "far"}
-          title={`Zoom: ${hud.zoomToggleLabel}`}
+          aria-pressed={snapshot.isZoomedIn}
+          data-state={snapshot.isZoomedIn ? "near" : "far"}
+          title={`Zoom: ${snapshot.zoomToggleLabel}`}
           onClick={onToggleZoom}
         >
-          {hud.zoomToggleLabel}
+          {snapshot.zoomToggleLabel}
         </button>
         <button
           id="names-toggle"
           className="hud-button"
           type="button"
-          aria-pressed={hud.showBodyNames}
-          title={`Names ${hud.showBodyNames ? "on" : "off"}`}
+          aria-pressed={snapshot.showBodyNames}
+          title={`Names ${snapshot.showBodyNames ? "on" : "off"}`}
           onClick={onToggleNames}
         >
-          {hud.namesToggleLabel}
+          {snapshot.namesToggleLabel}
         </button>
         <button
           id="orbits-toggle"
           className="hud-button"
           type="button"
-          aria-pressed={hud.showOrbits}
-          title={`Orbits ${hud.showOrbits ? "on" : "off"}`}
+          aria-pressed={snapshot.showOrbits}
+          title={`Orbits ${snapshot.showOrbits ? "on" : "off"}`}
           onClick={onToggleOrbits}
         >
-          {hud.orbitsToggleLabel}
+          {snapshot.orbitsToggleLabel}
         </button>
       </div>
       <fieldset className="hud-control-group hud-radio-group">
         <legend className="hud-control-heading">POV</legend>
         <div className="hud-radio-options">
           {POV_OPTIONS.map((option) => {
-            const isChecked = hud.currentPov === option;
+            const isChecked = snapshot.currentPov === option;
 
             return (
               <label
@@ -111,7 +98,7 @@ export function HudPanel({
         </div>
       </fieldset>
       <div id="visibility-controls-root" aria-label="Visibility controls">
-        {hud.visibilityControlGroups.map((group) => (
+        {snapshot.visibilityControlGroups.map((group) => (
           <div
             key={group.key}
             className="hud-control-group"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HudPanel } from "./components/hud-panel";
 import type { HudSnapshot } from "./infrastructure/dom/hud-controller";
 import { SolarSystemApplication } from "./runtime/solar-system-application";
@@ -20,7 +20,7 @@ function reportRuntimeError(error: unknown) {
 }
 
 export default function App() {
-  const [app, setApp] = useState<SolarSystemApplication | null>(null);
+  const appRef = useRef<SolarSystemApplication | null>(null);
   const [hudSnapshot, setHudSnapshot] = useState<HudSnapshot | null>(null);
 
   useEffect(() => {
@@ -29,11 +29,10 @@ export default function App() {
 
     try {
       application = new SolarSystemApplication();
+      appRef.current = application;
       setAppInstance(application);
       application.start();
       unsubscribeHud = application.subscribeToHud(setHudSnapshot);
-      setHudSnapshot(application.getHudSnapshot());
-      setApp(application);
     } catch (error) {
       reportRuntimeError(error);
       return;
@@ -41,11 +40,9 @@ export default function App() {
 
     return () => {
       unsubscribeHud();
-      setApp(null);
+      appRef.current = null;
       setHudSnapshot(null);
-      if (application) {
-        setAppInstance(null);
-      }
+      setAppInstance(null);
       application?.dispose();
     };
   }, []);
@@ -53,14 +50,16 @@ export default function App() {
   return (
     <>
       <canvas id="scene" aria-label="3D solar system model" />
-      <HudPanel
-        snapshot={hudSnapshot}
-        onSetPov={(pov) => app?.setPov(pov)}
-        onToggleZoom={() => app?.toggleZoom()}
-        onToggleNames={() => app?.toggleNames()}
-        onToggleOrbits={() => app?.toggleOrbits()}
-        onToggleVisibility={(key) => app?.toggleVisibility(key)}
-      />
+      {hudSnapshot ? (
+        <HudPanel
+          snapshot={hudSnapshot}
+          onSetPov={(pov) => appRef.current?.setPov(pov)}
+          onToggleZoom={() => appRef.current?.toggleZoom()}
+          onToggleNames={() => appRef.current?.toggleNames()}
+          onToggleOrbits={() => appRef.current?.toggleOrbits()}
+          onToggleVisibility={(key) => appRef.current?.toggleVisibility(key)}
+        />
+      ) : null}
     </>
   );
 }

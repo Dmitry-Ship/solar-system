@@ -1,8 +1,6 @@
 import type { PerspectiveCamera, Vector3, WebGLRenderer } from "three";
-import { RuntimeThree } from "../../runtime/three-globals";
 import { RuntimeVisibilityService } from "./runtime-visibility-service";
 import type {
-  RuntimeThreeModule,
   SceneObjectRuntime,
   VisibilityStateLike
 } from "../../types/solar-system";
@@ -10,12 +8,10 @@ import type {
 interface LabelProjectionServiceOptions {
   renderer: WebGLRenderer;
   camera: PerspectiveCamera;
-  sceneObjectRuntimes?: SceneObjectRuntime[];
-  bodyRuntimes?: SceneObjectRuntime[];
+  sceneObjectRuntimes: SceneObjectRuntime[];
   state: VisibilityStateLike;
-  projectionScratch?: Vector3;
-  runtimeVisibility?: RuntimeVisibilityService;
-  THREE?: RuntimeThreeModule;
+  projectionScratch: Vector3;
+  runtimeVisibility: RuntimeVisibilityService;
 }
 
 export class LabelProjectionService {
@@ -27,14 +23,12 @@ export class LabelProjectionService {
   private readonly runtimeVisibility: RuntimeVisibilityService;
 
   constructor(options: LabelProjectionServiceOptions) {
-    const THREE = options.THREE ?? RuntimeThree;
     this.renderer = options.renderer;
     this.camera = options.camera;
-    this.sceneObjectRuntimes = options.sceneObjectRuntimes || options.bodyRuntimes || [];
+    this.sceneObjectRuntimes = options.sceneObjectRuntimes;
     this.state = options.state;
-    this.projectionScratch = options.projectionScratch || new THREE.Vector3();
-    this.runtimeVisibility =
-      options.runtimeVisibility || new RuntimeVisibilityService({ state: this.state });
+    this.projectionScratch = options.projectionScratch;
+    this.runtimeVisibility = options.runtimeVisibility;
   }
 
   update(): void {

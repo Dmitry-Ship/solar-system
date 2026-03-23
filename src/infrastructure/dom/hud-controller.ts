@@ -54,13 +54,11 @@ export interface HudHandle {
 interface HudControllerOptions {
   state: HudStateLike;
   controls: OrbitControls;
-  orbitGroup: Group | null;
-  visibilityRuntimes?: VisibilityRuntime[];
-  guideRuntimes?: VisibilityRuntime[];
-  guideLineRuntimes?: VisibilityRuntime[];
+  orbitGroup: Group;
+  visibilityRuntimes: VisibilityRuntime[];
   camera: PerspectiveCamera;
   math: Pick<MathApi, "clamp">;
-  onOrbitVisibilityChanged?: (state: VisibilityStateLike, orbitGroup: Group | null) => void;
+  onOrbitVisibilityChanged?: (state: VisibilityStateLike, orbitGroup: Group) => void;
   onVisibilityChanged?: (state: VisibilityStateLike, visibilityRuntimes: VisibilityRuntime[]) => void;
   requestRender?: () => void;
   resolvePovTarget?: (pov: PovTargetKey) => Point3 | null;
@@ -70,13 +68,13 @@ interface HudControllerOptions {
 export class HudController {
   private readonly state: HudStateLike;
   private readonly controls: OrbitControls;
-  private readonly orbitGroup: Group | null;
+  private readonly orbitGroup: Group;
   private readonly visibilityRuntimes: VisibilityRuntime[];
   private readonly camera: PerspectiveCamera;
   private readonly math: Pick<MathApi, "clamp">;
   private readonly onOrbitVisibilityChanged?: (
     state: VisibilityStateLike,
-    orbitGroup: Group | null
+    orbitGroup: Group
   ) => void;
   private readonly onVisibilityChanged?: (
     state: VisibilityStateLike,
@@ -97,11 +95,7 @@ export class HudController {
     this.state = options.state;
     this.controls = options.controls;
     this.orbitGroup = options.orbitGroup;
-    this.visibilityRuntimes =
-      options.visibilityRuntimes ||
-      options.guideRuntimes ||
-      options.guideLineRuntimes ||
-      [];
+    this.visibilityRuntimes = options.visibilityRuntimes;
     this.camera = options.camera;
     this.math = options.math;
     this.onOrbitVisibilityChanged = options.onOrbitVisibilityChanged;
@@ -147,13 +141,11 @@ export class HudController {
     this.visibilityControlGroups = this.visibilityControlGroupFactory.create(this.visibilityRuntimes);
     for (const visibilityControlGroup of this.visibilityControlGroups) {
       for (const visibilityControl of visibilityControlGroup.controls) {
-        this.initialVisibilityByKey.set(
-          visibilityControl.key,
-          Boolean(visibilityControl.initialVisibility)
-        );
+        const initialVisibility = Boolean(visibilityControl.initialVisibility);
+        this.initialVisibilityByKey.set(visibilityControl.key, initialVisibility);
         this.state.registerVisibility(
           visibilityControl.key,
-          this.initialVisibilityByKey.get(visibilityControl.key) ?? false,
+          initialVisibility,
           visibilityControl.groupKey
         );
       }
@@ -179,7 +171,7 @@ export class HudController {
           groupKey: control.groupKey,
           isVisible: this.state.isVisibilityEnabled(
             control.key,
-            this.initialVisibilityByKey.get(control.key) ?? false
+            this.initialVisibilityByKey.get(control.key)!
           )
         }))
       }))

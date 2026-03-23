@@ -124,19 +124,29 @@ export class BodyRenderer {
     });
   }
 
+  private setObjectPosition(object3D: Object3D, position?: BodyRenderConfig["fixedPosition"]): void {
+    object3D.position.set(position?.x ?? 0, position?.y ?? 0, position?.z ?? 0);
+  }
+
+  private createLabelAnchorPosition(
+    position?: BodyRenderConfig["labelAnchorPosition"]
+  ): SceneObjectRuntime["labelAnchorPosition"] {
+    if (!position) {
+      return null;
+    }
+
+    const { THREE } = this;
+    return new THREE.Vector3(position.x, position.y, position.z);
+  }
+
   createBodyRuntime(
     config: BodyRenderConfig,
     bodyGroup: Group,
     bodyGeometry: SphereGeometry
   ): SceneObjectRuntime {
-    const { THREE } = this;
     const material = this.createBodyMaterial(config);
     const mesh = this.createRenderableMesh(config, bodyGeometry, material);
-    mesh.position.set(
-      config.fixedPosition?.x || 0,
-      config.fixedPosition?.y || 0,
-      config.fixedPosition?.z || 0
-    );
+    this.setObjectPosition(mesh, config.fixedPosition);
     this.disableFrustumCulling(mesh);
     bodyGroup.add(mesh);
 
@@ -145,31 +155,21 @@ export class BodyRenderer {
       labelElement: this.labelsLayer.createLabel(config.label || config.name, {
         objectType: config.objectType
       }),
-      renderRadius: config.renderRadius || 0,
-      minPixelRadius: config.minPixelRadius || 1,
-      orbitingBody: config.orbitingBody || config.orbitalSource || null,
-      orbitalSource: config.orbitingBody || config.orbitalSource || null,
+      renderRadius: config.renderRadius,
+      minPixelRadius: config.minPixelRadius ?? 1,
+      orbitingBody: config.orbitingBody ?? config.orbitalSource ?? null,
+      orbitalSource: config.orbitingBody ?? config.orbitalSource ?? null,
       togglesWithNamesButton: Boolean(config.togglesWithNamesButton),
-      labelAnchorPosition: config.labelAnchorPosition
-        ? new THREE.Vector3(
-            config.labelAnchorPosition.x || 0,
-            config.labelAnchorPosition.y || 0,
-            config.labelAnchorPosition.z || 0
-          )
-        : null,
-      labelAnchorRadius: Math.max(0, config.labelAnchorRadius || 0),
-      labelMarginPixels: Math.max(1, config.labelMarginPixels || 5)
+      labelAnchorPosition: this.createLabelAnchorPosition(config.labelAnchorPosition),
+      labelAnchorRadius: Math.max(0, config.labelAnchorRadius ?? 0),
+      labelMarginPixels: Math.max(1, config.labelMarginPixels ?? 5)
     };
   }
 
   createLabelAnchorRuntime(config: BodyRenderConfig): SceneObjectRuntime {
     const { THREE } = this;
     const mesh = new THREE.Object3D();
-    mesh.position.set(
-      config.fixedPosition?.x || 0,
-      config.fixedPosition?.y || 0,
-      config.fixedPosition?.z || 0
-    );
+    this.setObjectPosition(mesh, config.fixedPosition);
 
     return {
       mesh,
@@ -178,15 +178,9 @@ export class BodyRenderer {
       }),
       renderRadius: 0,
       minPixelRadius: 0,
-      labelAnchorPosition: config.labelAnchorPosition
-        ? new THREE.Vector3(
-            config.labelAnchorPosition.x || 0,
-            config.labelAnchorPosition.y || 0,
-            config.labelAnchorPosition.z || 0
-          )
-        : null,
-      labelAnchorRadius: Math.max(0, config.labelAnchorRadius || 0),
-      labelMarginPixels: Math.max(1, config.labelMarginPixels || 5)
+      labelAnchorPosition: this.createLabelAnchorPosition(config.labelAnchorPosition),
+      labelAnchorRadius: Math.max(0, config.labelAnchorRadius ?? 0),
+      labelMarginPixels: Math.max(1, config.labelMarginPixels ?? 5)
     };
   }
 
@@ -203,7 +197,7 @@ export class BodyRenderer {
             name: voyager.name,
             color: voyager.color,
             renderRadius: voyager.renderRadius,
-            minPixelRadius: voyager.minPixelRadius || 1.6,
+            minPixelRadius: voyager.minPixelRadius,
             objectType: "spacecraft",
             fixedPosition: voyager.position,
             togglesWithNamesButton: true
@@ -221,7 +215,7 @@ export class BodyRenderer {
             name: body.name,
             color: body.color,
             renderRadius: body.renderRadius,
-            minPixelRadius: body.minPixelRadius || 1.5,
+            minPixelRadius: body.minPixelRadius ?? 1.5,
             objectType: "interstellar-object",
             fixedPosition: body
           },
@@ -239,7 +233,7 @@ export class BodyRenderer {
             label: marker.label,
             color: marker.color,
             renderRadius: 0,
-            minPixelRadius: marker.minPixelRadius || 2.3,
+            minPixelRadius: marker.minPixelRadius,
             objectType: "directional-marker",
             fixedPosition: marker,
             lit: false

@@ -11,6 +11,7 @@ import { sceneBodyCatalog } from "../domain/catalogs/scene-body-catalog";
 import { SceneDataFactory } from "../application/factories/scene-data-factory";
 import { VisibilityService } from "../application/services/visibility-service";
 import { LabelProjectionService } from "../application/services/label-projection-service";
+import { RuntimeVisibilityService } from "../application/services/runtime-visibility-service";
 import { BodyRenderer } from "../infrastructure/three/renderers/body-renderer";
 import { OrbitRenderer } from "../infrastructure/three/renderers/orbit-renderer";
 import { ParticleRenderer } from "../infrastructure/three/renderers/particle-renderer";
@@ -121,8 +122,7 @@ function createLabelAnchorRuntime(
 }
 
 function buildOrbitLine(points: Point3[], color: string, opacity: number) {
-  const renderer = new OrbitRenderer({ bodyRenderer: null, THREE });
-  return renderer.buildOrbitLine(points, color, opacity);
+  return OrbitRenderer.buildOrbitLine(THREE, points, color, opacity);
 }
 
 function buildOrbitingBodies(
@@ -232,19 +232,19 @@ function applyGuideLineVisibility(
   state: VisibilityStateLike,
   guideRuntimes: VisibilityRuntime[]
 ): void {
+  const runtimeVisibility = new RuntimeVisibilityService({ state });
   const service = new VisibilityService({
-    state,
-    visibilityRuntimes: guideRuntimes
+    visibilityRuntimes: guideRuntimes,
+    runtimeVisibility
   });
   service.apply();
 }
 
 function applyOrbitVisibility(
   state: Pick<VisibilityStateLike, "showOrbits">,
-  orbitGroup: Group | null
+  orbitGroup: Group
 ): void {
-  const renderer = new OrbitRenderer({ bodyRenderer: null, THREE });
-  renderer.applyOrbitVisibility(state, orbitGroup);
+  OrbitRenderer.applyOrbitVisibility(state, orbitGroup);
 }
 
 function setupHudControls(
@@ -253,7 +253,7 @@ function setupHudControls(
   guideRuntimes: VisibilityRuntime[],
   camera: PerspectiveCamera,
   mathApi: Pick<MathApi, "clamp">,
-  orbitGroup: Group | null,
+  orbitGroup: Group,
   requestRender?: () => void,
   resolvePovTarget?: (pov: PovTargetKey) => Point3 | null
 ): HudHandle {
@@ -291,7 +291,14 @@ function setInitialCameraPlacement(
 function createBodyVisualScaleAndLabelsUpdater(
   options: ConstructorParameters<typeof LabelProjectionService>[0]
 ) {
-  const service = new LabelProjectionService({ ...options, THREE });
+  const runtimeVisibility =
+    options.runtimeVisibility ?? new RuntimeVisibilityService({ state: options.state });
+  const projectionScratch = options.projectionScratch ?? new THREE.Vector3();
+  const service = new LabelProjectionService({
+    ...options,
+    projectionScratch,
+    runtimeVisibility
+  });
   return service.update.bind(service);
 }
 

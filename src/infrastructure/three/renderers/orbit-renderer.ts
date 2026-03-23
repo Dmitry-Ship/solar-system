@@ -24,12 +24,12 @@ const LABEL_OBJECT_TYPE_BY_GROUP_KEY: Record<OrbitRenderGroupKey, string> = {
 };
 
 interface OrbitRendererOptions {
-  bodyRenderer: BodyRenderer | null;
+  bodyRenderer: BodyRenderer;
   THREE?: RuntimeThreeModule;
 }
 
 export class OrbitRenderer {
-  private readonly bodyRenderer: BodyRenderer | null;
+  private readonly bodyRenderer: BodyRenderer;
   private readonly THREE: RuntimeThreeModule;
 
   constructor(options: OrbitRendererOptions) {
@@ -37,8 +37,12 @@ export class OrbitRenderer {
     this.THREE = options.THREE ?? RuntimeThree;
   }
 
-  buildOrbitLine(points: Point3[], color: string, opacity: number) {
-    const { THREE } = this;
+  static buildOrbitLine(
+    THREE: RuntimeThreeModule,
+    points: Point3[],
+    color: string,
+    opacity: number
+  ) {
     const geometry = new THREE.BufferGeometry();
     const positionArray = new Float32Array(points.length * 3);
 
@@ -60,6 +64,10 @@ export class OrbitRenderer {
     return new THREE.Line(geometry, material);
   }
 
+  buildOrbitLine(points: Point3[], color: string, opacity: number) {
+    return OrbitRenderer.buildOrbitLine(this.THREE, points, color, opacity);
+  }
+
   buildOrbitingBodies(
     sceneData: SceneData,
     orbitGroup: Group,
@@ -69,10 +77,6 @@ export class OrbitRenderer {
     orbitingBodies: OrbitingBody[],
     math: MathApi
   ): void {
-    if (!this.bodyRenderer) {
-      throw new Error("OrbitRenderer: bodyRenderer is required for orbiting bodies.");
-    }
-
     const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
     for (const orbitRenderGroup of sceneData.orbitRenderGroupConfigs) {
       const orbitingBodiesInGroup = sceneData[orbitRenderGroup.key];
@@ -90,7 +94,7 @@ export class OrbitRenderer {
             name: orbitingBody.name,
             color: orbitingBody.color,
             renderRadius: orbitingBody.renderRadius,
-            minPixelRadius: orbitingBody.minPixelRadius || fallbackMinPixelRadius,
+            minPixelRadius: orbitingBody.minPixelRadius ?? fallbackMinPixelRadius,
             orbitingBody,
             objectType: LABEL_OBJECT_TYPE_BY_GROUP_KEY[orbitRenderGroup.key],
             togglesWithNamesButton: NAMES_TOGGLE_TARGET_GROUPS.has(orbitRenderGroup.key)
@@ -122,8 +126,14 @@ export class OrbitRenderer {
     }
   }
 
-  applyOrbitVisibility(state: Pick<VisibilityStateLike, "showOrbits">, orbitGroup: Group | null): void {
-    if (!orbitGroup) return;
+  static applyOrbitVisibility(
+    state: Pick<VisibilityStateLike, "showOrbits">,
+    orbitGroup: Group
+  ): void {
     orbitGroup.visible = state.showOrbits;
+  }
+
+  applyOrbitVisibility(state: Pick<VisibilityStateLike, "showOrbits">, orbitGroup: Group): void {
+    OrbitRenderer.applyOrbitVisibility(state, orbitGroup);
   }
 }
