@@ -134,7 +134,8 @@ export class OrbitalMath {
       endDirection: Point3,
       periapsisDistance: number,
       endpointDistance: number,
-      segments: number
+      segments: number,
+      preferredPeriapsisDirection?: Point3
     ): Point3[] {
       const startUnit = OrbitalMath.normalizeVector(startDirection);
       const endUnit = OrbitalMath.normalizeVector(endDirection);
@@ -166,7 +167,19 @@ export class OrbitalMath {
 
       const radiusRatio = safeEndpointDistance / safePeriapsisDistance;
       const summedDirections = OrbitalMath.addVectors(startUnit, endUnit);
-      const candidatePeriapsisDirections = [];
+      const candidatePeriapsisDirections: Point3[] = [];
+      const normalizedPreferredPeriapsisDirection =
+        preferredPeriapsisDirection &&
+        OrbitalMath.vectorMagnitude(preferredPeriapsisDirection) >= 1e-9
+          ? OrbitalMath.normalizeVector(preferredPeriapsisDirection)
+          : null;
+
+      if (normalizedPreferredPeriapsisDirection) {
+        candidatePeriapsisDirections.push(normalizedPreferredPeriapsisDirection);
+        candidatePeriapsisDirections.push(
+          OrbitalMath.scaleVector(normalizedPreferredPeriapsisDirection, -1)
+        );
+      }
 
       if (OrbitalMath.vectorMagnitude(summedDirections) >= 1e-9) {
         const bisectorDirection = OrbitalMath.normalizeVector(summedDirections);

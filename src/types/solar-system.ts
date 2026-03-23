@@ -109,9 +109,14 @@ export interface TrajectoryDefinition {
   visibilityLabel?: string;
   visibilityControlLabel?: string;
   launchMarkerName: string;
+  approachMarkerName?: string;
   firstFocalMarkerName: string;
   secondFocalMarkerName: string;
   solarAssistRadiusAu?: number;
+  solarFlybyPeriapsisDirection?: Point3;
+  firstFocalBranchStartDistanceAu?: number;
+  firstFocalBranchJoinDistanceAu?: number;
+  firstFocalBranchEndDistanceAu?: number;
   color?: string;
 }
 
@@ -199,7 +204,8 @@ export interface MathApi {
     endDirection: Point3,
     periapsisDistance: number,
     endpointDistance: number,
-    segments: number
+    segments: number,
+    preferredPeriapsisDirection?: Point3
   ): Point3[];
   normalizeAngle(value: number): number;
   normalizeVector(vector: Point3): Point3;

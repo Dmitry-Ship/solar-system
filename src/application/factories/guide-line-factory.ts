@@ -22,6 +22,8 @@ const MATRYOSHKA_INNER_SOURCE_RADIUS_FACTOR = 0.018;
 const MATRYOSHKA_SOURCE_RADIUS_MIN_MULTIPLIER = 18;
 const LIGHT_RAY_DISTANCE_FADE_POWER = 2.2;
 const TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT = 64;
+const TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT = 24;
+const TRAJECTORY_BRANCH_FOCAL_LINE_SEGMENT_COUNT = 14;
 
 interface GuideLineFactoryDependencies {
   constants: SimulationConstants;
@@ -90,6 +92,22 @@ function scalePoint(point: Point3, scalar: number): Point3 {
   };
 }
 
+function addPoint(a: Point3, b: Point3): Point3 {
+  return {
+    x: a.x + b.x,
+    y: a.y + b.y,
+    z: a.z + b.z
+  };
+}
+
+function subtractPoint(a: Point3, b: Point3): Point3 {
+  return {
+    x: a.x - b.x,
+    y: a.y - b.y,
+    z: a.z - b.z
+  };
+}
+
 function normalizePoint(point: Point3): Point3 {
   const magnitude = pointMagnitude(point);
   if (magnitude <= 1e-9) {
@@ -99,6 +117,43 @@ function normalizePoint(point: Point3): Point3 {
   return scalePoint(point, 1 / magnitude);
 }
 
+function lerpPoint(start: Point3, end: Point3, t: number): Point3 {
+  return {
+    x: lerp(start.x, end.x, t),
+    y: lerp(start.y, end.y, t),
+    z: lerp(start.z, end.z, t)
+  };
+}
+
+function cubicBezierPoint(
+  start: Point3,
+  startControl: Point3,
+  endControl: Point3,
+  end: Point3,
+  t: number
+): Point3 {
+  const oneMinusT = 1 - t;
+  const oneMinusTSquared = oneMinusT * oneMinusT;
+  const tSquared = t * t;
+  return {
+    x:
+      oneMinusTSquared * oneMinusT * start.x +
+      3 * oneMinusTSquared * t * startControl.x +
+      3 * oneMinusT * tSquared * endControl.x +
+      tSquared * t * end.x,
+    y:
+      oneMinusTSquared * oneMinusT * start.y +
+      3 * oneMinusTSquared * t * startControl.y +
+      3 * oneMinusT * tSquared * endControl.y +
+      tSquared * t * end.y,
+    z:
+      oneMinusTSquared * oneMinusT * start.z +
+      3 * oneMinusTSquared * t * startControl.z +
+      3 * oneMinusT * tSquared * endControl.z +
+      tSquared * t * end.z
+  };
+}
+
 function appendUniquePoint(points: Point3[], point: Point3 | null | undefined): void {
   if (!point) {
     return;
@@ -106,6 +161,104 @@ function appendUniquePoint(points: Point3[], point: Point3 | null | undefined): 
 
   if (points.length === 0 || pointDistance(points[points.length - 1], point) > 1e-6) {
     points.push(clonePoint(point));
+  }
+}
+
+function findPointOnSegmentAtRadius(
+  start: Point3,
+  end: Point3,
+  targetRadiusAu: number
+): Point3 | null {
+  const startRadiusAu = pointMagnitude(start);
+  const endRadiusAu = pointMagnitude(end);
+  const minRadiusAu = Math.min(startRadiusAu, endRadiusAu);
+  const maxRadiusAu = Math.max(startRadiusAu, endRadiusAu);
+  if (targetRadiusAu < minRadiusAu - 1e-6 || targetRadiusAu > maxRadiusAu + 1e-6) {
+    return null;
+  }
+
+  if (Math.abs(startRadiusAu - endRadiusAu) <= 1e-9) {
+    return clonePoint(start);
+  }
+
+  let lowerT = 0;
+  let upperT = 1;
+  const isIncreasing = endRadiusAu >= startRadiusAu;
+  let candidate = clonePoint(start);
+
+  for (let iteration = 0; iteration < 40; iteration += 1) {
+    const midpointT = (lowerT + upperT) * 0.5;
+    candidate = lerpPoint(start, end, midpointT);
+    const candidateRadiusAu = pointMagnitude(candidate);
+    if (Math.abs(candidateRadiusAu - targetRadiusAu) <= 1e-6) {
+      return candidate;
+    }
+
+    const shouldAdvanceLowerBound = isIncreasing
+      ? candidateRadiusAu < targetRadiusAu
+      : candidateRadiusAu > targetRadiusAu;
+    if (shouldAdvanceLowerBound) {
+      lowerT = midpointT;
+    } else {
+      upperT = midpointT;
+    }
+  }
+
+  return candidate;
+}
+
+function findPolylinePointAtRadius(
+  points: Point3[],
+  targetRadiusAu: number,
+  startIndex = 0
+): { point: Point3; tangent: Point3 } | null {
+  const normalizedStartIndex = Math.max(0, Math.floor(startIndex));
+  for (let index = normalizedStartIndex; index < points.length - 1; index += 1) {
+    const segmentStart = points[index];
+    const segmentEnd = points[index + 1];
+    const point = findPointOnSegmentAtRadius(segmentStart, segmentEnd, targetRadiusAu);
+    if (!point) {
+      continue;
+    }
+
+    const tangent = normalizePoint(subtractPoint(segmentEnd, segmentStart));
+    return {
+      point,
+      tangent: pointMagnitude(tangent) > 1e-9 ? tangent : normalizePoint(segmentEnd)
+    };
+  }
+
+  return null;
+}
+
+function appendCubicBezierPoints(
+  points: Point3[],
+  start: Point3,
+  startControl: Point3,
+  endControl: Point3,
+  end: Point3,
+  segmentCount: number
+): void {
+  const safeSegmentCount = Math.max(2, Math.floor(segmentCount));
+  for (let step = 0; step <= safeSegmentCount; step += 1) {
+    appendUniquePoint(
+      points,
+      cubicBezierPoint(start, startControl, endControl, end, step / safeSegmentCount)
+    );
+  }
+}
+
+function appendRadialLinePoints(
+  points: Point3[],
+  direction: Point3,
+  startDistanceAu: number,
+  endDistanceAu: number,
+  segmentCount: number
+): void {
+  const safeSegmentCount = Math.max(1, Math.floor(segmentCount));
+  for (let step = 0; step <= safeSegmentCount; step += 1) {
+    const t = step / safeSegmentCount;
+    appendUniquePoint(points, scalePoint(direction, lerp(startDistanceAu, endDistanceAu, t)));
   }
 }
 
@@ -487,14 +640,16 @@ function appendHyperbolicAssistPoints(
   periapsisDistanceAu: number,
   endpointDistanceAu: number,
   segmentCount: number,
-  math: MathApi
+  math: MathApi,
+  preferredPeriapsisDirection?: Point3
 ): void {
   const hyperbolaPoints = math.hyperbolicBranchPoints(
     startDirection,
     endDirection,
     periapsisDistanceAu,
     endpointDistanceAu,
-    segmentCount
+    segmentCount,
+    preferredPeriapsisDirection
   );
   if (!Array.isArray(hyperbolaPoints) || hyperbolaPoints.length === 0) {
     return;
@@ -505,16 +660,110 @@ function appendHyperbolicAssistPoints(
   }
 }
 
-function createTrajectoryGuideLine(
-  trajectoryDefinition: TrajectoryDefinition | null,
-  sourceMarkers: DirectionalMarker[],
-  dependencies: ResolvedGuideLineDependencies
+function createTrajectoryFirstFocalBranchGuideLine(
+  trajectoryPoints: Point3[],
+  firstFocalDirection: Point3,
+  branchStartDistanceAu: number,
+  branchJoinDistanceAu: number,
+  branchEndDistanceAu: number,
+  color: string,
+  visibilityKey: TrajectoryVisibilityKey,
+  visibilityLabel: string,
+  visibilityControlLabel: string
 ): DirectionalGuideLine | null {
-  if (!trajectoryDefinition) {
+  if (
+    !(branchStartDistanceAu > branchEndDistanceAu + 1e-6) ||
+    !(branchJoinDistanceAu > branchEndDistanceAu + 1e-6)
+  ) {
     return null;
   }
 
+  let periapsisIndex = 0;
+  for (let index = 1; index < trajectoryPoints.length; index += 1) {
+    if (pointMagnitude(trajectoryPoints[index]) < pointMagnitude(trajectoryPoints[periapsisIndex])) {
+      periapsisIndex = index;
+    }
+  }
+
+  let branchSample: { point: Point3; tangent: Point3 } | null = null;
+  for (let index = 0; index < periapsisIndex; index += 1) {
+    const segmentStart = trajectoryPoints[index];
+    const segmentEnd = trajectoryPoints[index + 1];
+    const point = findPointOnSegmentAtRadius(segmentStart, segmentEnd, branchStartDistanceAu);
+    if (!point) {
+      continue;
+    }
+
+    const tangent = normalizePoint(subtractPoint(segmentEnd, segmentStart));
+    branchSample = {
+      point,
+      tangent: pointMagnitude(tangent) > 1e-9 ? tangent : normalizePoint(segmentEnd)
+    };
+  }
+  if (!branchSample) {
+    return null;
+  }
+
+  const safeBranchJoinDistanceAu = Math.max(branchEndDistanceAu, branchJoinDistanceAu);
+  const branchJoinPoint = scalePoint(firstFocalDirection, safeBranchJoinDistanceAu);
+  const branchChordLength = pointDistance(branchSample.point, branchJoinPoint);
+  const handleLength = Math.max(
+    60,
+    Math.min(branchChordLength * 0.55, safeBranchJoinDistanceAu * 0.7)
+  );
+  const startControlPoint = addPoint(
+    branchSample.point,
+    scalePoint(branchSample.tangent, handleLength)
+  );
+  const endControlPoint = addPoint(
+    branchJoinPoint,
+    scalePoint(firstFocalDirection, handleLength)
+  );
+  const branchPoints: Point3[] = [];
+
+  appendCubicBezierPoints(
+    branchPoints,
+    branchSample.point,
+    startControlPoint,
+    endControlPoint,
+    branchJoinPoint,
+    TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT
+  );
+  appendRadialLinePoints(
+    branchPoints,
+    firstFocalDirection,
+    safeBranchJoinDistanceAu,
+    branchEndDistanceAu,
+    TRAJECTORY_BRANCH_FOCAL_LINE_SEGMENT_COUNT
+  );
+
+  return buildDirectionalGuideLine(branchSample.point, color, {
+    points: branchPoints,
+    opacity: 0.9,
+    depthTest: false,
+    visibilityKey,
+    visibilityLabel,
+    visibilityControlLabel,
+    visibilityGroupKey: "trajectories",
+    visibilityGroupLabel: "Trajectories",
+    initialVisibility: true
+  });
+}
+
+function createTrajectoryGuideLinesForDefinition(
+  trajectoryDefinition: TrajectoryDefinition | null,
+  sourceMarkers: DirectionalMarker[],
+  dependencies: ResolvedGuideLineDependencies
+): DirectionalGuideLine[] {
+  if (!trajectoryDefinition) {
+    return [];
+  }
+
   const launchMarker = findMarkerByName(sourceMarkers, trajectoryDefinition.launchMarkerName);
+  const approachMarker = findMarkerByName(
+    sourceMarkers,
+    trajectoryDefinition.approachMarkerName ?? trajectoryDefinition.firstFocalMarkerName
+  );
   const firstFocalMarker = findMarkerByName(
     sourceMarkers,
     trajectoryDefinition.firstFocalMarkerName
@@ -523,37 +772,46 @@ function createTrajectoryGuideLine(
     sourceMarkers,
     trajectoryDefinition.secondFocalMarkerName
   );
-  if (!launchMarker || !firstFocalMarker || !secondFocalMarker) {
-    return null;
+  if (!launchMarker || !approachMarker || !secondFocalMarker) {
+    return [];
   }
 
-  const { focalLineMinDistanceAu, focalLineMaxDistanceAu } = dependencies;
-  const firstFocalDirection = normalizePoint(
-    dependencies.math.pointOnRadiusAlongDirection(firstFocalMarker, -1)
+  const {
+    constants,
+    directionalGuideSharedEndDistanceAu,
+    focalLineMinDistanceAu,
+    focalLineMaxDistanceAu
+  } = dependencies;
+  const approachDirection = normalizePoint(
+    dependencies.math.pointOnRadiusAlongDirection(approachMarker, 1)
   );
+  const firstFocalDirection = firstFocalMarker
+    ? normalizePoint(dependencies.math.pointOnRadiusAlongDirection(firstFocalMarker, -1))
+    : null;
   const secondFocalDirection = normalizePoint(
     dependencies.math.pointOnRadiusAlongDirection(secondFocalMarker, -1)
   );
   const focalMidDistanceAu = (focalLineMinDistanceAu + focalLineMaxDistanceAu) * 0.5;
-  const firstFocalMidpoint = scalePoint(firstFocalDirection, focalMidDistanceAu);
-  const secondFocalEndPoint = scalePoint(secondFocalDirection, focalLineMaxDistanceAu);
+  const approachMidpoint = scalePoint(approachDirection, focalMidDistanceAu);
+  const secondFocalExitPoint = scalePoint(secondFocalDirection, directionalGuideSharedEndDistanceAu);
   const solarAssistRadiusAu = Number.isFinite(trajectoryDefinition.solarAssistRadiusAu)
     ? trajectoryDefinition.solarAssistRadiusAu ?? 0.25
     : 0.25;
   const points: Point3[] = [];
 
   appendUniquePoint(points, launchMarker);
-  appendUniquePoint(points, firstFocalMidpoint);
+  appendUniquePoint(points, approachMidpoint);
   appendHyperbolicAssistPoints(
     points,
-    firstFocalDirection,
+    approachDirection,
     secondFocalDirection,
     solarAssistRadiusAu,
     focalLineMinDistanceAu,
     TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT,
-    dependencies.math
+    dependencies.math,
+    trajectoryDefinition.solarFlybyPeriapsisDirection
   );
-  appendUniquePoint(points, secondFocalEndPoint);
+  appendUniquePoint(points, secondFocalExitPoint);
 
   const trajectoryLabel =
     typeof trajectoryDefinition.label === "string"
@@ -569,30 +827,64 @@ function createTrajectoryGuideLine(
     trajectoryDefinition.visibilityControlLabel.trim()
       ? trajectoryDefinition.visibilityControlLabel.trim()
       : trajectoryVisibilityLabel;
+  const trajectoryVisibilityKey = buildTrajectoryVisibilityKey(trajectoryDefinition.name);
+  const trajectoryColor = trajectoryDefinition.color || "#ffd36e";
+  const guideLines: DirectionalGuideLine[] = [];
 
-  return buildDirectionalGuideLine(launchMarker, trajectoryDefinition.color || "#ffd36e", {
+  const mainGuideLine = buildDirectionalGuideLine(launchMarker, trajectoryColor, {
     points,
     opacity: 0.94,
     depthTest: false,
-    visibilityKey: buildTrajectoryVisibilityKey(trajectoryDefinition.name),
+    visibilityKey: trajectoryVisibilityKey,
     visibilityLabel: trajectoryVisibilityLabel,
     visibilityControlLabel: trajectoryVisibilityControlLabel,
     visibilityGroupKey: "trajectories",
     visibilityGroupLabel: "Trajectories",
     initialVisibility: true,
     label: trajectoryLabel,
-    labelAnchorPoint: firstFocalMidpoint,
+    labelAnchorPoint: approachMidpoint,
     labelMarginPixels: 10
   });
+  if (mainGuideLine) {
+    guideLines.push(mainGuideLine);
+  }
+
+  const branchStartDistanceAu = Number.isFinite(trajectoryDefinition.firstFocalBranchStartDistanceAu)
+    ? Math.max(0, trajectoryDefinition.firstFocalBranchStartDistanceAu ?? 0)
+    : 0;
+  const branchEndDistanceAu = Number.isFinite(trajectoryDefinition.firstFocalBranchEndDistanceAu)
+    ? Math.max(0, trajectoryDefinition.firstFocalBranchEndDistanceAu ?? constants.SOLAR_GRAVITATIONAL_LENS_AU)
+    : constants.SOLAR_GRAVITATIONAL_LENS_AU;
+  const branchJoinDistanceAu = Number.isFinite(trajectoryDefinition.firstFocalBranchJoinDistanceAu)
+    ? Math.max(branchEndDistanceAu, trajectoryDefinition.firstFocalBranchJoinDistanceAu ?? branchStartDistanceAu)
+    : Math.max(branchEndDistanceAu, branchStartDistanceAu);
+  if (firstFocalDirection && branchStartDistanceAu > branchEndDistanceAu + 1e-6) {
+    const branchGuideLine = createTrajectoryFirstFocalBranchGuideLine(
+      points,
+      firstFocalDirection,
+      branchStartDistanceAu,
+      branchJoinDistanceAu,
+      branchEndDistanceAu,
+      trajectoryColor,
+      trajectoryVisibilityKey,
+      trajectoryVisibilityLabel,
+      trajectoryVisibilityControlLabel
+    );
+    if (branchGuideLine) {
+      guideLines.push(branchGuideLine);
+    }
+  }
+
+  return guideLines;
 }
 
 function createTrajectoryGuideLines(
   sourceMarkers: DirectionalMarker[],
   dependencies: ResolvedGuideLineDependencies
 ): DirectionalGuideLine[] {
-  return dependencies.markerCatalog.TRAJECTORY_DEFINITIONS.map((trajectoryDefinition) =>
-    createTrajectoryGuideLine(trajectoryDefinition, sourceMarkers, dependencies)
-  ).filter((guideLine): guideLine is DirectionalGuideLine => guideLine !== null);
+  return dependencies.markerCatalog.TRAJECTORY_DEFINITIONS.flatMap((trajectoryDefinition) =>
+    createTrajectoryGuideLinesForDefinition(trajectoryDefinition, sourceMarkers, dependencies)
+  );
 }
 
 export function buildDirectionalGuideLines(
