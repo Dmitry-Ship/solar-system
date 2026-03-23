@@ -54,6 +54,11 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
     solarFlybyPeriapsisDirection: { x: 0, y: 1, z: 0 } satisfies Point3,
     routePoints: [
       {
+        key: "common-path-transition",
+        distanceAu: 5000,
+        location: "inbound"
+      },
+      {
         key: "branching-point",
         distanceAu: 3000,
         location: "inbound"
@@ -66,8 +71,15 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
     ],
     routeSegments: [
       {
-        label: "common path",
+        label: "extrapolation",
         startPointKey: "launch",
+        endPointKey: "common-path-transition",
+        color: "#ffd36e",
+        dashPattern: [10, 6]
+      },
+      {
+        label: "common path",
+        startPointKey: "common-path-transition",
         endPointKey: "branching-point",
         color: "#ffd36e"
       },

@@ -323,6 +323,8 @@ export function runSmokeChecks() {
   );
 
   const trajectoryGuideLines = sceneData?.directionalGuideLines || [];
+  const extrapolationGuideLine =
+    trajectoryGuideLines.find((guideLine) => guideLine.label === "extrapolation") ?? null;
   const commonPathGuideLine =
     trajectoryGuideLines.find((guideLine) => guideLine.label === "common path") ?? null;
   const observerPathGuideLine =
@@ -338,14 +340,19 @@ export function runSmokeChecks() {
     landerPathGuideLine?.color
   ].filter((color): color is string => typeof color === "string" && color.length > 0);
   const trajectorySegmentationOk =
+    !!extrapolationGuideLine &&
     !!commonPathGuideLine &&
     !!observerPathGuideLine &&
     !!transmitterPathGuideLine &&
     !!landerPathGuideLine &&
+    extrapolationGuideLine.points.length > 1 &&
     commonPathGuideLine.points.length > 1 &&
     observerPathGuideLine.points.length > 1 &&
     transmitterPathGuideLine.points.length > 1 &&
     landerPathGuideLine.points.length > 1 &&
+    extrapolationGuideLine.dashPattern.length >= 2 &&
+    extrapolationGuideLine.color === commonPathGuideLine.color &&
+    extrapolationGuideLine.visibilityKey === commonPathGuideLine.visibilityKey &&
     new Set(trajectoryBranchColors).size === 4 &&
     commonPathGuideLine.visibilityKey === observerPathGuideLine.visibilityKey &&
     commonPathGuideLine.visibilityKey === transmitterPathGuideLine.visibilityKey &&
@@ -355,8 +362,8 @@ export function runSmokeChecks() {
       "Trajectory Segmentation",
       trajectorySegmentationOk,
       trajectorySegmentationOk
-        ? "Common, observer, transmitter, and lander paths are present with shared visibility and unique colors."
-        : "Trajectory paths are missing or do not use unique colors within the shared visibility grouping."
+        ? "Extrapolation, common, observer, transmitter, and lander paths are present with the expected dash treatment, shared visibility, and unique branch colors."
+        : "Trajectory paths are missing, incorrectly dashed, or do not use the expected shared visibility grouping."
     )
   );
 

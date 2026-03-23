@@ -699,6 +699,7 @@ function createTrajectoryRouteSegmentGuideLine(
   return buildDirectionalGuideLine(segmentPoints[0] ?? null, segmentDefinition.color || fallbackColor, {
     points: segmentPoints,
     opacity: 0.94,
+    dashPattern: segmentDefinition.dashPattern,
     depthTest: false,
     visibilityKey: visibilityDescriptor.visibilityKey,
     visibilityLabel: visibilityDescriptor.visibilityLabel,

@@ -119,6 +119,7 @@ export interface TrajectoryRouteSegmentDefinition {
   startPointKey: TrajectoryRoutePointKey;
   endPointKey: TrajectoryRoutePointKey;
   color?: string;
+  dashPattern?: number[];
 }
 
 export interface TrajectoryFocalBranchDefinition {
