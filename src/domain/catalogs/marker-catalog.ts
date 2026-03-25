@@ -105,8 +105,8 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
         label: "observer path",
         sourcePointKey: "branching-point",
         targetMarkerName: "Gliese 300",
-        joinDistanceAu: 1000,
-        endDistanceAu: constants.SOLAR_GRAVITATIONAL_LENS_AU,
+        joinDistanceAu: 750,
+        endDistanceAu: 750,
         color: "#f472b6"
       }
     ],
