@@ -22,6 +22,91 @@ const LABEL_OBJECT_TYPE_BY_GROUP_KEY: Record<OrbitRenderGroupKey, string> = {
   dwarfPlanets: "dwarf-planet",
   comets: "comet"
 };
+const MIN_ORBIT_OPACITY_FACTOR = 0.06;
+
+function squaredDistance(a: Point3, b: Point3): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = a.z - b.z;
+  return dx * dx + dy * dy + dz * dz;
+}
+
+function buildOrbitOpacityProfile(
+  points: Point3[],
+  peakOpacity: number,
+  orbitingBodyPosition?: Point3 | null
+): Float32Array {
+  const profile = new Float32Array(points.length);
+  if (!points.length) {
+    return profile;
+  }
+
+  const safePeakOpacity = Math.max(0, Math.min(1, peakOpacity));
+  if (!orbitingBodyPosition || points.length <= 2) {
+    profile.fill(safePeakOpacity);
+    return profile;
+  }
+
+  const uniquePointCount = points.length > 1 ? points.length - 1 : points.length;
+  let closestPointIndex = 0;
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  for (let index = 0; index < uniquePointCount; index += 1) {
+    const candidateDistance = squaredDistance(points[index], orbitingBodyPosition);
+    if (candidateDistance < closestDistance) {
+      closestDistance = candidateDistance;
+      closestPointIndex = index;
+    }
+  }
+
+  const farthestPointDistance = Math.max(1, uniquePointCount * 0.5);
+  for (let index = 0; index < uniquePointCount; index += 1) {
+    const directDistance = Math.abs(index - closestPointIndex);
+    const wrappedDistance = Math.min(directDistance, uniquePointCount - directDistance);
+    const normalizedDistance = Math.min(1, wrappedDistance / farthestPointDistance);
+    const opacityFactor =
+      MIN_ORBIT_OPACITY_FACTOR +
+      (1 - MIN_ORBIT_OPACITY_FACTOR) * (Math.cos(normalizedDistance * Math.PI) * 0.5 + 0.5);
+    profile[index] = safePeakOpacity * opacityFactor;
+  }
+
+  if (points.length > uniquePointCount) {
+    profile[points.length - 1] = profile[0];
+  }
+
+  return profile;
+}
+
+function createOrbitMaterial(THREE: RuntimeThreeModule, color: string) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    toneMapped: false,
+    uniforms: {
+      diffuse: { value: new THREE.Color(color) }
+    },
+    vertexShader: `
+      attribute float vertexOpacity;
+      varying float vVertexOpacity;
+
+      void main() {
+        vVertexOpacity = vertexOpacity;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 diffuse;
+      varying float vVertexOpacity;
+
+      void main() {
+        if (vVertexOpacity <= 0.0) {
+          discard;
+        }
+
+        gl_FragColor = vec4(diffuse, vVertexOpacity);
+      }
+    `
+  });
+}
 
 interface OrbitRendererOptions {
   bodyRenderer: BodyRenderer;
@@ -41,10 +126,12 @@ export class OrbitRenderer {
     THREE: RuntimeThreeModule,
     points: Point3[],
     color: string,
-    opacity: number
+    opacity: number,
+    orbitingBodyPosition?: Point3 | null
   ) {
     const geometry = new THREE.BufferGeometry();
     const positionArray = new Float32Array(points.length * 3);
+    const opacityArray = buildOrbitOpacityProfile(points, opacity, orbitingBodyPosition);
 
     let offset = 0;
     for (const point of points) {
@@ -55,17 +142,25 @@ export class OrbitRenderer {
     }
 
     geometry.setAttribute("position", new THREE.BufferAttribute(positionArray, 3));
-    const material = new THREE.LineBasicMaterial({
-      color,
-      transparent: true,
-      opacity
-    });
+    geometry.setAttribute("vertexOpacity", new THREE.BufferAttribute(opacityArray, 1));
+    const material = createOrbitMaterial(THREE, color);
 
     return new THREE.Line(geometry, material);
   }
 
-  buildOrbitLine(points: Point3[], color: string, opacity: number) {
-    return OrbitRenderer.buildOrbitLine(this.THREE, points, color, opacity);
+  buildOrbitLine(
+    points: Point3[],
+    color: string,
+    opacity: number,
+    orbitingBodyPosition?: Point3 | null
+  ) {
+    return OrbitRenderer.buildOrbitLine(
+      this.THREE,
+      points,
+      color,
+      opacity,
+      orbitingBodyPosition
+    );
   }
 
   buildOrbitingBodies(
@@ -81,10 +176,22 @@ export class OrbitRenderer {
     for (const orbitRenderGroup of sceneData.orbitRenderGroupConfigs) {
       const orbitingBodiesInGroup = sceneData[orbitRenderGroup.key];
       for (const orbitingBody of orbitingBodiesInGroup) {
+        math.orbitalPositionInto(
+          orbitalPositionScratch,
+          orbitingBody.orbitRadius,
+          orbitingBody.theta,
+          orbitingBody.inclination,
+          orbitingBody.node,
+          0,
+          orbitingBody.eccentricity,
+          orbitingBody.periapsisArg
+        );
+
         const orbitLine = this.buildOrbitLine(
           orbitingBody.orbitPath,
           orbitingBody.orbitColor,
-          orbitingBody.orbitOpacity
+          orbitingBody.orbitOpacity,
+          orbitalPositionScratch
         );
         orbitGroup.add(orbitLine);
 
@@ -101,17 +208,6 @@ export class OrbitRenderer {
           },
           bodyGroup,
           bodyGeometry
-        );
-
-        math.orbitalPositionInto(
-          orbitalPositionScratch,
-          orbitingBody.orbitRadius,
-          orbitingBody.theta,
-          orbitingBody.inclination,
-          orbitingBody.node,
-          0,
-          orbitingBody.eccentricity,
-          orbitingBody.periapsisArg
         );
 
         runtime.mesh.position.set(

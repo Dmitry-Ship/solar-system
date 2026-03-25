@@ -121,8 +121,13 @@ function createLabelAnchorRuntime(
   return renderer.createLabelAnchorRuntime(config);
 }
 
-function buildOrbitLine(points: Point3[], color: string, opacity: number) {
-  return OrbitRenderer.buildOrbitLine(THREE, points, color, opacity);
+function buildOrbitLine(
+  points: Point3[],
+  color: string,
+  opacity: number,
+  orbitingBodyPosition?: Point3 | null
+) {
+  return OrbitRenderer.buildOrbitLine(THREE, points, color, opacity, orbitingBodyPosition);
 }
 
 function buildOrbitingBodies(

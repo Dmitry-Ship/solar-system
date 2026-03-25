@@ -243,7 +243,7 @@ export class SolarSystemApplication {
     controls.enableDamping = false;
     controls.enablePan = false;
     controls.rotateSpeed = 0.68;
-    controls.zoomSpeed = 0.05;
+    controls.zoomSpeed = 0.1;
     controls.minDistance = state.minCamera;
     controls.maxDistance = state.maxCamera;
     controls.target.set(0, 0, 0);

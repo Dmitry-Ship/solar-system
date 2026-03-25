@@ -706,7 +706,7 @@ function createTrajectoryRouteSegmentGuideLine(
     visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
     visibilityGroupKey: "trajectories",
     visibilityGroupLabel: "Trajectories",
-    initialVisibility: true,
+    initialVisibility: false,
     label,
     labelAnchorPoint: resolvePolylineMidpoint(segmentPoints),
     labelMarginPixels: 10
@@ -774,7 +774,7 @@ function createTrajectoryFocalBranchGuideLine(
     visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
     visibilityGroupKey: "trajectories",
     visibilityGroupLabel: "Trajectories",
-    initialVisibility: true,
+    initialVisibility: false,
     label,
     labelAnchorPoint: resolvePolylineMidpoint(branchPoints),
     labelMarginPixels: 10
@@ -865,7 +865,7 @@ function createTrajectoryLocalBranchGuideLine(
     visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
     visibilityGroupKey: "trajectories",
     visibilityGroupLabel: "Trajectories",
-    initialVisibility: true,
+    initialVisibility: false,
     label,
     labelAnchorPoint: resolvePolylineMidpoint(branchPoints),
     labelMarginPixels: 10
