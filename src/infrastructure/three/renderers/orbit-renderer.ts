@@ -2,7 +2,6 @@ import type { Group, SphereGeometry } from "three";
 import { RuntimeThree } from "../../../runtime/three-globals";
 import type { BodyRenderer } from "./body-renderer";
 import type {
-  MathApi,
   OrbitRenderGroupKey,
   OrbitingBody,
   Point3,
@@ -169,29 +168,16 @@ export class OrbitRenderer {
     bodyGroup: Group,
     bodyGeometry: SphereGeometry,
     sceneObjectRuntimes: SceneObjectRuntime[],
-    orbitingBodies: OrbitingBody[],
-    math: MathApi
+    orbitingBodies: OrbitingBody[]
   ): void {
-    const orbitalPositionScratch = { x: 0, y: 0, z: 0 };
-    for (const orbitRenderGroup of sceneData.orbitRenderGroupConfigs) {
+    for (const orbitRenderGroup of sceneData.orbitGroups) {
       const orbitingBodiesInGroup = sceneData[orbitRenderGroup.key];
       for (const orbitingBody of orbitingBodiesInGroup) {
-        math.orbitalPositionInto(
-          orbitalPositionScratch,
-          orbitingBody.orbitRadius,
-          orbitingBody.theta,
-          orbitingBody.inclination,
-          orbitingBody.node,
-          0,
-          orbitingBody.eccentricity,
-          orbitingBody.periapsisArg
-        );
-
         const orbitLine = this.buildOrbitLine(
-          orbitingBody.orbitPath,
-          orbitingBody.orbitColor,
-          orbitingBody.orbitOpacity,
-          orbitalPositionScratch
+          orbitingBody.orbit.path,
+          orbitingBody.orbit.color,
+          orbitingBody.orbit.opacity,
+          orbitingBody.position
         );
         orbitGroup.add(orbitLine);
 
@@ -211,9 +197,9 @@ export class OrbitRenderer {
         );
 
         runtime.mesh.position.set(
-          orbitalPositionScratch.x,
-          orbitalPositionScratch.y,
-          orbitalPositionScratch.z
+          orbitingBody.position.x,
+          orbitingBody.position.y,
+          orbitingBody.position.z
         );
 
         sceneObjectRuntimes.push(runtime);

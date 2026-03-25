@@ -137,8 +137,7 @@ function buildOrbitingBodies(
   bodyGeometry: SphereGeometry,
   sceneObjectRuntimes: SceneObjectRuntime[],
   orbitingBodies: SceneData["planets"],
-  labelsLayerElement: HTMLElement,
-  math: MathApi
+  labelsLayerElement: HTMLElement
 ): void {
   const bodyRenderer = new BodyRenderer({
     labelsLayer: createLabelAdapter(labelsLayerElement),
@@ -151,8 +150,7 @@ function buildOrbitingBodies(
     bodyGroup,
     bodyGeometry,
     sceneObjectRuntimes,
-    orbitingBodies,
-    math
+    orbitingBodies
   );
 }
 

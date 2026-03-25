@@ -119,32 +119,14 @@ export function runSmokeChecks() {
     const earthB = sceneDataSecondPass.planets.find((planet) => planet.name === "Earth 🌎") ?? null;
     const earthPositionA =
       earthA &&
-      mathApi?.orbitalPositionInto(
-        { x: 0, y: 0, z: 0 },
-        earthA.orbitRadius,
-        earthA.theta,
-        earthA.inclination,
-        earthA.node,
-        0,
-        earthA.eccentricity,
-        earthA.periapsisArg
-      );
+      mathApi?.orbitPositionInto({ x: 0, y: 0, z: 0 }, earthA.orbit);
     const earthPositionB =
       earthB &&
-      mathApi?.orbitalPositionInto(
-        { x: 0, y: 0, z: 0 },
-        earthB.orbitRadius,
-        earthB.theta,
-        earthB.inclination,
-        earthB.node,
-        0,
-        earthB.eccentricity,
-        earthB.periapsisArg
-      );
+      mathApi?.orbitPositionInto({ x: 0, y: 0, z: 0 }, earthB.orbit);
     const deterministicEarthPosition =
       !!earthA &&
       !!earthB &&
-      approxEqual(earthA.theta, earthB.theta) &&
+      approxEqual(earthA.orbit.theta, earthB.orbit.theta) &&
       !!earthPositionA &&
       !!earthPositionB &&
       approxEqual(earthPositionA.x, earthPositionB.x) &&

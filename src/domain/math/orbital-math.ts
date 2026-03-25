@@ -1,4 +1,4 @@
-import type { MathApi, OrbitPlanePoint, Point3 } from "../../types/solar-system";
+import type { MathApi, Orbit, OrbitPlanePoint, Point3 } from "../../types/solar-system";
 
 const EARTH_OBLIQUITY_DEG_J2000 = 23.4392911;
 const orbitPlaneScratch: OrbitPlanePoint = { x: 0, z: 0 };
@@ -429,6 +429,26 @@ export class OrbitalMath {
         node,
         periapsisArg,
         height
+      );
+    }
+
+    static orbitPositionInto(
+      out: Point3,
+      orbit: Pick<
+        Orbit,
+        "radius" | "theta" | "inclination" | "node" | "eccentricity" | "periapsisArg"
+      >,
+      height = 0
+    ): Point3 {
+      return OrbitalMath.orbitalPositionInto(
+        out,
+        orbit.radius,
+        orbit.theta,
+        orbit.inclination,
+        orbit.node,
+        height,
+        orbit.eccentricity,
+        orbit.periapsisArg
       );
     }
 

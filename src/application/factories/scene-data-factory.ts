@@ -67,19 +67,28 @@ export class SceneDataFactory {
     const theta = Number.isFinite(bodyDefinition.initialThetaDeg)
       ? this.math.degToRad(bodyDefinition.initialThetaDeg ?? 0)
       : this.random() * Math.PI * 2;
-    return {
-      ...bodyDefinition,
-      theta,
-      inclination: this.math.degToRad(bodyDefinition.inclinationDeg || 0),
-      node: this.math.degToRad(bodyDefinition.nodeDeg || 0),
-      periapsisArg: this.math.degToRad(bodyDefinition.periapsisArgDeg || 0),
-      eccentricity: this.math.clamp(bodyDefinition.eccentricity || 0, 0, 0.999),
-      orbitRadius: bodyDefinition.au,
+    const orbitingBody: OrbitingBody = {
+      name: bodyDefinition.name,
+      color: bodyDefinition.color,
+      radiusKm: bodyDefinition.radiusKm,
+      minPixelRadius: bodyDefinition.minPixelRadius,
+      initialOppositionMarkerName: bodyDefinition.initialOppositionMarkerName,
       renderRadius: bodyDefinition.radiusKm / this.constants.KM_PER_AU,
-      orbitColor: bodyDefinition.orbitColor ?? DEFAULT_ORBIT_COLOR,
-      orbitOpacity: 0.4,
-      orbitPath: []
+      position: { x: 0, y: 0, z: 0 },
+      orbit: {
+        radius: bodyDefinition.au,
+        theta,
+        inclination: this.math.degToRad(bodyDefinition.inclinationDeg || 0),
+        node: this.math.degToRad(bodyDefinition.nodeDeg || 0),
+        eccentricity: this.math.clamp(bodyDefinition.eccentricity || 0, 0, 0.999),
+        periapsisArg: this.math.degToRad(bodyDefinition.periapsisArgDeg || 0),
+        color: bodyDefinition.orbitColor ?? "",
+        opacity: 0.4,
+        path: []
+      }
     };
+    this.updateOrbitingBodyPosition(orbitingBody);
+    return orbitingBody;
   }
 
   createOrbitingBodies(definitions: OrbitingBodyDefinition[]): OrbitingBody[] {
@@ -128,36 +137,32 @@ export class SceneDataFactory {
     );
   }
 
+  updateOrbitingBodyPosition(orbitingBody: OrbitingBody): Point3 {
+    return this.math.orbitPositionInto(orbitingBody.position, orbitingBody.orbit);
+  }
+
   resolveOrbitThetaOppositeMarker(
     orbitingBody: OrbitingBody,
     targetMarker: DirectionalMarker
   ): number {
     const markerDirection = this.normalizePoint(targetMarker);
     const orbitalPosition = { x: 0, y: 0, z: 0 };
-    let bestTheta = orbitingBody.theta;
+    let bestTheta = orbitingBody.orbit.theta;
     let bestDot = Number.POSITIVE_INFINITY;
 
     for (let step = 0; step < INITIAL_OPPOSITION_THETA_SAMPLE_COUNT; step += 1) {
-      const theta = (step / INITIAL_OPPOSITION_THETA_SAMPLE_COUNT) * Math.PI * 2;
-      this.math.orbitalPositionInto(
-        orbitalPosition,
-        orbitingBody.orbitRadius,
-        theta,
-        orbitingBody.inclination,
-        orbitingBody.node,
-        0,
-        orbitingBody.eccentricity,
-        orbitingBody.periapsisArg
-      );
+      orbitingBody.orbit.theta = (step / INITIAL_OPPOSITION_THETA_SAMPLE_COUNT) * Math.PI * 2;
+      this.math.orbitPositionInto(orbitalPosition, orbitingBody.orbit);
 
       const positionDirection = this.normalizePoint(orbitalPosition);
       const oppositionDot = this.dotPoint(positionDirection, markerDirection);
       if (oppositionDot < bestDot) {
         bestDot = oppositionDot;
-        bestTheta = theta;
+        bestTheta = orbitingBody.orbit.theta;
       }
     }
 
+    orbitingBody.orbit.theta = bestTheta;
     return bestTheta;
   }
 
@@ -176,7 +181,8 @@ export class SceneDataFactory {
         continue;
       }
 
-      orbitingBody.theta = this.resolveOrbitThetaOppositeMarker(orbitingBody, targetMarker);
+      this.resolveOrbitThetaOppositeMarker(orbitingBody, targetMarker);
+      this.updateOrbitingBodyPosition(orbitingBody);
     }
   }
 
@@ -272,25 +278,12 @@ export class SceneDataFactory {
   }
 
   createLocalTrajectoryTargets(orbitingBodies: OrbitingBody[]): Array<Point3 & { name: string }> {
-    return orbitingBodies.map((orbitingBody) => {
-      const position = this.math.orbitalPositionInto(
-        { x: 0, y: 0, z: 0 },
-        orbitingBody.orbitRadius,
-        orbitingBody.theta,
-        orbitingBody.inclination,
-        orbitingBody.node,
-        0,
-        orbitingBody.eccentricity,
-        orbitingBody.periapsisArg
-      );
-
-      return {
-        name: orbitingBody.name,
-        x: position.x,
-        y: position.y,
-        z: position.z
-      };
-    });
+    return orbitingBodies.map((orbitingBody) => ({
+      name: orbitingBody.name,
+      x: orbitingBody.position.x,
+      y: orbitingBody.position.y,
+      z: orbitingBody.position.z
+    }));
   }
 
   createRenderableDriftingBodies(definitions: DriftingBodyDefinition[]): DriftingBody[] {
@@ -390,29 +383,28 @@ export class SceneDataFactory {
     };
   }
 
-  applyOrbitRenderMetadata(
+  configureOrbitingBodies(
     orbitingBodies: OrbitingBody[],
     orbitRenderGroupConfig: OrbitRenderGroupConfig,
     orbitOpacityForBodyRadius: (radiusKm: number) => number
   ): void {
     const shouldUseRadiusOrbitOpacity = orbitRenderGroupConfig.key !== "comets";
-    const orbitColor = orbitRenderGroupConfig.orbitColor || DEFAULT_ORBIT_COLOR;
+    const fallbackOrbitColor = orbitRenderGroupConfig.orbitColor || DEFAULT_ORBIT_COLOR;
 
     for (const orbitingBody of orbitingBodies) {
-      orbitingBody.orbitRadius = orbitingBody.au;
-      orbitingBody.renderRadius = orbitingBody.radiusKm / this.constants.KM_PER_AU;
-      orbitingBody.orbitColor = orbitColor;
-      orbitingBody.orbitOpacity = shouldUseRadiusOrbitOpacity
+      orbitingBody.orbit.color = orbitingBody.orbit.color || fallbackOrbitColor;
+      orbitingBody.orbit.opacity = shouldUseRadiusOrbitOpacity
         ? orbitOpacityForBodyRadius(orbitingBody.radiusKm)
         : 0.1;
-      orbitingBody.orbitPath = this.math.orbitPoints(
-        orbitingBody.orbitRadius,
-        orbitingBody.inclination,
-        orbitingBody.node,
+      orbitingBody.orbit.path = this.math.orbitPoints(
+        orbitingBody.orbit.radius,
+        orbitingBody.orbit.inclination,
+        orbitingBody.orbit.node,
         orbitRenderGroupConfig.segments,
-        orbitingBody.eccentricity,
-        orbitingBody.periapsisArg
+        orbitingBody.orbit.eccentricity,
+        orbitingBody.orbit.periapsisArg
       );
+      this.updateOrbitingBodyPosition(orbitingBody);
     }
   }
 
@@ -455,10 +447,10 @@ export class SceneDataFactory {
       dwarfPlanets,
       comets
     };
-    const orbitRenderGroupConfigs = this.beltCatalog.ORBIT_RENDER_GROUPS;
+    const orbitGroups = this.beltCatalog.ORBIT_RENDER_GROUPS;
 
-    for (const orbitRenderGroupConfig of orbitRenderGroupConfigs) {
-      this.applyOrbitRenderMetadata(
+    for (const orbitRenderGroupConfig of orbitGroups) {
+      this.configureOrbitingBodies(
         orbitingBodiesByGroupKey[orbitRenderGroupConfig.key],
         orbitRenderGroupConfig,
         orbitOpacityForBodyRadius
@@ -477,8 +469,7 @@ export class SceneDataFactory {
       planets,
       dwarfPlanets,
       comets,
-      orbitRenderGroupConfigs,
-      orbitRenderGroups: orbitRenderGroupConfigs,
+      orbitGroups,
       voyagers: this.createVoyagerSceneBodies(this.sceneBodyCatalog.VOYAGERS),
       driftingBodies: this.createRenderableDriftingBodies(
         this.sceneBodyCatalog.DRIFTING_BODIES

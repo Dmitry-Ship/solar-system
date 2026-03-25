@@ -52,16 +52,27 @@ export interface OrbitingBodyDefinition {
   orbitColor?: string;
 }
 
-export interface OrbitingBody extends OrbitingBodyDefinition {
+export interface Orbit {
+  radius: number;
   theta: number;
   inclination: number;
   node: number;
+  eccentricity: number;
   periapsisArg: number;
-  orbitRadius: number;
+  color: string;
+  opacity: number;
+  path: Point3[];
+}
+
+export interface OrbitingBody {
+  name: string;
+  color: string;
+  radiusKm: number;
+  minPixelRadius?: number;
+  initialOppositionMarkerName?: string;
   renderRadius: number;
-  orbitColor: string;
-  orbitOpacity: number;
-  orbitPath: Point3[];
+  position: Point3;
+  orbit: Orbit;
 }
 
 export interface VoyagerDefinition {
@@ -271,6 +282,14 @@ export interface MathApi {
     eccentricity?: number,
     periapsisArg?: number
   ): Point3;
+  orbitPositionInto(
+    out: Point3,
+    orbit: Pick<
+      Orbit,
+      "radius" | "theta" | "inclination" | "node" | "eccentricity" | "periapsisArg"
+    >,
+    height?: number
+  ): Point3;
   pointOnRadiusAlongDirection(directionSource: Point3, radius: number): Point3;
   randomUnitVector3D(random?: () => number): Point3;
   rotateOrbitFrame(
@@ -298,8 +317,7 @@ export interface SceneData {
   planets: OrbitingBody[];
   dwarfPlanets: OrbitingBody[];
   comets: OrbitingBody[];
-  orbitRenderGroupConfigs: OrbitRenderGroupConfig[];
-  orbitRenderGroups: OrbitRenderGroupConfig[];
+  orbitGroups: OrbitRenderGroupConfig[];
   voyagers: VoyagerSceneBody[];
   driftingBodies: DriftingBody[];
   directionalMarkers: DirectionalMarker[];

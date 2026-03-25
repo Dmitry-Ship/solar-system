@@ -351,16 +351,11 @@ export class SolarSystemApplication {
       return null;
     }
 
-    return this.math.orbitalPositionInto(
-      { x: 0, y: 0, z: 0 },
-      orbitingBody.orbitRadius,
-      orbitingBody.theta,
-      orbitingBody.inclination,
-      orbitingBody.node,
-      0,
-      orbitingBody.eccentricity,
-      orbitingBody.periapsisArg
-    );
+    return {
+      x: orbitingBody.position.x,
+      y: orbitingBody.position.y,
+      z: orbitingBody.position.z
+    };
   }
 
   resolvePovTarget(pov: PovTargetKey): Point3 | null {

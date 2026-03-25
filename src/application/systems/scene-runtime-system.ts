@@ -89,8 +89,7 @@ export class SceneRuntimeSystem {
       this.bodyGroup,
       this.bodyGeometry,
       this.sceneObjectRuntimes,
-      this.orbitingBodies,
-      this.math
+      this.orbitingBodies
     );
     this.bodyRenderer.buildFixedBodies(
       sceneData,
