@@ -3,10 +3,10 @@
   --panel-border: rgba(180, 204, 255, 0.35);
   --text: #ecf3ff;
   --muted: #b5c6ea;
-  --button-off-bg: rgba(88, 28, 38, 0.86);
-  --button-off-border: rgba(255, 134, 151, 0.6);
-  --button-off-text: #ffe6ea;
-  --button-off-shadow: rgba(255, 92, 120, 0.24);
+  --button-off-bg: rgba(16, 28, 56, 0.86);
+  --button-off-border: rgba(180, 204, 255, 0.3);
+  --button-off-text: #dce8ff;
+  --button-off-shadow: rgba(20, 56, 96, 0.2);
   --button-on-bg: rgba(18, 84, 52, 0.9);
   --button-on-border: rgba(123, 255, 179, 0.62);
   --button-on-text: #effff5;
