@@ -375,6 +375,13 @@ export function runSmokeChecks() {
     transmitterPathGuideLine?.color,
     landerPathGuideLine?.color
   ].filter((color): color is string => typeof color === "string" && color.length > 0);
+  const trajectoryVisibilityKeys = [
+    extrapolationGuideLine?.visibilityKey,
+    commonPathGuideLine?.visibilityKey,
+    observerPathGuideLine?.visibilityKey,
+    transmitterPathGuideLine?.visibilityKey,
+    landerPathGuideLine?.visibilityKey
+  ].filter((visibilityKey): visibilityKey is string => typeof visibilityKey === "string" && visibilityKey.length > 0);
   const trajectorySegmentationOk =
     !!extrapolationGuideLine &&
     !!commonPathGuideLine &&
@@ -388,18 +395,16 @@ export function runSmokeChecks() {
     landerPathGuideLine.points.length > 1 &&
     extrapolationGuideLine.dashPattern.length >= 2 &&
     extrapolationGuideLine.color === commonPathGuideLine.color &&
-    extrapolationGuideLine.visibilityKey === commonPathGuideLine.visibilityKey &&
     new Set(trajectoryBranchColors).size === 4 &&
-    commonPathGuideLine.visibilityKey === observerPathGuideLine.visibilityKey &&
-    commonPathGuideLine.visibilityKey === transmitterPathGuideLine.visibilityKey &&
-    commonPathGuideLine.visibilityKey === landerPathGuideLine.visibilityKey;
+    trajectoryVisibilityKeys.length === 5 &&
+    new Set(trajectoryVisibilityKeys).size === trajectoryVisibilityKeys.length;
   results.push(
     createResult(
       "Trajectory Segmentation",
       trajectorySegmentationOk,
       trajectorySegmentationOk
-        ? "Extrapolation, common, observer, transmitter, and lander paths are present with the expected dash treatment, shared visibility, and unique branch colors."
-        : "Trajectory paths are missing, incorrectly dashed, or do not use the expected shared visibility grouping."
+        ? "Extrapolation, common, observer, transmitter, and lander paths are present with the expected dash treatment, dedicated visibility controls, and unique branch colors."
+        : "Trajectory paths are missing, incorrectly dashed, or do not expose dedicated visibility controls."
     )
   );
 
@@ -423,7 +428,7 @@ export function runSmokeChecks() {
   const landerPathOk =
     !!landerPathGuideLine &&
     landerPathGuideLine.points.length > 1 &&
-    landerPathGuideLine.visibilityKey === transmitterPathGuideLine?.visibilityKey &&
+    landerPathGuideLine.visibilityKey !== transmitterPathGuideLine?.visibilityKey &&
     landerPathStartsOnTransmitter &&
     landerPathFlatTail;
   results.push(

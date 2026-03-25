@@ -74,6 +74,8 @@ interface TrajectoryVisibilityDescriptor {
   visibilityKey: TrajectoryVisibilityKey;
   visibilityLabel: string;
   visibilityControlLabel: string;
+  visibilityGroupKey: VisibilityGroupKey;
+  visibilityGroupLabel: string;
 }
 
 interface TrajectoryRoutePointSample {
@@ -365,6 +367,61 @@ function buildTrajectoryVisibilityKey(name: string): TrajectoryVisibilityKey {
   return `trajectory:${slugifyVisibilityName(name, "path")}`;
 }
 
+function resolveTrajectoryGroupLabel(trajectoryDefinition: TrajectoryDefinition): string {
+  const trajectoryLabel =
+    typeof trajectoryDefinition.label === "string"
+      ? trajectoryDefinition.label.trim()
+      : trajectoryDefinition.name;
+
+  return typeof trajectoryDefinition.visibilityLabel === "string" &&
+    trajectoryDefinition.visibilityLabel.trim()
+    ? trajectoryDefinition.visibilityLabel.trim()
+    : trajectoryLabel || trajectoryDefinition.name;
+}
+
+function resolveTrajectoryBranchLabel(label: string, fallbackLabel: string): string {
+  const normalizedLabel = typeof label === "string" ? label.trim() : "";
+  return normalizedLabel || fallbackLabel;
+}
+
+function buildTrajectoryBranchVisibilityKey(
+  trajectoryName: string,
+  branchKind: string,
+  branchIndex: number,
+  branchIdentity: string
+): TrajectoryVisibilityKey {
+  const baseVisibilityKey = buildTrajectoryVisibilityKey(trajectoryName);
+  const branchSuffix = slugifyVisibilityName(
+    `${branchKind}-${branchIndex + 1}-${branchIdentity}`,
+    `${branchKind}-${branchIndex + 1}`
+  );
+  return `${baseVisibilityKey}:${branchSuffix}`;
+}
+
+function createTrajectoryVisibilityDescriptor(
+  trajectoryDefinition: TrajectoryDefinition,
+  branchKind: string,
+  branchIndex: number,
+  branchIdentity: string,
+  branchLabel: string
+): TrajectoryVisibilityDescriptor {
+  const visibilityGroupLabel = resolveTrajectoryGroupLabel(trajectoryDefinition);
+  const visibilityGroupKey = buildTrajectoryVisibilityKey(trajectoryDefinition.name);
+
+  return {
+    visibilityKey: buildTrajectoryBranchVisibilityKey(
+      trajectoryDefinition.name,
+      branchKind,
+      branchIndex,
+      branchIdentity
+    ),
+    visibilityLabel: branchLabel,
+    visibilityControlLabel: branchLabel,
+    visibilityGroupKey,
+    visibilityGroupLabel
+  };
+}
+
 function buildLightRayRadiusProfile(
   points: Point3[],
   options: DirectionalGuideLineOptions,
@@ -524,31 +581,6 @@ function normalizeLookupName(name: string): string {
   return typeof name === "string" ? name.trim().toLowerCase() : "";
 }
 
-function resolveTrajectoryVisibilityDescriptor(
-  trajectoryDefinition: TrajectoryDefinition
-): TrajectoryVisibilityDescriptor {
-  const trajectoryLabel =
-    typeof trajectoryDefinition.label === "string"
-      ? trajectoryDefinition.label.trim()
-      : trajectoryDefinition.name;
-  const visibilityLabel =
-    typeof trajectoryDefinition.visibilityLabel === "string" &&
-    trajectoryDefinition.visibilityLabel.trim()
-      ? trajectoryDefinition.visibilityLabel.trim()
-      : trajectoryLabel || trajectoryDefinition.name;
-  const visibilityControlLabel =
-    typeof trajectoryDefinition.visibilityControlLabel === "string" &&
-    trajectoryDefinition.visibilityControlLabel.trim()
-      ? trajectoryDefinition.visibilityControlLabel.trim()
-      : visibilityLabel;
-
-  return {
-    visibilityKey: buildTrajectoryVisibilityKey(trajectoryDefinition.name),
-    visibilityLabel,
-    visibilityControlLabel
-  };
-}
-
 function resolveTrajectoryRoutePointSamples(
   trajectoryPoints: Point3[],
   routePointDefinitions: TrajectoryRoutePointDefinition[] | null | undefined
@@ -704,8 +736,8 @@ function createTrajectoryRouteSegmentGuideLine(
     visibilityKey: visibilityDescriptor.visibilityKey,
     visibilityLabel: visibilityDescriptor.visibilityLabel,
     visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
-    visibilityGroupKey: "trajectories",
-    visibilityGroupLabel: "Trajectories",
+    visibilityGroupKey: visibilityDescriptor.visibilityGroupKey,
+    visibilityGroupLabel: visibilityDescriptor.visibilityGroupLabel,
     initialVisibility: false,
     label,
     labelAnchorPoint: resolvePolylineMidpoint(segmentPoints),
@@ -772,8 +804,8 @@ function createTrajectoryFocalBranchGuideLine(
     visibilityKey: visibilityDescriptor.visibilityKey,
     visibilityLabel: visibilityDescriptor.visibilityLabel,
     visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
-    visibilityGroupKey: "trajectories",
-    visibilityGroupLabel: "Trajectories",
+    visibilityGroupKey: visibilityDescriptor.visibilityGroupKey,
+    visibilityGroupLabel: visibilityDescriptor.visibilityGroupLabel,
     initialVisibility: false,
     label,
     labelAnchorPoint: resolvePolylineMidpoint(branchPoints),
@@ -863,8 +895,8 @@ function createTrajectoryLocalBranchGuideLine(
     visibilityKey: visibilityDescriptor.visibilityKey,
     visibilityLabel: visibilityDescriptor.visibilityLabel,
     visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
-    visibilityGroupKey: "trajectories",
-    visibilityGroupLabel: "Trajectories",
+    visibilityGroupKey: visibilityDescriptor.visibilityGroupKey,
+    visibilityGroupLabel: visibilityDescriptor.visibilityGroupLabel,
     initialVisibility: false,
     label,
     labelAnchorPoint: resolvePolylineMidpoint(branchPoints),
@@ -1186,28 +1218,54 @@ function createTrajectoryGuideLinesForDefinition(
     trajectoryDefinition.routePoints
   );
   const route = buildTrajectoryRoute(trajectoryPoints, routePointSamples);
-  const visibilityDescriptor = resolveTrajectoryVisibilityDescriptor(trajectoryDefinition);
   const trajectoryColor = trajectoryDefinition.color || "#ffd36e";
   const guideLines: DirectionalGuideLine[] = [];
 
-  for (const routeSegment of resolveTrajectoryRouteSegments(trajectoryDefinition)) {
+  for (const [routeSegmentIndex, routeSegment] of resolveTrajectoryRouteSegments(
+    trajectoryDefinition
+  ).entries()) {
+    const routeSegmentLabel = resolveTrajectoryBranchLabel(
+      routeSegment.label,
+      `${normalizeTrajectoryRoutePointKey(routeSegment.startPointKey) || "start"} to ${
+        normalizeTrajectoryRoutePointKey(routeSegment.endPointKey) || "end"
+      }`
+    );
+    const routeSegmentVisibilityDescriptor = createTrajectoryVisibilityDescriptor(
+      trajectoryDefinition,
+      "segment",
+      routeSegmentIndex,
+      `${routeSegment.startPointKey}-${routeSegment.endPointKey}-${routeSegmentLabel}`,
+      routeSegmentLabel
+    );
     const routeSegmentGuideLine = createTrajectoryRouteSegmentGuideLine(
       route,
       routeSegment,
       trajectoryColor,
-      visibilityDescriptor
+      routeSegmentVisibilityDescriptor
     );
     if (routeSegmentGuideLine) {
       guideLines.push(routeSegmentGuideLine);
     }
   }
 
-  for (const focalBranch of trajectoryDefinition.focalBranches ?? []) {
+  for (const [focalBranchIndex, focalBranch] of (trajectoryDefinition.focalBranches ?? []).entries()) {
     const targetMarker = findMarkerByName(sourceMarkers, focalBranch.targetMarkerName);
     const sourcePointKey = normalizeTrajectoryRoutePointKey(focalBranch.sourcePointKey);
     if (!targetMarker || !sourcePointKey) {
       continue;
     }
+
+    const focalBranchLabel = resolveTrajectoryBranchLabel(
+      focalBranch.label,
+      focalBranch.targetMarkerName
+    );
+    const focalBranchVisibilityDescriptor = createTrajectoryVisibilityDescriptor(
+      trajectoryDefinition,
+      "focal",
+      focalBranchIndex,
+      `${sourcePointKey}-${focalBranch.targetMarkerName}-${focalBranchLabel}`,
+      focalBranchLabel
+    );
 
     const targetDirection = normalizePoint(
       dependencies.math.pointOnRadiusAlongDirection(targetMarker, -1)
@@ -1218,14 +1276,14 @@ function createTrajectoryGuideLinesForDefinition(
       focalBranch,
       trajectoryColor,
       dependencies.constants.SOLAR_GRAVITATIONAL_LENS_AU,
-      visibilityDescriptor
+      focalBranchVisibilityDescriptor
     );
     if (focalBranchGuideLine) {
       guideLines.push(focalBranchGuideLine);
     }
   }
 
-  for (const localBranch of trajectoryDefinition.localBranches ?? []) {
+  for (const [localBranchIndex, localBranch] of (trajectoryDefinition.localBranches ?? []).entries()) {
     const targetBody = findLocalTrajectoryTargetByName(
       dependencies.localTrajectoryTargets,
       localBranch.targetBodyName
@@ -1235,12 +1293,21 @@ function createTrajectoryGuideLinesForDefinition(
       continue;
     }
 
+    const localBranchLabel = resolveTrajectoryBranchLabel(localBranch.label, localBranch.targetBodyName);
+    const localBranchVisibilityDescriptor = createTrajectoryVisibilityDescriptor(
+      trajectoryDefinition,
+      "local",
+      localBranchIndex,
+      `${sourcePointKey}-${localBranch.targetBodyName}-${localBranchLabel}`,
+      localBranchLabel
+    );
+
     const localBranchGuideLine = createTrajectoryLocalBranchGuideLine(
       route.routePointsByKey.get(sourcePointKey) ?? null,
       targetBody,
       localBranch,
       trajectoryColor,
-      visibilityDescriptor
+      localBranchVisibilityDescriptor
     );
     if (localBranchGuideLine) {
       guideLines.push(localBranchGuideLine);
