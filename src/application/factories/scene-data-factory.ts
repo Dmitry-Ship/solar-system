@@ -373,8 +373,8 @@ export class SceneDataFactory {
     const logSpan = maxLog - minLog;
 
     return (radiusKm: number) => {
-      const minOpacity = 0.1;
-      const maxOpacity = 0.4;
+      const minOpacity = 0.2;
+      const maxOpacity = 0.6;
       const safeRadius = Math.max(1, radiusKm || 1);
       if (logSpan < 1e-9) return maxOpacity;
 
