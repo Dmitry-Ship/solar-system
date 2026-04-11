@@ -2,7 +2,7 @@ import type { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { AppState } from "../application/state/app-state";
 import { SceneRuntimeSystem } from "../application/systems/scene-runtime-system";
-import { VisibilityService } from "../application/services/visibility-service";
+import { createVisibilityApplier } from "../application/services/visibility-service";
 import { LabelProjectionService } from "../application/services/label-projection-service";
 import { RuntimeVisibilityService } from "../application/services/runtime-visibility-service";
 import { LabelsLayer } from "../infrastructure/dom/labels-layer";
@@ -70,7 +70,7 @@ export class SolarSystemApplication {
   private particleRenderer: ParticleRenderer | null = null;
   private postprocessingRenderer: PostprocessingRenderer | null = null;
   private sceneRuntime: SceneRuntimeSystem | null = null;
-  private visibilityService: VisibilityService | null = null;
+  private applyVisibility: (() => void) | null = null;
   private hud: HudHandle | null = null;
   private labelProjectionService: LabelProjectionService | null = null;
   private readonly handleResize: () => void;
@@ -320,14 +320,14 @@ export class SolarSystemApplication {
   initializeVisibilityService(
     state: AppState,
     sceneRuntime: SceneRuntimeSystem
-  ): { runtimeVisibility: RuntimeVisibilityService; visibilityService: VisibilityService } {
+  ): { runtimeVisibility: RuntimeVisibilityService; applyVisibility: () => void } {
     const runtimeVisibility = new RuntimeVisibilityService({ state });
-    const visibilityService = new VisibilityService({
+    const applyVisibility = createVisibilityApplier({
       visibilityRuntimes: sceneRuntime.visibilityRuntimes,
       runtimeVisibility
     });
-    this.visibilityService = visibilityService;
-    return { runtimeVisibility, visibilityService };
+    this.applyVisibility = applyVisibility;
+    return { runtimeVisibility, applyVisibility };
   }
 
   buildSceneContents(sceneRuntime: SceneRuntimeSystem, sceneData: SceneData): void {
@@ -385,7 +385,7 @@ export class SolarSystemApplication {
     sceneRuntime: SceneRuntimeSystem;
     camera: PerspectiveCamera;
     orbitRenderer: OrbitRenderer;
-    visibilityService: VisibilityService;
+    applyVisibility: () => void;
   }): HudHandle {
     const hud = new HudController({
       state: options.state,
@@ -397,7 +397,7 @@ export class SolarSystemApplication {
       onOrbitVisibilityChanged: options.orbitRenderer.applyOrbitVisibility.bind(
         options.orbitRenderer
       ),
-      onVisibilityChanged: options.visibilityService.apply.bind(options.visibilityService),
+      onVisibilityChanged: options.applyVisibility,
       resolvePovTarget: this.resolvePovTarget.bind(this),
       requestRender: this.renderScene.bind(this)
     }).setup();
@@ -452,7 +452,7 @@ export class SolarSystemApplication {
       !this.camera ||
       !this.sceneRuntime ||
       !this.orbitRenderer ||
-      !this.visibilityService ||
+      !this.applyVisibility ||
       !this.particleRenderer ||
       !this.labelProjectionService ||
       !this.postprocessingRenderer ||
@@ -462,7 +462,7 @@ export class SolarSystemApplication {
     }
 
     this.orbitRenderer.applyOrbitVisibility(this.state, this.sceneRuntime.orbitGroup);
-    this.visibilityService.apply();
+    this.applyVisibility();
     this.particleRenderer.updateAsteroidBeltVisuals(this.sceneRuntime.beltRuntimes, this.camera);
     this.labelProjectionService.update();
     this.postprocessingRenderer.render();
@@ -493,7 +493,7 @@ export class SolarSystemApplication {
       postprocessingRenderer
     });
     this.buildSceneContents(sceneRuntime, sceneData);
-    const { runtimeVisibility, visibilityService } = this.initializeVisibilityService(
+    const { runtimeVisibility, applyVisibility } = this.initializeVisibilityService(
       state,
       sceneRuntime
     );
@@ -503,7 +503,7 @@ export class SolarSystemApplication {
       sceneRuntime,
       camera,
       orbitRenderer,
-      visibilityService
+      applyVisibility
     });
     this.initializeCameraPlacement(camera, controls, state);
     this.initializeViewServices(renderer, camera, sceneRuntime, state, runtimeVisibility);

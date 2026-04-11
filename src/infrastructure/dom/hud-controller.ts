@@ -1,7 +1,7 @@
 import type { Group, PerspectiveCamera } from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
-  VisibilityControlGroupFactory,
+  createVisibilityControlGroups,
   type VisibilityControlGroup
 } from "../../application/factories/visibility-control-group-factory";
 import type {
@@ -62,7 +62,9 @@ interface HudControllerOptions {
   onVisibilityChanged?: (state: VisibilityStateLike, visibilityRuntimes: VisibilityRuntime[]) => void;
   requestRender?: () => void;
   resolvePovTarget?: (pov: PovTargetKey) => Point3 | null;
-  visibilityControlGroupFactory?: VisibilityControlGroupFactory;
+  createVisibilityControlGroups?: (
+    visibilityRuntimes: VisibilityRuntime[]
+  ) => VisibilityControlGroup[];
 }
 
 export class HudController {
@@ -82,7 +84,9 @@ export class HudController {
   ) => void;
   private readonly requestRender?: () => void;
   private readonly resolvePovTarget?: (pov: PovTargetKey) => Point3 | null;
-  private readonly visibilityControlGroupFactory: VisibilityControlGroupFactory;
+  private readonly createVisibilityControlGroups: (
+    visibilityRuntimes: VisibilityRuntime[]
+  ) => VisibilityControlGroup[];
   private readonly subscribers = new Set<HudSubscriber>();
   private readonly initialVisibilityByKey = new Map<VisibilityKey, boolean>();
   private visibilityControlGroups: VisibilityControlGroup[] = [];
@@ -102,8 +106,8 @@ export class HudController {
     this.onVisibilityChanged = options.onVisibilityChanged;
     this.requestRender = options.requestRender;
     this.resolvePovTarget = options.resolvePovTarget;
-    this.visibilityControlGroupFactory =
-      options.visibilityControlGroupFactory || new VisibilityControlGroupFactory();
+    this.createVisibilityControlGroups =
+      options.createVisibilityControlGroups ?? createVisibilityControlGroups;
   }
 
   private cameraDistance(): number {
@@ -138,7 +142,7 @@ export class HudController {
       return;
     }
 
-    this.visibilityControlGroups = this.visibilityControlGroupFactory.create(this.visibilityRuntimes);
+    this.visibilityControlGroups = this.createVisibilityControlGroups(this.visibilityRuntimes);
     for (const visibilityControlGroup of this.visibilityControlGroups) {
       for (const visibilityControl of visibilityControlGroup.controls) {
         const initialVisibility = Boolean(visibilityControl.initialVisibility);

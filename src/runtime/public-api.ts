@@ -9,7 +9,7 @@ import { markerCatalog } from "../domain/catalogs/marker-catalog";
 import { beltCatalog } from "../domain/catalogs/belt-catalog";
 import { sceneBodyCatalog } from "../domain/catalogs/scene-body-catalog";
 import { SceneDataFactory } from "../application/factories/scene-data-factory";
-import { VisibilityService } from "../application/services/visibility-service";
+import { applyVisibilityRuntimes } from "../application/services/visibility-service";
 import { LabelProjectionService } from "../application/services/label-projection-service";
 import { RuntimeVisibilityService } from "../application/services/runtime-visibility-service";
 import { BodyRenderer } from "../infrastructure/three/renderers/body-renderer";
@@ -236,11 +236,10 @@ function applyGuideLineVisibility(
   guideRuntimes: VisibilityRuntime[]
 ): void {
   const runtimeVisibility = new RuntimeVisibilityService({ state });
-  const service = new VisibilityService({
+  applyVisibilityRuntimes({
     visibilityRuntimes: guideRuntimes,
     runtimeVisibility
   });
-  service.apply();
 }
 
 function applyOrbitVisibility(

@@ -10,7 +10,7 @@ interface RuntimeVisibilityServiceOptions {
 }
 
 export class RuntimeVisibilityService {
-    private readonly state?: RuntimeVisibilityServiceOptions["state"];
+    private readonly state: RuntimeVisibilityServiceOptions["state"];
 
     constructor(options: RuntimeVisibilityServiceOptions = {}) {
       this.state = options.state;

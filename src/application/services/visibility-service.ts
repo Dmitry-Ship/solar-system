@@ -1,23 +1,19 @@
-import { RuntimeVisibilityService } from "./runtime-visibility-service";
+import type { RuntimeVisibilityService } from "./runtime-visibility-service";
 import type { VisibilityRuntime } from "../../types/solar-system";
 
-interface VisibilityServiceOptions {
+export interface VisibilityServiceOptions {
   visibilityRuntimes: VisibilityRuntime[];
-  runtimeVisibility: RuntimeVisibilityService;
+  runtimeVisibility: Pick<RuntimeVisibilityService, "apply">;
 }
 
-export class VisibilityService {
-  private readonly visibilityRuntimes: VisibilityRuntime[];
-  private readonly runtimeVisibility: RuntimeVisibilityService;
-
-  constructor(options: VisibilityServiceOptions) {
-    this.visibilityRuntimes = options.visibilityRuntimes;
-    this.runtimeVisibility = options.runtimeVisibility;
+export function applyVisibilityRuntimes(options: VisibilityServiceOptions): void {
+  for (const runtime of options.visibilityRuntimes) {
+    options.runtimeVisibility.apply(runtime);
   }
+}
 
-  apply(): void {
-    for (const runtime of this.visibilityRuntimes) {
-      this.runtimeVisibility.apply(runtime);
-    }
-  }
+export function createVisibilityApplier(options: VisibilityServiceOptions): () => void {
+  return () => {
+    applyVisibilityRuntimes(options);
+  };
 }

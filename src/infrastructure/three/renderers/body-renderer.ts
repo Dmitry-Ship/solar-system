@@ -124,12 +124,12 @@ export class BodyRenderer {
     });
   }
 
-  private setObjectPosition(object3D: Object3D, position?: BodyRenderConfig["fixedPosition"]): void {
+  private setObjectPosition(object3D: Object3D, position: BodyRenderConfig["fixedPosition"]): void {
     object3D.position.set(position?.x ?? 0, position?.y ?? 0, position?.z ?? 0);
   }
 
   private createLabelAnchorPosition(
-    position?: BodyRenderConfig["labelAnchorPosition"]
+    position: BodyRenderConfig["labelAnchorPosition"]
   ): SceneObjectRuntime["labelAnchorPosition"] {
     if (!position) {
       return null;
