@@ -30,7 +30,7 @@ import type {
   SimulationConstants
 } from "../types/solar-system";
 
-const RUNTIME_RENDER_CONFIG = Object.freeze({
+const RUNTIME_RENDER_CONFIG = {
   backgroundColor: "#000000",
   nearClip: 0.08,
   cameraFarDistanceMultiplier: 12,
@@ -38,7 +38,7 @@ const RUNTIME_RENDER_CONFIG = Object.freeze({
   bloomStrength: 1.0,
   bloomRadius: 0.7,
   bloomThreshold: 0.4
-});
+};
 
 interface SolarSystemApplicationOptions {
   canvasId?: string;

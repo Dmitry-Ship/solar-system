@@ -27,7 +27,7 @@ const VOYAGERS: VoyagerDefinition[] = [
 
 const DRIFTING_BODIES: DriftingBodyDefinition[] = [];
 
-export const sceneBodyCatalog: SceneBodyCatalog = Object.freeze({
+export const sceneBodyCatalog: SceneBodyCatalog = {
   VOYAGERS,
   DRIFTING_BODIES
-});
+};

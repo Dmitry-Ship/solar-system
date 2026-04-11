@@ -197,6 +197,6 @@ const DWARF_PLANET_DEFINITIONS: OrbitingBodyDefinition[] = [
   }
 ];
 
-export const dwarfPlanetCatalog: DwarfPlanetCatalog = Object.freeze({
+export const dwarfPlanetCatalog: DwarfPlanetCatalog = {
   DWARF_PLANET_DEFINITIONS
-});
+};

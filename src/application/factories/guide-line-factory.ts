@@ -351,7 +351,7 @@ function buildDistanceFadeProfile(points: Point3[], marker: Point3 | null): numb
 }
 
 function slugifyVisibilityName(name: string, fallback: string): string {
-  const normalizedName = typeof name === "string" ? name.trim().toLowerCase() : "";
+  const normalizedName = name.trim().toLowerCase();
   if (!normalizedName) {
     return fallback;
   }
@@ -368,19 +368,13 @@ function buildTrajectoryVisibilityKey(name: string): TrajectoryVisibilityKey {
 }
 
 function resolveTrajectoryGroupLabel(trajectoryDefinition: TrajectoryDefinition): string {
-  const trajectoryLabel =
-    typeof trajectoryDefinition.label === "string"
-      ? trajectoryDefinition.label.trim()
-      : trajectoryDefinition.name;
+  const trajectoryLabel = trajectoryDefinition.label?.trim() || trajectoryDefinition.name;
 
-  return typeof trajectoryDefinition.visibilityLabel === "string" &&
-    trajectoryDefinition.visibilityLabel.trim()
-    ? trajectoryDefinition.visibilityLabel.trim()
-    : trajectoryLabel || trajectoryDefinition.name;
+  return trajectoryDefinition.visibilityLabel?.trim() || trajectoryLabel;
 }
 
 function resolveTrajectoryBranchLabel(label: string, fallbackLabel: string): string {
-  const normalizedLabel = typeof label === "string" ? label.trim() : "";
+  const normalizedLabel = label.trim();
   return normalizedLabel || fallbackLabel;
 }
 
@@ -574,11 +568,11 @@ function findPeriapsisPointIndex(points: Point3[]): number {
 }
 
 function normalizeTrajectoryRoutePointKey(key: string): string {
-  return typeof key === "string" ? key.trim() : "";
+  return key.trim();
 }
 
 function normalizeLookupName(name: string): string {
-  return typeof name === "string" ? name.trim().toLowerCase() : "";
+  return name.trim().toLowerCase();
 }
 
 function resolveTrajectoryRoutePointSamples(
@@ -701,7 +695,7 @@ function resolveTrajectoryRouteSegments(
 
   return [
     {
-      label: typeof trajectoryDefinition.label === "string" ? trajectoryDefinition.label.trim() : "",
+      label: trajectoryDefinition.label?.trim() ?? "",
       startPointKey: "launch",
       endPointKey: "exit",
       color: trajectoryDefinition.color
@@ -726,7 +720,7 @@ function createTrajectoryRouteSegmentGuideLine(
   }
 
   const segmentPoints = route.points.slice(startIndex, endIndex + 1);
-  const label = typeof segmentDefinition.label === "string" ? segmentDefinition.label.trim() : "";
+  const label = segmentDefinition.label.trim();
 
   return buildDirectionalGuideLine(segmentPoints[0] ?? null, segmentDefinition.color || fallbackColor, {
     points: segmentPoints,
@@ -796,7 +790,7 @@ function createTrajectoryFocalBranchGuideLine(
     );
   }
 
-  const label = typeof branchDefinition.label === "string" ? branchDefinition.label.trim() : "";
+  const label = branchDefinition.label.trim();
   return buildDirectionalGuideLine(sourceRoutePoint.point, branchDefinition.color || fallbackColor, {
     points: branchPoints,
     opacity: 0.9,
@@ -887,7 +881,7 @@ function createTrajectoryLocalBranchGuideLine(
     TRAJECTORY_BRANCH_LOCAL_LINE_SEGMENT_COUNT
   );
 
-  const label = typeof branchDefinition.label === "string" ? branchDefinition.label.trim() : "";
+  const label = branchDefinition.label.trim();
   return buildDirectionalGuideLine(sourceRoutePoint.point, branchDefinition.color || fallbackColor, {
     points: branchPoints,
     opacity: 0.9,

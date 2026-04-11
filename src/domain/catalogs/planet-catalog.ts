@@ -101,6 +101,6 @@ const PLANET_DEFINITIONS: OrbitingBodyDefinition[] = [
   }
 ];
 
-export const planetCatalog: PlanetCatalog = Object.freeze({
+export const planetCatalog: PlanetCatalog = {
   PLANET_DEFINITIONS
-});
+};

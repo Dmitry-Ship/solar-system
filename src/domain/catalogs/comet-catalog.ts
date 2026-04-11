@@ -163,6 +163,6 @@ const COMET_DEFINITIONS: OrbitingBodyDefinition[] = [
   }
 ];
 
-export const cometCatalog: CometCatalog = Object.freeze({
+export const cometCatalog: CometCatalog = {
   COMET_DEFINITIONS
-});
+};

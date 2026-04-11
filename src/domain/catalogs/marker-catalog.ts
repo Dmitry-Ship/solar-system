@@ -132,7 +132,7 @@ function lerp(start: number, end: number, t: number): number {
 }
 
 function normalizeMatryoshkaConeCount(coneCount: number): number {
-  return Math.max(1, Math.floor(Number.isFinite(coneCount) ? coneCount : 0));
+  return Math.max(1, Math.floor(coneCount));
 }
 
 function minimumMatryoshkaStructureWidthAu(coneCount: number): number {
@@ -175,11 +175,11 @@ function createMatryoshkaConeLayerDefinition({
 }): MatryoshkaConeLayerDefinition {
   const normalizedMaxWidthScale = Math.max(
     MATRYOSHKA_MIN_LAYER_WIDTH_SCALE,
-    (Number.isFinite(maxWidthAu) ? maxWidthAu : 0) / DIRECTIONAL_CONE_MAX_WIDTH_AU
+    maxWidthAu / DIRECTIONAL_CONE_MAX_WIDTH_AU
   );
   const normalizedTipRadiusScale = Math.max(
     MATRYOSHKA_MIN_LAYER_WIDTH_SCALE,
-    Number.isFinite(tipRadiusScale) ? tipRadiusScale : 0
+    tipRadiusScale
   );
 
   return {
@@ -199,7 +199,7 @@ function createMatryoshkaConeLayerDefinitions(
   const normalizedConeCount = normalizeMatryoshkaConeCount(coneCount);
   const normalizedMaxStructureWidthAu = Math.max(
     minimumMatryoshkaStructureWidthAu(normalizedConeCount),
-    Number.isFinite(maxStructureWidthAu) ? maxStructureWidthAu : 0
+    maxStructureWidthAu
   );
   const spacingAu = normalizedMaxStructureWidthAu / Math.max(0.5, normalizedConeCount - 0.5);
 
@@ -225,7 +225,7 @@ const MATRYOSHKA_CONE_LAYER_DEFINITIONS = createMatryoshkaConeLayerDefinitions(
   MATRYOSHKA_CONE_COUNT
 );
 
-export const markerCatalog: MarkerCatalog = Object.freeze({
+export const markerCatalog: MarkerCatalog = {
   DIRECTIONAL_MARKER_DEFINITIONS,
   TRAJECTORY_DEFINITIONS,
   DIRECTIONAL_CONE_MAX_WIDTH_AU,
@@ -235,4 +235,4 @@ export const markerCatalog: MarkerCatalog = Object.freeze({
   DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU,
   MATRYOSHKA_CONE_ALPHA,
   MATRYOSHKA_CONE_LAYER_DEFINITIONS
-});
+};

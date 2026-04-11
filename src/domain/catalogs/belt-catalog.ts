@@ -59,9 +59,9 @@ const ORBIT_RENDER_GROUPS: OrbitRenderGroupConfig[] = [
   }
 ];
 
-export const beltCatalog: BeltCatalog = Object.freeze({
+export const beltCatalog: BeltCatalog = {
   STAR_DISTANCE_MIN_AU,
   STAR_DISTANCE_MAX_AU,
   ASTEROID_BELT_CONFIGS,
   ORBIT_RENDER_GROUPS
-});
+};

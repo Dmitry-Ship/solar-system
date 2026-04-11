@@ -311,7 +311,7 @@ function createSelectiveBloomRenderer(
   return new PostprocessingRenderer({ ...config, THREE });
 }
 
-export const app = Object.freeze({
+export const app = {
   createLabelsLayer,
   createLabelElement,
   createBodyRuntime,
@@ -330,4 +330,4 @@ export const app = Object.freeze({
   setInitialCameraPlacement,
   createBodyVisualScaleAndLabelsUpdater,
   createSelectiveBloomRenderer
-});
+};

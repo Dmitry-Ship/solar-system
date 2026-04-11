@@ -96,7 +96,7 @@ export class SceneDataFactory {
   }
 
   normalizeLookupName(name: string): string {
-    return typeof name === "string" ? name.trim().toLowerCase() : "";
+    return name.trim().toLowerCase();
   }
 
   pointMagnitude(point: Point3): number {
