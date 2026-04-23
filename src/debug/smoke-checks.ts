@@ -390,12 +390,43 @@ export function runSmokeChecks() {
     )
   );
 
-  const landerPathTail = landerPathGuideLine?.points.slice(-4) ?? [];
-  const landerPathFlatTail =
-    landerPathTail.length >= 2 &&
-    landerPathTail.every(
-      (point) => Math.abs(point.y - (landerPathTail[0]?.y ?? point.y)) <= 1e-9
-    );
+  const landerPathIsStraight =
+    !!landerPathGuideLine &&
+    landerPathGuideLine.points.length >= 2 &&
+    (() => {
+      const startPoint = landerPathGuideLine.points[0];
+      const endPoint = landerPathGuideLine.points[landerPathGuideLine.points.length - 1];
+      const direction = {
+        x: endPoint.x - startPoint.x,
+        y: endPoint.y - startPoint.y,
+        z: endPoint.z - startPoint.z
+      };
+      const directionLengthSquared = dotPoint(direction, direction);
+      if (directionLengthSquared <= 1e-12) {
+        return false;
+      }
+
+      return landerPathGuideLine.points.every((point) => {
+        const fromStart = {
+          x: point.x - startPoint.x,
+          y: point.y - startPoint.y,
+          z: point.z - startPoint.z
+        };
+        const t = dotPoint(fromStart, direction) / directionLengthSquared;
+        const projectedPoint = {
+          x: startPoint.x + direction.x * t,
+          y: startPoint.y + direction.y * t,
+          z: startPoint.z + direction.z * t
+        };
+        return (
+          Math.hypot(
+            point.x - projectedPoint.x,
+            point.y - projectedPoint.y,
+            point.z - projectedPoint.z
+          ) <= 1e-7
+        );
+      });
+    })();
   const landerPathStartsOnTransmitter =
     !!landerPathGuideLine &&
     !!transmitterPathGuideLine &&
@@ -412,14 +443,14 @@ export function runSmokeChecks() {
     landerPathGuideLine.points.length > 1 &&
     landerPathGuideLine.visibilityKey !== transmitterPathGuideLine?.visibilityKey &&
     landerPathStartsOnTransmitter &&
-    landerPathFlatTail;
+    landerPathIsStraight;
   results.push(
     createResult(
       "Lander Trajectory Branch",
       landerPathOk,
       landerPathOk
-        ? "Lander path starts on the transmitter path and finishes with an ecliptic-parallel approach."
-        : "Lander path is missing, detached from the transmitter path, or does not flatten into the ecliptic approach."
+        ? "Lander path starts on the transmitter path and remains a straight line to the approach target."
+        : "Lander path is missing, detached from the transmitter path, or deviates from a straight line."
     )
   );
 

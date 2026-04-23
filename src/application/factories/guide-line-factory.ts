@@ -818,68 +818,17 @@ function createTrajectoryLocalBranchGuideLine(
     return null;
   }
 
-  const planeHeight = Number.isFinite(targetPoint.y) ? targetPoint.y : 0;
-  const planeProjectedSource = {
-    x: sourceRoutePoint.point.x,
-    y: planeHeight,
-    z: sourceRoutePoint.point.z
+  const sourcePoint = sourceRoutePoint.point;
+  const resolvedTargetPoint = {
+    x: Number.isFinite(targetPoint.x) ? targetPoint.x : sourcePoint.x,
+    y: Number.isFinite(targetPoint.y) ? targetPoint.y : sourcePoint.y,
+    z: Number.isFinite(targetPoint.z) ? targetPoint.z : sourcePoint.z
   };
-  const horizontalDelta = {
-    x: targetPoint.x - planeProjectedSource.x,
-    y: 0,
-    z: targetPoint.z - planeProjectedSource.z
-  };
-  const horizontalDistance = pointMagnitude(horizontalDelta);
-  const planeDirection =
-    horizontalDistance > 1e-6
-      ? scalePoint(horizontalDelta, 1 / horizontalDistance)
-      : { x: 1, y: 0, z: 0 };
-  const planeJoinDistanceAu = Math.max(0.12, Math.min(horizontalDistance * 0.45, 0.6));
-  const planeJoinPoint = {
-    x: targetPoint.x - planeDirection.x * planeJoinDistanceAu,
-    y: planeHeight,
-    z: targetPoint.z - planeDirection.z * planeJoinDistanceAu
-  };
-  const sourceToPlaneJoinDistance = pointDistance(sourceRoutePoint.point, planeJoinPoint);
-  const sourceToPlaneJoinDirection = normalizePoint(
-    subtractPoint(planeJoinPoint, sourceRoutePoint.point)
-  );
-  const branchBreakoutDirection = normalizePoint(
-    addPoint(
-      scalePoint(sourceRoutePoint.tangent, 0.18),
-      scalePoint(sourceToPlaneJoinDirection, 1.05)
-    )
-  );
-  const startHandleLength = Math.max(
-    0.05,
-    Math.min(sourceToPlaneJoinDistance * 0.12, Math.max(horizontalDistance * 0.12, 0.16))
-  );
-  const planeHandleLength = Math.max(0.08, Math.min(planeJoinDistanceAu * 0.85, 0.35));
-  const startControlPoint = addPoint(
-    sourceRoutePoint.point,
-    scalePoint(branchBreakoutDirection, startHandleLength)
-  );
-  const planeJoinControlPoint = {
-    x: planeJoinPoint.x - planeDirection.x * planeHandleLength,
-    y: planeHeight,
-    z: planeJoinPoint.z - planeDirection.z * planeHandleLength
-  };
+  const totalSegmentCount =
+    TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT + TRAJECTORY_BRANCH_LOCAL_LINE_SEGMENT_COUNT;
   const branchPoints: Point3[] = [];
 
-  appendCubicBezierPoints(
-    branchPoints,
-    sourceRoutePoint.point,
-    startControlPoint,
-    planeJoinControlPoint,
-    planeJoinPoint,
-    TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT
-  );
-  appendLinearPoints(
-    branchPoints,
-    planeJoinPoint,
-    targetPoint,
-    TRAJECTORY_BRANCH_LOCAL_LINE_SEGMENT_COUNT
-  );
+  appendLinearPoints(branchPoints, sourcePoint, resolvedTargetPoint, totalSegmentCount);
 
   const label = branchDefinition.label.trim();
   return buildDirectionalGuideLine(sourceRoutePoint.point, branchDefinition.color || fallbackColor, {

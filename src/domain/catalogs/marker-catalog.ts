@@ -69,6 +69,11 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
         key: "sun-passage",
         distanceAu: 0.01,
         location: "outbound"
+      },
+      {
+        key: "lander-branch",
+        distanceAu: 100,
+        location: "inbound"
       }
     ],
     routeSegments: [
@@ -95,7 +100,7 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
     localBranches: [
       {
         label: "lander path",
-        sourcePointKey: "sun-passage",
+        sourcePointKey: "branching-point",
         targetBodyName: "Earth 🌎",
         color: "#4ade80"
       }
