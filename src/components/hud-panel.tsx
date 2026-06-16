@@ -10,7 +10,7 @@ interface HudPanelProps {
   onToggleVisibility: (key: VisibilityKey) => void;
 }
 
-const POV_OPTIONS: PovTargetKey[] = ["sun", "earth", "61 Cygni"];
+const POV_OPTIONS: PovTargetKey[] = ["sun", "earth"];
 
 function formatVisibilityButtonLabel(label: string, groupKey: string): string {
   const trimmedLabel = label.trim();

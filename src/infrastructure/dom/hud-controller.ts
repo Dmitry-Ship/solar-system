@@ -14,6 +14,8 @@ import type {
   VisibilityStateLike
 } from "../../types/solar-system";
 
+const EARTH_AXIAL_TILT_RAD = (23 * Math.PI) / 180;
+
 export interface HudVisibilityControlSnapshot {
   key: VisibilityKey;
   label: string;
@@ -201,8 +203,19 @@ export class HudController {
     this.controls.update();
   }
 
+  private applyCameraUpForPov(pov: PovTargetKey): void {
+    if (pov === "earth") {
+      this.camera.up.set(0, Math.cos(EARTH_AXIAL_TILT_RAD), Math.sin(EARTH_AXIAL_TILT_RAD));
+    } else {
+      this.camera.up.set(0, 1, 0);
+    }
+  }
+
   setPov(pov: PovTargetKey): void {
     if (pov === this.state.currentPov) {
+      this.applyCameraUpForPov(pov);
+      this.camera.lookAt(this.controls.target);
+      this.controls.update();
       this.emitSnapshot();
       return;
     }
@@ -214,6 +227,7 @@ export class HudController {
     }
 
     this.state.setPov(pov);
+    this.applyCameraUpForPov(pov);
     this.moveCameraTarget(targetPoint);
     this.updateZoomToggleLabel();
     this.requestRender?.();
@@ -261,6 +275,7 @@ export class HudController {
 
   setup(): HudHandle {
     this.registerVisibilityControls();
+    this.applyCameraUpForPov(this.state.currentPov);
     this.updateZoomToggleLabel = () => {
       this.emitSnapshot();
     };

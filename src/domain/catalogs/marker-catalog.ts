@@ -57,12 +57,12 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
     routePoints: [
       {
         key: "common-path-transition",
-        distanceAu: 5000,
+        distanceAu: 1721,
         location: "inbound"
       },
       {
         key: "branching-point",
-        distanceAu: 3000,
+        distanceAu: 805,
         location: "inbound"
       },
       {
@@ -110,8 +110,8 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
         label: "observer path",
         sourcePointKey: "branching-point",
         targetMarkerName: "Gliese 300",
-        joinDistanceAu: 750,
-        endDistanceAu: 750,
+        joinDistanceAu: 805,
+        endDistanceAu: 805,
         color: "#f472b6"
       }
     ],

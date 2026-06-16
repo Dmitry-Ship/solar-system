@@ -169,7 +169,7 @@ export interface TrajectoryDefinition {
 
 export type OrbitRenderGroupKey = "planets" | "dwarfPlanets" | "comets";
 export type GuideRenderStyle = "line" | "lightRay";
-export type PovTargetKey = "sun" | "earth" | "61 Cygni";
+export type PovTargetKey = "sun" | "earth";
 export type LightRayVisibilityKey = `light-ray:${string}`;
 export type TrajectoryVisibilityKey = `trajectory:${string}`;
 export type VisibilityKey =

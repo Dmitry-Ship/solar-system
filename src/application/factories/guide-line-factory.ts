@@ -755,7 +755,7 @@ function createTrajectoryFocalBranchGuideLine(
   const endDistanceAu = Number.isFinite(branchDefinition.endDistanceAu)
     ? Math.max(0, branchDefinition.endDistanceAu ?? fallbackEndDistanceAu)
     : fallbackEndDistanceAu;
-  if (!(sourceDistanceAu > endDistanceAu + 1e-6)) {
+  if (sourceDistanceAu <= 1e-6 && endDistanceAu <= 1e-6) {
     return null;
   }
 

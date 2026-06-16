@@ -367,16 +367,7 @@ export class SolarSystemApplication {
       return this.resolveOrbitingBodyPosition("Earth 🌎");
     }
 
-    const marker = this.sceneData?.directionalMarkers.find(
-      (directionalMarker) => directionalMarker.name === pov
-    );
-    return marker
-      ? {
-          x: marker.x,
-          y: marker.y,
-          z: marker.z
-        }
-      : null;
+    return null;
   }
 
   initializeHud(options: {
