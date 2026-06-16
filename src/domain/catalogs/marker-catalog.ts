@@ -2,7 +2,7 @@ import { SIMULATION_CONSTANTS as constants } from "../constants/simulation-const
 import type {
   DirectionalMarkerDefinition,
   Point3,
-  TrajectoryDefinition
+  TrajectoryDefinition,
 } from "../../types/solar-system";
 
 export interface MatryoshkaConeLayerDefinition {
@@ -32,7 +32,7 @@ const DIRECTIONAL_MARKER_DEFINITIONS: DirectionalMarkerDefinition[] = [
     distanceLightYears: 11.4,
     raHours: 21 + 6 / 60 + 53.94 / 3600,
     decDeg: 38 + 44 / 60 + 57.9 / 3600,
-    minPixelRadius: 2.5
+    minPixelRadius: 2.5,
   },
   {
     name: "Gliese 300",
@@ -41,8 +41,8 @@ const DIRECTIONAL_MARKER_DEFINITIONS: DirectionalMarkerDefinition[] = [
     distanceLightYears: 26,
     raHours: 8 + 12 / 60 + 40.8889728169 / 3600,
     decDeg: -(21 + 33 / 60 + 6.982558553 / 3600),
-    minPixelRadius: 2.5
-  }
+    minPixelRadius: 2.5,
+  },
 ];
 
 const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
@@ -58,23 +58,23 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
       {
         key: "common-path-transition",
         distanceAu: 1721,
-        location: "inbound"
+        location: "inbound",
       },
       {
         key: "branching-point",
         distanceAu: 805,
-        location: "inbound"
+        location: "inbound",
       },
       {
         key: "sun-passage",
         distanceAu: 0.01,
-        location: "outbound"
+        location: "outbound",
       },
       {
         key: "lander-branch",
         distanceAu: 100,
-        location: "inbound"
-      }
+        location: "inbound",
+      },
     ],
     routeSegments: [
       {
@@ -82,49 +82,53 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
         startPointKey: "launch",
         endPointKey: "common-path-transition",
         color: "#ffd36e",
-        dashPattern: [10, 6]
+        dashPattern: [10, 6],
       },
       {
         label: "common path",
         startPointKey: "common-path-transition",
         endPointKey: "branching-point",
-        color: "#ffd36e"
+        color: "#ffd36e",
       },
       {
         label: "transmitter path",
         startPointKey: "branching-point",
         endPointKey: "exit",
-        color: "#7dd3fc"
-      }
+        color: "#7dd3fc",
+        dashPattern: [10, 6],
+      },
     ],
     localBranches: [
       {
         label: "lander path",
         sourcePointKey: "branching-point",
         targetBodyName: "Earth 🌎",
-        color: "#4ade80"
-      }
+        color: "#4ade80",
+      },
     ],
     focalBranches: [
       {
         label: "observer path",
         sourcePointKey: "branching-point",
         targetMarkerName: "Gliese 300",
+        pathShape: "linear",
         joinDistanceAu: 805,
         endDistanceAu: 805,
-        color: "#f472b6"
-      }
+        color: "#f472b6",
+      },
     ],
-    color: "#ffd36e"
-  }
+    color: "#ffd36e",
+  },
 ];
 
 const DIRECTIONAL_CONE_MAX_WIDTH_AU = 100;
-const DIRECTIONAL_CONE_TIP_RADIUS_AU = (constants.SUN_RADIUS_KM / constants.KM_PER_AU) * 2;
+const DIRECTIONAL_CONE_TIP_RADIUS_AU =
+  (constants.SUN_RADIUS_KM / constants.KM_PER_AU) * 2;
 const DIRECTIONAL_SOURCE_CONE_COLOR = "#93d7ff";
 const DIRECTIONAL_SOURCE_CONE_DASH_PATTERN = [12, 8];
 const DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU = 1500;
-const MATRYOSHKA_CONE_STRUCTURE_MAX_WIDTH_AU = DIRECTIONAL_CONE_MAX_WIDTH_AU * 6.5;
+const MATRYOSHKA_CONE_STRUCTURE_MAX_WIDTH_AU =
+  DIRECTIONAL_CONE_MAX_WIDTH_AU * 6.5;
 const MATRYOSHKA_CONE_COUNT = 10;
 const MATRYOSHKA_MIN_LAYER_WIDTH_SCALE = 0.05;
 const MATRYOSHKA_REFERENCE_INNER_LAYER_MAX_WIDTH_SCALE = 0.25;
@@ -157,11 +161,16 @@ function focalRadiusForTipScale(tipRadiusScale: number): number {
 }
 
 const MATRYOSHKA_SHARED_CONE_SLOPE =
-  (incomingRadiusForWidthScale(MATRYOSHKA_REFERENCE_INNER_LAYER_MAX_WIDTH_SCALE) -
+  (incomingRadiusForWidthScale(
+    MATRYOSHKA_REFERENCE_INNER_LAYER_MAX_WIDTH_SCALE,
+  ) -
     focalRadiusForTipScale(MATRYOSHKA_REFERENCE_INNER_LAYER_TIP_RADIUS_SCALE)) /
   constants.SOLAR_GRAVITATIONAL_LENS_AU;
 
-function focalOffsetForMaxWidthScale(maxWidthScale: number, tipRadiusScale: number): number {
+function focalOffsetForMaxWidthScale(
+  maxWidthScale: number,
+  tipRadiusScale: number,
+): number {
   const incomingRadiusAu = incomingRadiusForWidthScale(maxWidthScale);
   const focalRadiusAu = focalRadiusForTipScale(tipRadiusScale);
   const focalDistanceAu =
@@ -172,7 +181,7 @@ function focalOffsetForMaxWidthScale(maxWidthScale: number, tipRadiusScale: numb
 function createMatryoshkaConeLayerDefinition({
   maxWidthAu,
   tipRadiusScale,
-  pinchesAtLensSphereEdge = false
+  pinchesAtLensSphereEdge = false,
 }: {
   maxWidthAu: number;
   tipRadiusScale: number;
@@ -180,11 +189,11 @@ function createMatryoshkaConeLayerDefinition({
 }): MatryoshkaConeLayerDefinition {
   const normalizedMaxWidthScale = Math.max(
     MATRYOSHKA_MIN_LAYER_WIDTH_SCALE,
-    maxWidthAu / DIRECTIONAL_CONE_MAX_WIDTH_AU
+    maxWidthAu / DIRECTIONAL_CONE_MAX_WIDTH_AU,
   );
   const normalizedTipRadiusScale = Math.max(
     MATRYOSHKA_MIN_LAYER_WIDTH_SCALE,
-    tipRadiusScale
+    tipRadiusScale,
   );
 
   return {
@@ -193,41 +202,46 @@ function createMatryoshkaConeLayerDefinition({
     tipRadiusScale: normalizedTipRadiusScale,
     focalOffsetAu: pinchesAtLensSphereEdge
       ? 0
-      : focalOffsetForMaxWidthScale(normalizedMaxWidthScale, normalizedTipRadiusScale)
+      : focalOffsetForMaxWidthScale(
+          normalizedMaxWidthScale,
+          normalizedTipRadiusScale,
+        ),
   };
 }
 
 function createMatryoshkaConeLayerDefinitions(
   maxStructureWidthAu: number,
-  coneCount: number
+  coneCount: number,
 ): MatryoshkaConeLayerDefinition[] {
   const normalizedConeCount = normalizeMatryoshkaConeCount(coneCount);
   const normalizedMaxStructureWidthAu = Math.max(
     minimumMatryoshkaStructureWidthAu(normalizedConeCount),
-    maxStructureWidthAu
+    maxStructureWidthAu,
   );
-  const spacingAu = normalizedMaxStructureWidthAu / Math.max(0.5, normalizedConeCount - 0.5);
+  const spacingAu =
+    normalizedMaxStructureWidthAu / Math.max(0.5, normalizedConeCount - 0.5);
 
   return Array.from({ length: normalizedConeCount }, (_, index) => {
-    const layerProgress = normalizedConeCount <= 1 ? 1 : index / (normalizedConeCount - 1);
+    const layerProgress =
+      normalizedConeCount <= 1 ? 1 : index / (normalizedConeCount - 1);
     const maxWidthAu = spacingAu * (normalizedConeCount - index - 0.5);
     const tipRadiusScale = lerp(
       MATRYOSHKA_OUTER_LAYER_TIP_RADIUS_SCALE,
       MATRYOSHKA_REFERENCE_INNER_LAYER_TIP_RADIUS_SCALE,
-      layerProgress
+      layerProgress,
     );
 
     return createMatryoshkaConeLayerDefinition({
       maxWidthAu,
       tipRadiusScale,
-      pinchesAtLensSphereEdge: index === normalizedConeCount - 1
+      pinchesAtLensSphereEdge: index === normalizedConeCount - 1,
     });
   });
 }
 
 const MATRYOSHKA_CONE_LAYER_DEFINITIONS = createMatryoshkaConeLayerDefinitions(
   MATRYOSHKA_CONE_STRUCTURE_MAX_WIDTH_AU,
-  MATRYOSHKA_CONE_COUNT
+  MATRYOSHKA_CONE_COUNT,
 );
 
 export const markerCatalog: MarkerCatalog = {
@@ -239,5 +253,5 @@ export const markerCatalog: MarkerCatalog = {
   DIRECTIONAL_SOURCE_CONE_DASH_PATTERN,
   DIRECTIONAL_GUIDE_POST_FOCAL_BASE_EXTENSION_AU,
   MATRYOSHKA_CONE_ALPHA,
-  MATRYOSHKA_CONE_LAYER_DEFINITIONS
+  MATRYOSHKA_CONE_LAYER_DEFINITIONS,
 };

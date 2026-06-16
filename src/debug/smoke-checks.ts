@@ -38,6 +38,45 @@ function dotPoint(a: Point3, b: Point3): number {
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
+function guideLineIsStraight(points: Point3[], tolerance = 1e-7): boolean {
+  if (points.length < 2) {
+    return false;
+  }
+
+  const startPoint = points[0];
+  const endPoint = points[points.length - 1];
+  const direction = {
+    x: endPoint.x - startPoint.x,
+    y: endPoint.y - startPoint.y,
+    z: endPoint.z - startPoint.z
+  };
+  const directionLengthSquared = dotPoint(direction, direction);
+  if (directionLengthSquared <= 1e-12) {
+    return false;
+  }
+
+  return points.every((point) => {
+    const fromStart = {
+      x: point.x - startPoint.x,
+      y: point.y - startPoint.y,
+      z: point.z - startPoint.z
+    };
+    const t = dotPoint(fromStart, direction) / directionLengthSquared;
+    const projectedPoint = {
+      x: startPoint.x + direction.x * t,
+      y: startPoint.y + direction.y * t,
+      z: startPoint.z + direction.z * t
+    };
+    return (
+      Math.hypot(
+        point.x - projectedPoint.x,
+        point.y - projectedPoint.y,
+        point.z - projectedPoint.z
+      ) <= tolerance
+    );
+  });
+}
+
 function referenceSolveEccentricAnomaly(meanAnomaly: number, eccentricity: number): number {
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
   const normalizeAngleSigned = (value: number) => {
@@ -376,6 +415,9 @@ export function runSmokeChecks() {
     transmitterPathGuideLine.points.length > 1 &&
     landerPathGuideLine.points.length > 1 &&
     extrapolationGuideLine.dashPattern.length >= 2 &&
+    transmitterPathGuideLine.dashPattern.join(",") === extrapolationGuideLine.dashPattern.join(",") &&
+    observerPathGuideLine.dashPattern.length === 0 &&
+    guideLineIsStraight(observerPathGuideLine.points) &&
     extrapolationGuideLine.color === commonPathGuideLine.color &&
     new Set(trajectoryBranchColors).size === 4 &&
     trajectoryVisibilityKeys.length === 5 &&
@@ -391,42 +433,7 @@ export function runSmokeChecks() {
   );
 
   const landerPathIsStraight =
-    !!landerPathGuideLine &&
-    landerPathGuideLine.points.length >= 2 &&
-    (() => {
-      const startPoint = landerPathGuideLine.points[0];
-      const endPoint = landerPathGuideLine.points[landerPathGuideLine.points.length - 1];
-      const direction = {
-        x: endPoint.x - startPoint.x,
-        y: endPoint.y - startPoint.y,
-        z: endPoint.z - startPoint.z
-      };
-      const directionLengthSquared = dotPoint(direction, direction);
-      if (directionLengthSquared <= 1e-12) {
-        return false;
-      }
-
-      return landerPathGuideLine.points.every((point) => {
-        const fromStart = {
-          x: point.x - startPoint.x,
-          y: point.y - startPoint.y,
-          z: point.z - startPoint.z
-        };
-        const t = dotPoint(fromStart, direction) / directionLengthSquared;
-        const projectedPoint = {
-          x: startPoint.x + direction.x * t,
-          y: startPoint.y + direction.y * t,
-          z: startPoint.z + direction.z * t
-        };
-        return (
-          Math.hypot(
-            point.x - projectedPoint.x,
-            point.y - projectedPoint.y,
-            point.z - projectedPoint.z
-          ) <= 1e-7
-        );
-      });
-    })();
+    !!landerPathGuideLine && guideLineIsStraight(landerPathGuideLine.points);
   const landerPathStartsOnTransmitter =
     !!landerPathGuideLine &&
     !!transmitterPathGuideLine &&

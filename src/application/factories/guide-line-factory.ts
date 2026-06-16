@@ -763,23 +763,32 @@ function createTrajectoryFocalBranchGuideLine(
     ? Math.max(endDistanceAu, branchDefinition.joinDistanceAu ?? endDistanceAu)
     : endDistanceAu;
   const branchJoinPoint = scalePoint(targetDirection, joinDistanceAu);
-  const branchChordLength = pointDistance(sourceRoutePoint.point, branchJoinPoint);
-  const handleLength = Math.max(60, Math.min(branchChordLength * 0.55, joinDistanceAu * 0.7));
-  const startControlPoint = addPoint(
-    sourceRoutePoint.point,
-    scalePoint(sourceRoutePoint.tangent, handleLength)
-  );
-  const endControlPoint = addPoint(branchJoinPoint, scalePoint(targetDirection, handleLength));
   const branchPoints: Point3[] = [];
 
-  appendCubicBezierPoints(
-    branchPoints,
-    sourceRoutePoint.point,
-    startControlPoint,
-    endControlPoint,
-    branchJoinPoint,
-    TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT
-  );
+  if (branchDefinition.pathShape === "linear") {
+    appendLinearPoints(
+      branchPoints,
+      sourceRoutePoint.point,
+      branchJoinPoint,
+      TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT
+    );
+  } else {
+    const branchChordLength = pointDistance(sourceRoutePoint.point, branchJoinPoint);
+    const handleLength = Math.max(60, Math.min(branchChordLength * 0.55, joinDistanceAu * 0.7));
+    const startControlPoint = addPoint(
+      sourceRoutePoint.point,
+      scalePoint(sourceRoutePoint.tangent, handleLength)
+    );
+    const endControlPoint = addPoint(branchJoinPoint, scalePoint(targetDirection, handleLength));
+    appendCubicBezierPoints(
+      branchPoints,
+      sourceRoutePoint.point,
+      startControlPoint,
+      endControlPoint,
+      branchJoinPoint,
+      TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT
+    );
+  }
   if (joinDistanceAu > endDistanceAu + 1e-6) {
     appendRadialLinePoints(
       branchPoints,

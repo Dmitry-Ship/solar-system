@@ -138,6 +138,7 @@ export interface TrajectoryFocalBranchDefinition {
   label: string;
   sourcePointKey: string;
   targetMarkerName: string;
+  pathShape?: "curved" | "linear";
   joinDistanceAu?: number;
   endDistanceAu?: number;
   color?: string;
