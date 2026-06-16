@@ -403,21 +403,29 @@ export function runSmokeChecks() {
     transmitterPathGuideLine?.visibilityKey,
     landerPathGuideLine?.visibilityKey
   ].filter((visibilityKey): visibilityKey is string => typeof visibilityKey === "string" && visibilityKey.length > 0);
+  const trajectoryPathGuideLines = [
+    extrapolationGuideLine,
+    commonPathGuideLine,
+    observerPathGuideLine,
+    transmitterPathGuideLine,
+    landerPathGuideLine
+  ];
+  const trajectoryPathsAreTwoPointLines = trajectoryPathGuideLines.every(
+    (guideLine) =>
+      !!guideLine &&
+      guideLine.points.length === 2 &&
+      guideLineIsStraight(guideLine.points)
+  );
   const trajectorySegmentationOk =
     !!extrapolationGuideLine &&
     !!commonPathGuideLine &&
     !!observerPathGuideLine &&
     !!transmitterPathGuideLine &&
     !!landerPathGuideLine &&
-    extrapolationGuideLine.points.length > 1 &&
-    commonPathGuideLine.points.length > 1 &&
-    observerPathGuideLine.points.length > 1 &&
-    transmitterPathGuideLine.points.length > 1 &&
-    landerPathGuideLine.points.length > 1 &&
+    trajectoryPathsAreTwoPointLines &&
     extrapolationGuideLine.dashPattern.length >= 2 &&
     transmitterPathGuideLine.dashPattern.join(",") === extrapolationGuideLine.dashPattern.join(",") &&
     observerPathGuideLine.dashPattern.length === 0 &&
-    guideLineIsStraight(observerPathGuideLine.points) &&
     extrapolationGuideLine.color === commonPathGuideLine.color &&
     new Set(trajectoryBranchColors).size === 4 &&
     trajectoryVisibilityKeys.length === 5 &&
@@ -427,8 +435,8 @@ export function runSmokeChecks() {
       "Trajectory Segmentation",
       trajectorySegmentationOk,
       trajectorySegmentationOk
-        ? "Extrapolation, common, observer, transmitter, and lander paths are present with the expected dash treatment, dedicated visibility controls, and unique branch colors."
-        : "Trajectory paths are missing, incorrectly dashed, or do not expose dedicated visibility controls."
+        ? "Extrapolation, common, observer, transmitter, and lander paths are two-point straight lines with the expected dash treatment, dedicated visibility controls, and unique branch colors."
+        : "Trajectory paths are missing, not two-point straight lines, incorrectly dashed, or do not expose dedicated visibility controls."
     )
   );
 
@@ -447,7 +455,7 @@ export function runSmokeChecks() {
     );
   const landerPathOk =
     !!landerPathGuideLine &&
-    landerPathGuideLine.points.length > 1 &&
+    landerPathGuideLine.points.length === 2 &&
     landerPathGuideLine.visibilityKey !== transmitterPathGuideLine?.visibilityKey &&
     landerPathStartsOnTransmitter &&
     landerPathIsStraight;

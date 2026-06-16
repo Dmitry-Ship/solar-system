@@ -26,9 +26,6 @@ const MATRYOSHKA_INNER_SOURCE_RADIUS_FACTOR = 0.018;
 const MATRYOSHKA_SOURCE_RADIUS_MIN_MULTIPLIER = 18;
 const LIGHT_RAY_DISTANCE_FADE_POWER = 2.2;
 const TRAJECTORY_SOLAR_ASSIST_SEGMENT_COUNT = 64;
-const TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT = 24;
-const TRAJECTORY_BRANCH_FOCAL_LINE_SEGMENT_COUNT = 14;
-const TRAJECTORY_BRANCH_LOCAL_LINE_SEGMENT_COUNT = 12;
 
 interface LocalTrajectoryTarget extends Point3 {
   name: string;
@@ -81,14 +78,9 @@ interface TrajectoryVisibilityDescriptor {
 interface TrajectoryRoutePointSample {
   key: string;
   point: Point3;
-  tangent: Point3;
-  segmentStartIndex: number;
-  segmentT: number;
-  routePointIndex?: number;
 }
 
 interface TrajectoryRouteBuildResult {
-  points: Point3[];
   routePointsByKey: Map<string, TrajectoryRoutePointSample>;
 }
 
@@ -124,22 +116,6 @@ function scalePoint(point: Point3, scalar: number): Point3 {
   };
 }
 
-function addPoint(a: Point3, b: Point3): Point3 {
-  return {
-    x: a.x + b.x,
-    y: a.y + b.y,
-    z: a.z + b.z
-  };
-}
-
-function subtractPoint(a: Point3, b: Point3): Point3 {
-  return {
-    x: a.x - b.x,
-    y: a.y - b.y,
-    z: a.z - b.z
-  };
-}
-
 function normalizePoint(point: Point3): Point3 {
   const magnitude = pointMagnitude(point);
   if (magnitude <= 1e-9) {
@@ -157,35 +133,6 @@ function lerpPoint(start: Point3, end: Point3, t: number): Point3 {
   };
 }
 
-function cubicBezierPoint(
-  start: Point3,
-  startControl: Point3,
-  endControl: Point3,
-  end: Point3,
-  t: number
-): Point3 {
-  const oneMinusT = 1 - t;
-  const oneMinusTSquared = oneMinusT * oneMinusT;
-  const tSquared = t * t;
-  return {
-    x:
-      oneMinusTSquared * oneMinusT * start.x +
-      3 * oneMinusTSquared * t * startControl.x +
-      3 * oneMinusT * tSquared * endControl.x +
-      tSquared * t * end.x,
-    y:
-      oneMinusTSquared * oneMinusT * start.y +
-      3 * oneMinusTSquared * t * startControl.y +
-      3 * oneMinusT * tSquared * endControl.y +
-      tSquared * t * end.y,
-    z:
-      oneMinusTSquared * oneMinusT * start.z +
-      3 * oneMinusTSquared * t * startControl.z +
-      3 * oneMinusT * tSquared * endControl.z +
-      tSquared * t * end.z
-  };
-}
-
 function appendUniquePoint(points: Point3[], point: Point3 | null | undefined): void {
   if (!point) {
     return;
@@ -196,16 +143,11 @@ function appendUniquePoint(points: Point3[], point: Point3 | null | undefined): 
   }
 }
 
-function appendPointAndGetIndex(points: Point3[], point: Point3): number {
-  appendUniquePoint(points, point);
-  return Math.max(0, points.length - 1);
-}
-
 function findPointOnSegmentAtRadius(
   start: Point3,
   end: Point3,
   targetRadiusAu: number
-): { point: Point3; t: number } | null {
+): Point3 | null {
   const startRadiusAu = pointMagnitude(start);
   const endRadiusAu = pointMagnitude(end);
   const minRadiusAu = Math.min(startRadiusAu, endRadiusAu);
@@ -215,28 +157,20 @@ function findPointOnSegmentAtRadius(
   }
 
   if (Math.abs(startRadiusAu - endRadiusAu) <= 1e-9) {
-    return {
-      point: clonePoint(start),
-      t: 0
-    };
+    return clonePoint(start);
   }
 
   let lowerT = 0;
   let upperT = 1;
   const isIncreasing = endRadiusAu >= startRadiusAu;
   let candidate = clonePoint(start);
-  let candidateT = 0;
 
   for (let iteration = 0; iteration < 40; iteration += 1) {
     const midpointT = (lowerT + upperT) * 0.5;
-    candidateT = midpointT;
     candidate = lerpPoint(start, end, midpointT);
     const candidateRadiusAu = pointMagnitude(candidate);
     if (Math.abs(candidateRadiusAu - targetRadiusAu) <= 1e-6) {
-      return {
-        point: candidate,
-        t: candidateT
-      };
+      return candidate;
     }
 
     const shouldAdvanceLowerBound = isIncreasing
@@ -249,80 +183,27 @@ function findPointOnSegmentAtRadius(
     }
   }
 
-  return {
-    point: candidate,
-    t: candidateT
-  };
+  return candidate;
 }
 
 function findPolylinePointAtRadius(
   points: Point3[],
   targetRadiusAu: number,
   startIndex = 0
-): TrajectoryRoutePointSample | null {
+): Point3 | null {
   const normalizedStartIndex = Math.max(0, Math.floor(startIndex));
   for (let index = normalizedStartIndex; index < points.length - 1; index += 1) {
     const segmentStart = points[index];
     const segmentEnd = points[index + 1];
-    const sample = findPointOnSegmentAtRadius(segmentStart, segmentEnd, targetRadiusAu);
-    if (!sample) {
+    const point = findPointOnSegmentAtRadius(segmentStart, segmentEnd, targetRadiusAu);
+    if (!point) {
       continue;
     }
 
-    const tangent = normalizePoint(subtractPoint(segmentEnd, segmentStart));
-    return {
-      key: "",
-      point: sample.point,
-      tangent: pointMagnitude(tangent) > 1e-9 ? tangent : normalizePoint(segmentEnd),
-      segmentStartIndex: index,
-      segmentT: sample.t
-    };
+    return point;
   }
 
   return null;
-}
-
-function appendCubicBezierPoints(
-  points: Point3[],
-  start: Point3,
-  startControl: Point3,
-  endControl: Point3,
-  end: Point3,
-  segmentCount: number
-): void {
-  const safeSegmentCount = Math.max(2, Math.floor(segmentCount));
-  for (let step = 0; step <= safeSegmentCount; step += 1) {
-    appendUniquePoint(
-      points,
-      cubicBezierPoint(start, startControl, endControl, end, step / safeSegmentCount)
-    );
-  }
-}
-
-function appendRadialLinePoints(
-  points: Point3[],
-  direction: Point3,
-  startDistanceAu: number,
-  endDistanceAu: number,
-  segmentCount: number
-): void {
-  const safeSegmentCount = Math.max(1, Math.floor(segmentCount));
-  for (let step = 0; step <= safeSegmentCount; step += 1) {
-    const t = step / safeSegmentCount;
-    appendUniquePoint(points, scalePoint(direction, lerp(startDistanceAu, endDistanceAu, t)));
-  }
-}
-
-function appendLinearPoints(
-  points: Point3[],
-  start: Point3,
-  end: Point3,
-  segmentCount: number
-): void {
-  const safeSegmentCount = Math.max(1, Math.floor(segmentCount));
-  for (let step = 0; step <= safeSegmentCount; step += 1) {
-    appendUniquePoint(points, lerpPoint(start, end, step / safeSegmentCount));
-  }
 }
 
 function buildDistanceFadeProfile(points: Point3[], marker: Point3 | null): number[] | null {
@@ -604,8 +485,8 @@ function resolveTrajectoryRoutePointSamples(
 
     return [
       {
-        ...sample,
-        key
+        key,
+        point: sample
       }
     ];
   });
@@ -617,71 +498,30 @@ function buildTrajectoryRoute(
 ): TrajectoryRouteBuildResult {
   if (!Array.isArray(trajectoryPoints) || trajectoryPoints.length === 0) {
     return {
-      points: [],
       routePointsByKey: new Map()
     };
   }
 
   const routePointsByKey = new Map<string, TrajectoryRoutePointSample>();
-  const splitPointsBySegment = new Map<number, TrajectoryRoutePointSample[]>();
-  for (const routePointSample of routePointSamples) {
-    const segmentSamples = splitPointsBySegment.get(routePointSample.segmentStartIndex) ?? [];
-    segmentSamples.push(routePointSample);
-    splitPointsBySegment.set(routePointSample.segmentStartIndex, segmentSamples);
-  }
-
-  const points: Point3[] = [];
-  const launchTangent =
-    trajectoryPoints.length > 1
-      ? normalizePoint(subtractPoint(trajectoryPoints[1], trajectoryPoints[0]))
-      : normalizePoint(trajectoryPoints[0]);
-  appendPointAndGetIndex(points, trajectoryPoints[0]);
   routePointsByKey.set("launch", {
     key: "launch",
-    point: clonePoint(trajectoryPoints[0]),
-    tangent: pointMagnitude(launchTangent) > 1e-9 ? launchTangent : normalizePoint(trajectoryPoints[0]),
-    segmentStartIndex: 0,
-    segmentT: 0,
-    routePointIndex: 0
+    point: clonePoint(trajectoryPoints[0])
   });
 
-  for (let segmentIndex = 0; segmentIndex < trajectoryPoints.length - 1; segmentIndex += 1) {
-    const segmentSamples = [...(splitPointsBySegment.get(segmentIndex) ?? [])].sort(
-      (left, right) => left.segmentT - right.segmentT
-    );
-
-    for (const segmentSample of segmentSamples) {
-      const routePointIndex = appendPointAndGetIndex(points, segmentSample.point);
-      routePointsByKey.set(segmentSample.key, {
-        ...segmentSample,
-        routePointIndex
-      });
-    }
-
-    appendPointAndGetIndex(points, trajectoryPoints[segmentIndex + 1]);
+  for (const routePointSample of routePointSamples) {
+    routePointsByKey.set(routePointSample.key, {
+      ...routePointSample,
+      point: clonePoint(routePointSample.point)
+    });
   }
 
-  const exitPoint = points[points.length - 1];
-  const exitTangent =
-    trajectoryPoints.length > 1
-      ? normalizePoint(
-          subtractPoint(
-            trajectoryPoints[trajectoryPoints.length - 1],
-            trajectoryPoints[trajectoryPoints.length - 2]
-          )
-        )
-      : normalizePoint(exitPoint);
+  const exitPoint = trajectoryPoints[trajectoryPoints.length - 1];
   routePointsByKey.set("exit", {
     key: "exit",
-    point: clonePoint(exitPoint),
-    tangent: pointMagnitude(exitTangent) > 1e-9 ? exitTangent : normalizePoint(exitPoint),
-    segmentStartIndex: Math.max(0, trajectoryPoints.length - 2),
-    segmentT: 1,
-    routePointIndex: points.length - 1
+    point: clonePoint(exitPoint)
   });
 
   return {
-    points,
     routePointsByKey
   };
 }
@@ -713,13 +553,15 @@ function createTrajectoryRouteSegmentGuideLine(
   const endPointKey = normalizeTrajectoryRoutePointKey(segmentDefinition.endPointKey);
   const startRoutePoint = route.routePointsByKey.get(startPointKey);
   const endRoutePoint = route.routePointsByKey.get(endPointKey);
-  const startIndex = startRoutePoint?.routePointIndex ?? -1;
-  const endIndex = endRoutePoint?.routePointIndex ?? -1;
-  if (startIndex < 0 || endIndex <= startIndex) {
+  if (!startRoutePoint || !endRoutePoint) {
     return null;
   }
 
-  const segmentPoints = route.points.slice(startIndex, endIndex + 1);
+  const segmentPoints = [startRoutePoint.point, endRoutePoint.point];
+  if (pointDistance(segmentPoints[0], segmentPoints[1]) <= 1e-6) {
+    return null;
+  }
+
   const label = segmentDefinition.label.trim();
 
   return buildDirectionalGuideLine(segmentPoints[0] ?? null, segmentDefinition.color || fallbackColor, {
@@ -759,44 +601,9 @@ function createTrajectoryFocalBranchGuideLine(
     return null;
   }
 
-  const joinDistanceAu = Number.isFinite(branchDefinition.joinDistanceAu)
-    ? Math.max(endDistanceAu, branchDefinition.joinDistanceAu ?? endDistanceAu)
-    : endDistanceAu;
-  const branchJoinPoint = scalePoint(targetDirection, joinDistanceAu);
-  const branchPoints: Point3[] = [];
-
-  if (branchDefinition.pathShape === "linear") {
-    appendLinearPoints(
-      branchPoints,
-      sourceRoutePoint.point,
-      branchJoinPoint,
-      TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT
-    );
-  } else {
-    const branchChordLength = pointDistance(sourceRoutePoint.point, branchJoinPoint);
-    const handleLength = Math.max(60, Math.min(branchChordLength * 0.55, joinDistanceAu * 0.7));
-    const startControlPoint = addPoint(
-      sourceRoutePoint.point,
-      scalePoint(sourceRoutePoint.tangent, handleLength)
-    );
-    const endControlPoint = addPoint(branchJoinPoint, scalePoint(targetDirection, handleLength));
-    appendCubicBezierPoints(
-      branchPoints,
-      sourceRoutePoint.point,
-      startControlPoint,
-      endControlPoint,
-      branchJoinPoint,
-      TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT
-    );
-  }
-  if (joinDistanceAu > endDistanceAu + 1e-6) {
-    appendRadialLinePoints(
-      branchPoints,
-      targetDirection,
-      joinDistanceAu,
-      endDistanceAu,
-      TRAJECTORY_BRANCH_FOCAL_LINE_SEGMENT_COUNT
-    );
+  const branchPoints = [sourceRoutePoint.point, scalePoint(targetDirection, endDistanceAu)];
+  if (pointDistance(branchPoints[0], branchPoints[1]) <= 1e-6) {
+    return null;
   }
 
   const label = branchDefinition.label.trim();
@@ -833,11 +640,10 @@ function createTrajectoryLocalBranchGuideLine(
     y: Number.isFinite(targetPoint.y) ? targetPoint.y : sourcePoint.y,
     z: Number.isFinite(targetPoint.z) ? targetPoint.z : sourcePoint.z
   };
-  const totalSegmentCount =
-    TRAJECTORY_BRANCH_CURVE_SEGMENT_COUNT + TRAJECTORY_BRANCH_LOCAL_LINE_SEGMENT_COUNT;
-  const branchPoints: Point3[] = [];
-
-  appendLinearPoints(branchPoints, sourcePoint, resolvedTargetPoint, totalSegmentCount);
+  const branchPoints = [sourcePoint, resolvedTargetPoint];
+  if (pointDistance(branchPoints[0], branchPoints[1]) <= 1e-6) {
+    return null;
+  }
 
   const label = branchDefinition.label.trim();
   return buildDirectionalGuideLine(sourceRoutePoint.point, branchDefinition.color || fallbackColor, {
