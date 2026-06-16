@@ -85,12 +85,6 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
         dashPattern: [10, 6],
       },
       {
-        label: "common path",
-        startPointKey: "common-path-transition",
-        endPointKey: "branching-point",
-        color: "#ffd36e",
-      },
-      {
         label: "transmitter path",
         startPointKey: "branching-point",
         endPointKey: "exit",
@@ -108,7 +102,8 @@ const TRAJECTORY_DEFINITIONS: TrajectoryDefinition[] = [
     ],
     focalBranches: [
       {
-        label: "observer path",
+        label: "visible path",
+        startPointKey: "common-path-transition",
         sourcePointKey: "branching-point",
         targetMarkerName: "Gliese 300",
         endDistanceAu: 700,

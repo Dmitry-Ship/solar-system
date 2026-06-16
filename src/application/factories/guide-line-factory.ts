@@ -582,6 +582,7 @@ function createTrajectoryRouteSegmentGuideLine(
 }
 
 function createTrajectoryFocalBranchGuideLine(
+  startRoutePoint: TrajectoryRoutePointSample | null,
   sourceRoutePoint: TrajectoryRoutePointSample | null,
   targetDirection: Point3,
   branchDefinition: TrajectoryFocalBranchDefinition,
@@ -601,26 +602,40 @@ function createTrajectoryFocalBranchGuideLine(
     return null;
   }
 
-  const branchPoints = [sourceRoutePoint.point, scalePoint(targetDirection, endDistanceAu)];
-  if (pointDistance(branchPoints[0], branchPoints[1]) <= 1e-6) {
+  const branchPoints: Point3[] = [];
+  if (startRoutePoint) {
+    appendUniquePoint(branchPoints, startRoutePoint.point);
+  }
+  appendUniquePoint(branchPoints, sourceRoutePoint.point);
+  appendUniquePoint(branchPoints, scalePoint(targetDirection, endDistanceAu));
+  if (
+    branchPoints.length < 2 ||
+    branchPoints.every(
+      (point, index) => index === 0 || pointDistance(branchPoints[0], point) <= 1e-6
+    )
+  ) {
     return null;
   }
 
   const label = branchDefinition.label.trim();
-  return buildDirectionalGuideLine(sourceRoutePoint.point, branchDefinition.color || fallbackColor, {
-    points: branchPoints,
-    opacity: 0.9,
-    depthTest: false,
-    visibilityKey: visibilityDescriptor.visibilityKey,
-    visibilityLabel: visibilityDescriptor.visibilityLabel,
-    visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
-    visibilityGroupKey: visibilityDescriptor.visibilityGroupKey,
-    visibilityGroupLabel: visibilityDescriptor.visibilityGroupLabel,
-    initialVisibility: false,
-    label,
-    labelAnchorPoint: resolvePolylineMidpoint(branchPoints),
-    labelMarginPixels: 10
-  });
+  return buildDirectionalGuideLine(
+    branchPoints[0] ?? sourceRoutePoint.point,
+    branchDefinition.color || fallbackColor,
+    {
+      points: branchPoints,
+      opacity: 0.9,
+      depthTest: false,
+      visibilityKey: visibilityDescriptor.visibilityKey,
+      visibilityLabel: visibilityDescriptor.visibilityLabel,
+      visibilityControlLabel: visibilityDescriptor.visibilityControlLabel,
+      visibilityGroupKey: visibilityDescriptor.visibilityGroupKey,
+      visibilityGroupLabel: visibilityDescriptor.visibilityGroupLabel,
+      initialVisibility: false,
+      label,
+      labelAnchorPoint: resolvePolylineMidpoint(branchPoints),
+      labelMarginPixels: 10
+    }
+  );
 }
 
 function createTrajectoryLocalBranchGuideLine(
@@ -1028,7 +1043,9 @@ function createTrajectoryGuideLinesForDefinition(
     const targetDirection = normalizePoint(
       dependencies.math.pointOnRadiusAlongDirection(targetMarker, -1)
     );
+    const startPointKey = normalizeTrajectoryRoutePointKey(focalBranch.startPointKey ?? "");
     const focalBranchGuideLine = createTrajectoryFocalBranchGuideLine(
+      startPointKey ? route.routePointsByKey.get(startPointKey) ?? null : null,
       route.routePointsByKey.get(sourcePointKey) ?? null,
       targetDirection,
       focalBranch,

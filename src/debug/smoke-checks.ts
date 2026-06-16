@@ -382,61 +382,61 @@ export function runSmokeChecks() {
   const trajectoryGuideLines = sceneData?.directionalGuideLines || [];
   const extrapolationGuideLine =
     trajectoryGuideLines.find((guideLine) => guideLine.label === "extrapolation") ?? null;
-  const commonPathGuideLine =
-    trajectoryGuideLines.find((guideLine) => guideLine.label === "common path") ?? null;
-  const observerPathGuideLine =
-    trajectoryGuideLines.find((guideLine) => guideLine.label === "observer path") ?? null;
+  const visiblePathGuideLine =
+    trajectoryGuideLines.find((guideLine) => guideLine.label === "visible path") ?? null;
   const transmitterPathGuideLine =
     trajectoryGuideLines.find((guideLine) => guideLine.label === "transmitter path") ?? null;
   const landerPathGuideLine =
     trajectoryGuideLines.find((guideLine) => guideLine.label === "lander path") ?? null;
   const trajectoryBranchColors = [
-    commonPathGuideLine?.color,
-    observerPathGuideLine?.color,
+    visiblePathGuideLine?.color,
     transmitterPathGuideLine?.color,
     landerPathGuideLine?.color
   ].filter((color): color is string => typeof color === "string" && color.length > 0);
   const trajectoryVisibilityKeys = [
     extrapolationGuideLine?.visibilityKey,
-    commonPathGuideLine?.visibilityKey,
-    observerPathGuideLine?.visibilityKey,
+    visiblePathGuideLine?.visibilityKey,
     transmitterPathGuideLine?.visibilityKey,
     landerPathGuideLine?.visibilityKey
   ].filter((visibilityKey): visibilityKey is string => typeof visibilityKey === "string" && visibilityKey.length > 0);
-  const trajectoryPathGuideLines = [
+  const straightTrajectoryPathGuideLines = [
     extrapolationGuideLine,
-    commonPathGuideLine,
-    observerPathGuideLine,
     transmitterPathGuideLine,
     landerPathGuideLine
   ];
-  const trajectoryPathsAreTwoPointLines = trajectoryPathGuideLines.every(
+  const trajectoryPathsAreTwoPointLines = straightTrajectoryPathGuideLines.every(
     (guideLine) =>
       !!guideLine &&
       guideLine.points.length === 2 &&
       guideLineIsStraight(guideLine.points)
   );
+  const visiblePathTurnPoint = visiblePathGuideLine?.points[1] ?? null;
+  const visiblePathMakesTurnAt805Au =
+    !!visiblePathGuideLine &&
+    visiblePathGuideLine.points.length === 3 &&
+    !!visiblePathTurnPoint &&
+    approxEqual(pointMagnitude(visiblePathTurnPoint), 805, 1e-3) &&
+    !guideLineIsStraight(visiblePathGuideLine.points);
   const trajectorySegmentationOk =
     !!extrapolationGuideLine &&
-    !!commonPathGuideLine &&
-    !!observerPathGuideLine &&
+    !!visiblePathGuideLine &&
     !!transmitterPathGuideLine &&
     !!landerPathGuideLine &&
     trajectoryPathsAreTwoPointLines &&
+    visiblePathMakesTurnAt805Au &&
     extrapolationGuideLine.dashPattern.length >= 2 &&
     transmitterPathGuideLine.dashPattern.join(",") === extrapolationGuideLine.dashPattern.join(",") &&
-    observerPathGuideLine.dashPattern.length === 0 &&
-    extrapolationGuideLine.color === commonPathGuideLine.color &&
-    new Set(trajectoryBranchColors).size === 4 &&
-    trajectoryVisibilityKeys.length === 5 &&
+    visiblePathGuideLine.dashPattern.length === 0 &&
+    new Set(trajectoryBranchColors).size === 3 &&
+    trajectoryVisibilityKeys.length === 4 &&
     new Set(trajectoryVisibilityKeys).size === trajectoryVisibilityKeys.length;
   results.push(
     createResult(
       "Trajectory Segmentation",
       trajectorySegmentationOk,
       trajectorySegmentationOk
-        ? "Extrapolation, common, observer, transmitter, and lander paths are two-point straight lines with the expected dash treatment, dedicated visibility controls, and unique branch colors."
-        : "Trajectory paths are missing, not two-point straight lines, incorrectly dashed, or do not expose dedicated visibility controls."
+        ? "Extrapolation, visible, transmitter, and lander paths have the expected dash treatment, dedicated visibility controls, unique branch colors, and the visible path turns at 805 AU."
+        : "Trajectory paths are missing, incorrectly shaped, incorrectly dashed, or do not expose dedicated visibility controls."
     )
   );
 

@@ -136,6 +136,7 @@ export interface TrajectoryRouteSegmentDefinition {
 
 export interface TrajectoryFocalBranchDefinition {
   label: string;
+  startPointKey?: string;
   sourcePointKey: string;
   targetMarkerName: string;
   endDistanceAu?: number;
